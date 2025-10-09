@@ -1,6 +1,6 @@
 [project]
 name = "r2x-reeds"
-version = "0.0.1"
+version = "0.0.0"
 readme = "README.md"
 description = "ReEDS model plugin"
 license = {file = "LICENSE.txt"}
@@ -138,3 +138,6 @@ section-order = ["future", "standard-library", "third-party", "first-party", "lo
 [tool.ruff.lint.mccabe]
 # Cyclomatic complexity threshold
 max-complexity = 10
+
+[tool.uv.sources]
+r2x-core = { path = "../../r2x-core/dev", editable = true }
