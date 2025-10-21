@@ -80,7 +80,7 @@ def update_system(
         # Try multiple matching strategies
         pcm_values = (
             pcm_defaults.get(component.name)
-            or pcm_defaults.get(component.technology)  # Updated from ext.reeds_tech
+            or pcm_defaults.get(component.technology)
             or pcm_defaults.get(component.category)
         )
 
