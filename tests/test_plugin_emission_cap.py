@@ -80,25 +80,31 @@ def mock_parser_with_data(simple_config, mock_data_store):
     """Create a mock parser with required data."""
     parser = ReEDSParser(config=simple_config, data_store=mock_data_store)
 
-    switches_data = pl.DataFrame([
-        {"switch": "gsw_precombustion", "value": "false"},
-        {"switch": "gsw_annualcapco2", "value": "false"},
-    ])
-    emission_rates_data = pl.DataFrame([
-        {
-            "emission_type": "co2",
-            "emission_source": "combustion",
-            "tech": "biopower",
-            "region": "p10",
-            "year": 2035,
-            "tech_vintage": "init-2",
-            "rate": 0.5,
-        }
-    ])
+    switches_data = pl.DataFrame(
+        [
+            {"switch": "gsw_precombustion", "value": "false"},
+            {"switch": "gsw_annualcapco2", "value": "false"},
+        ]
+    )
+    emission_rates_data = pl.DataFrame(
+        [
+            {
+                "emission_type": "co2",
+                "emission_source": "combustion",
+                "tech": "biopower",
+                "region": "p10",
+                "year": 2035,
+                "tech_vintage": "init-2",
+                "rate": 0.5,
+            }
+        ]
+    )
 
-    co2_cap_data = pl.DataFrame([
-        {"value": 1.14e9}  # tonnes
-    ])
+    co2_cap_data = pl.DataFrame(
+        [
+            {"value": 1.14e9}  # tonnes
+        ]
+    )
 
     parser.data = {
         "switches": switches_data,
@@ -114,11 +120,7 @@ def test_update_system_with_cap(simple_config, system_with_emissions, mock_parse
     system = system_with_emissions
     parser = mock_parser_with_data
 
-    new_system = update_system(
-        config=simple_config,
-        parser=parser,
-        system=system
-    )
+    new_system = update_system(config=simple_config, parser=parser, system=system)
 
     assert isinstance(new_system, System)
     assert new_system is not None
@@ -132,7 +134,7 @@ def test_update_system_with_custom_cap(simple_config, system_with_emissions):
         config=simple_config,
         parser=None,
         system=system,
-        emission_cap=500000.0  # Custom cap
+        emission_cap=500000.0,  # Custom cap
     )
 
     assert isinstance(new_system, System)
@@ -155,12 +157,7 @@ def test_no_emission_types(simple_config):
     )
     system.add_component(gen)
 
-    new_system = update_system(
-        config=simple_config,
-        parser=None,
-        system=system,
-        emission_cap=1000.0
-    )
+    new_system = update_system(config=simple_config, parser=None, system=system, emission_cap=1000.0)
 
     # Since there are no CO2 emissions in the system, it should return unchanged
     assert new_system == system
@@ -170,12 +167,7 @@ def test_no_emission_cap_provided(simple_config, system_with_emissions):
     """Test behavior when no emission cap is provided."""
     system = system_with_emissions
 
-    new_system = update_system(
-        config=simple_config,
-        parser=None,
-        system=system,
-        emission_cap=None
-    )
+    new_system = update_system(config=simple_config, parser=None, system=system, emission_cap=None)
 
     # Since no emission cap is provided, it should return unchanged
     assert new_system == system
@@ -185,9 +177,9 @@ def test_add_precombustion_success(system_with_emissions):
     """Test successful addition of precombustion emissions."""
     system = system_with_emissions
 
-    emission_rates = pl.DataFrame([
-        {"generator_name": "biopower_init-2_p10", "emission_type": "SO2", "rate": 10.0}
-    ])
+    emission_rates = pl.DataFrame(
+        [{"generator_name": "biopower_init-2_p10", "emission_type": "SO2", "rate": 10.0}]
+    )
 
     result = add_precombustion(system, emission_rates)
     assert result is True
@@ -207,9 +199,9 @@ def test_add_precombustion_generator_not_found():
     """Test precombustion addition when generator is not found."""
     system = System()
 
-    emission_rates = pl.DataFrame([
-        {"generator_name": "nonexistent_gen", "emission_type": "CO2", "rate": 10.0}
-    ])
+    emission_rates = pl.DataFrame(
+        [{"generator_name": "nonexistent_gen", "emission_type": "CO2", "rate": 10.0}]
+    )
 
     result = add_precombustion(system, emission_rates)
     # Should return False when no generators are processed
@@ -232,9 +224,7 @@ def test_add_precombustion_no_emission_attribute(simple_region):
     )
     system.add_component(gen)
 
-    emission_rates = pl.DataFrame([
-        {"generator_name": "test_gen", "emission_type": "CO2", "rate": 10.0}
-    ])
+    emission_rates = pl.DataFrame([{"generator_name": "test_gen", "emission_type": "CO2", "rate": 10.0}])
 
     result = add_precombustion(system, emission_rates)
     # Should return False when no emission attributes are found
@@ -262,9 +252,7 @@ def test_add_precombustion_multiple_emissions_error(simple_region):
     system.add_supplemental_attribute(gen, co2_emission1)
     system.add_supplemental_attribute(gen, co2_emission2)
 
-    emission_rates = pl.DataFrame([
-        {"generator_name": "test_gen", "emission_type": "CO2", "rate": 10.0}
-    ])
+    emission_rates = pl.DataFrame([{"generator_name": "test_gen", "emission_type": "CO2", "rate": 10.0}])
 
     with pytest.raises(ValueError, match="Multiple emission of the same type"):
         add_precombustion(system, emission_rates)
@@ -276,21 +264,25 @@ def test_update_system_with_precombustion(simple_config, system_with_emissions, 
 
     # Create parser with precombustion enabled
     parser = ReEDSParser(config=simple_config, data_store=mock_data_store)
-    switches_data = pl.DataFrame([
-        {"switch": "gsw_precombustion", "value": "true"},
-    ])
+    switches_data = pl.DataFrame(
+        [
+            {"switch": "gsw_precombustion", "value": "true"},
+        ]
+    )
 
-    emission_rates_data = pl.DataFrame([
-        {
-            "emission_type": "so2",
-            "emission_source": "precombustion",
-            "tech": "biopower",
-            "region": "p10",
-            "year": 2035,
-            "tech_vintage": "init-2",
-            "rate": -0.000642,  # Negative to cancel out existing emission
-        }
-    ])
+    emission_rates_data = pl.DataFrame(
+        [
+            {
+                "emission_type": "so2",
+                "emission_source": "precombustion",
+                "tech": "biopower",
+                "region": "p10",
+                "year": 2035,
+                "tech_vintage": "init-2",
+                "rate": -0.000642,  # Negative to cancel out existing emission
+            }
+        ]
+    )
 
     co2_cap_data = pl.DataFrame([{"value": 1000000.0}])
 
@@ -300,11 +292,7 @@ def test_update_system_with_precombustion(simple_config, system_with_emissions, 
         "co2_cap": co2_cap_data,
     }
 
-    new_system = update_system(
-        config=simple_config,
-        parser=parser,
-        system=system
-    )
+    new_system = update_system(config=simple_config, parser=parser, system=system)
 
     # Check that SO2 emissions were updated
     generator = new_system.get_component(ReEDSGenerator, "biopower_init-2_p10")
@@ -321,9 +309,7 @@ def test_unknown_emission_type():
     """Test handling of unknown emission types."""
     system = System()
 
-    emission_rates = pl.DataFrame([
-        {"generator_name": "test_gen", "emission_type": "UNKNOWN", "rate": 10.0}
-    ])
+    emission_rates = pl.DataFrame([{"generator_name": "test_gen", "emission_type": "UNKNOWN", "rate": 10.0}])
 
     result = add_precombustion(system, emission_rates)
     # Should return False when unknown emission types are encountered
@@ -335,23 +321,18 @@ def test_emission_constraint_storage_with_ext(simple_config, system_with_emissio
     system = system_with_emissions
 
     # Mock system.ext if it exists
-    if not hasattr(system, 'ext'):
+    if not hasattr(system, "ext"):
         system.ext = {}
 
-    new_system = update_system(
-        config=simple_config,
-        parser=None,
-        system=system,
-        emission_cap=1000000.0
-    )
+    new_system = update_system(config=simple_config, parser=None, system=system, emission_cap=1000000.0)
 
     # Check constraint storage
-    if hasattr(new_system, 'ext') and "emission_constraints" in new_system.ext:
+    if hasattr(new_system, "ext") and "emission_constraints" in new_system.ext:
         constraints = new_system.ext["emission_constraints"]
         assert len(constraints) > 0
         constraint_name = next(iter(constraints.keys()))
         assert constraints[constraint_name]["rhs_value"] == 1000000.0
-    elif hasattr(new_system, '_emission_constraints'):
+    elif hasattr(new_system, "_emission_constraints"):
         constraints = new_system._emission_constraints
         assert len(constraints) > 0
         constraint_name = next(iter(constraints.keys()))
@@ -363,18 +344,13 @@ def test_emission_constraint_storage_without_ext(simple_config, system_with_emis
     system = system_with_emissions
 
     # Ensure system doesn't have ext
-    if hasattr(system, 'ext'):
-        delattr(system, 'ext')
+    if hasattr(system, "ext"):
+        delattr(system, "ext")
 
-    new_system = update_system(
-        config=simple_config,
-        parser=None,
-        system=system,
-        emission_cap=500000.0
-    )
+    new_system = update_system(config=simple_config, parser=None, system=system, emission_cap=500000.0)
 
     # Check that constraint was stored in _emission_constraints
-    assert hasattr(new_system, '_emission_constraints')
+    assert hasattr(new_system, "_emission_constraints")
     constraints = new_system._emission_constraints
     assert len(constraints) > 0
     constraint_name = next(iter(constraints.keys()))
@@ -389,22 +365,26 @@ def test_precombustion_switches_conversion(simple_config, system_with_emissions,
     parser = ReEDSParser(config=simple_config, data_store=mock_data_store)
 
     # Test with DataFrame format
-    switches_data = pl.DataFrame([
-        {"switch": "gsw_precombustion", "value": "true"},
-        {"switch": "other_switch", "value": "false"},
-    ])
+    switches_data = pl.DataFrame(
+        [
+            {"switch": "gsw_precombustion", "value": "true"},
+            {"switch": "other_switch", "value": "false"},
+        ]
+    )
 
-    emission_rates_data = pl.DataFrame([
-        {
-            "emission_type": "so2",
-            "emission_source": "precombustion",
-            "tech": "biopower",
-            "region": "p10",
-            "year": 2035,
-            "tech_vintage": "init-2",
-            "rate": 5.0,
-        }
-    ])
+    emission_rates_data = pl.DataFrame(
+        [
+            {
+                "emission_type": "so2",
+                "emission_source": "precombustion",
+                "tech": "biopower",
+                "region": "p10",
+                "year": 2035,
+                "tech_vintage": "init-2",
+                "rate": 5.0,
+            }
+        ]
+    )
 
     co2_cap_data = pl.DataFrame([{"value": 100000.0}])
 
@@ -414,11 +394,7 @@ def test_precombustion_switches_conversion(simple_config, system_with_emissions,
         "co2_cap": co2_cap_data,
     }
 
-    new_system = update_system(
-        config=simple_config,
-        parser=parser,
-        system=system
-    )
+    new_system = update_system(config=simple_config, parser=parser, system=system)
 
     # Verify the system was updated (precombustion was applied)
     generator = new_system.get_component(ReEDSGenerator, "biopower_init-2_p10")

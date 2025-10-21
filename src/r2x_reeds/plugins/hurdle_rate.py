@@ -52,29 +52,28 @@ def update_system(
         else:
             logger.debug("Found hierarchy data in parser")
 
-    # Apply hurdle rate to all inter-regional transmission lines
+    # Apply hurdle rate to all transmission lines
     for line in system.get_components(ReEDSTransmissionLine):
-        region_to = line.to_region.name
-        region_from = line.from_region.name
+        # Get regions through the interface
+        region_from = line.interface.from_region.name
+        region_to = line.interface.to_region.name
 
-        # Only apply hurdle rate to inter-regional lines
-        if region_to != region_from:
-            if previous_hurdle := line.ext.get("Wheeling Charge"):
-                logger.debug(
-                    "Changing hurdle rate for {} from {} to {}.", line.name, previous_hurdle, hurdle_rate
-                )
-
-            # Apply hurdle rate in both directions
-            line.ext["Wheeling Charge"] = hurdle_rate
-            line.ext["Wheeling Charge Back"] = hurdle_rate
-
-            logger.trace(
-                "Applied hurdle rate {} to line {} between {} and {}",
-                hurdle_rate,
-                line.name,
-                region_from,
-                region_to,
+        # Check if there was a previous hurdle rate
+        if line.hurdle_rate is not None:
+            logger.debug(
+                "Changing hurdle rate for {} from {} to {}.", line.name, line.hurdle_rate, hurdle_rate
             )
+
+        # Apply the new hurdle rate
+        line.hurdle_rate = hurdle_rate
+
+        logger.trace(
+            "Applied hurdle rate {} to line {} between {} and {}",
+            hurdle_rate,
+            line.name,
+            region_from,
+            region_to,
+        )
 
     logger.info("Finished applying hurdle rate to transmission lines")
     return system
