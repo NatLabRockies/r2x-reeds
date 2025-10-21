@@ -106,9 +106,13 @@ def update_system(
             ).unique()
             add_precombustion(system, generator_with_precombustion)
 
-        # Determine emission cap from ReEDS data if not provided
         if emission_cap is None:
-            emission_object = EmissionType.CO2E if switches.get("gsw_annualcapco2e") else EmissionType.CO2
+            emission_object = EmissionType.CO2
+
+            if switches.get("gsw_annualcapco2e"):
+                logger.warning(
+                    "gsw_annualcapco2e is enabled but CO2E is not available in EmissionType enum. Using CO2 instead."
+                )
 
             if "co2_cap" in parser_data and parser_data["co2_cap"] is not None:
                 emission_cap = parser_data["co2_cap"]["value"].item()
@@ -191,8 +195,13 @@ def set_emission_constraint(
         logger.warning("Could not set emission cap value. Skipping plugin.")
         return system
 
-    if "emission_constraints" not in system.ext:
-        system.ext["emission_constraints"] = {}
+    if not hasattr(system, "ext"):
+        system._emission_constraints = {}
+        constraint_storage = system._emission_constraints
+    else:
+        if "emission_constraints" not in system.ext:
+            system.ext["emission_constraints"] = {}
+        constraint_storage = system.ext["emission_constraints"]
 
     constraint_name = f"Annual_{emission_object}_cap"
 
@@ -206,7 +215,7 @@ def set_emission_constraint(
         "scalar": 1000,
     }
 
-    system.ext["emission_constraints"][constraint_name] = constraint_properties
+    constraint_storage[constraint_name] = constraint_properties
 
     logger.info(
         "Added emission constraint '{}' with cap {} {} for {}",

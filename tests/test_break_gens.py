@@ -152,7 +152,9 @@ def test_break_generators_basic(system_with_storage_generators):
     assert len(smaller_generators) > 0
 
     # Should have generators with original capacity reduced
-    remaining_original = [gen for gen in updated_generators if gen.capacity == 100 and gen.name.startswith("large_storage")]
+    remaining_original = [
+        gen for gen in updated_generators if gen.capacity == 100 and gen.name.startswith("large_storage")
+    ]
     assert len(remaining_original) > 0
 
 
@@ -167,17 +169,13 @@ def test_break_generators_with_non_break_techs(system_with_mixed_generators):
     non_break_techs = ["storage"]
 
     original_storage_generators = [
-        gen for gen in system.get_components(ReEDSGenerator)
-        if gen.category == "storage"
+        gen for gen in system.get_components(ReEDSGenerator) if gen.category == "storage"
     ]
     original_storage_capacities = [gen.capacity for gen in original_storage_generators]
 
     system = break_generators(system, reference_generators, capacity_threshold, non_break_techs)
 
-    storage_generators = [
-        gen for gen in system.get_components(ReEDSGenerator)
-        if gen.category == "storage"
-    ]
+    storage_generators = [gen for gen in system.get_components(ReEDSGenerator) if gen.category == "storage"]
     current_storage_capacities = [gen.capacity for gen in storage_generators]
 
     # Original storage capacities should be preserved
@@ -219,7 +217,8 @@ def test_break_generators_multiple_categories(system_with_mixed_generators):
 
     # Check that generators with reference capacities exist
     ref_capacity_generators = [
-        gen for gen in updated_generators
+        gen
+        for gen in updated_generators
         if gen.capacity in [75, 100, 50]  # Reference capacities
     ]
     assert len(ref_capacity_generators) > 0
