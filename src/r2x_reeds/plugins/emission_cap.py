@@ -2,6 +2,7 @@
 
 This plugin is only applicable for ReEDs, but could work with similarly arrange data
 """
+
 import polars as pl
 from infrasys import System
 from loguru import logger
@@ -69,7 +70,7 @@ def update_system(
 
     # Check if we have ReEDS parser data
     if parser is not None:
-        parser_data = getattr(parser, 'data', {})
+        parser_data = getattr(parser, "data", {})
 
         # Check for required data files
         if "switches" not in parser_data:
@@ -84,7 +85,7 @@ def update_system(
         emit_rates = parser_data["emission_rates"]
 
         # Convert switches to dictionary format
-        if hasattr(switches_data, 'iter_rows'):
+        if hasattr(switches_data, "iter_rows"):
             switches = {key: str(value) for key, value in switches_data.iter_rows()}
         else:
             switches = switches_data
@@ -212,7 +213,7 @@ def set_emission_constraint(
         constraint_name,
         emission_cap,
         default_unit,
-        emission_object
+        emission_object,
     )
 
     return system

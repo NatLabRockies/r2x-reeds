@@ -60,9 +60,7 @@ def update_system(
     # Read PCM defaults using DataStore
     pcm_path = Path(pcm_defaults_fpath)
     pcm_data_file = DataFile(
-        name="pcm_defaults",
-        fpath=pcm_path,
-        description="PCM defaults for generator augmentation"
+        name="pcm_defaults", fpath=pcm_path, description="PCM defaults for generator augmentation"
     )
     data_store = DataStore(folder=pcm_path.parent)
     data_store.add_data_file(pcm_data_file)
@@ -97,20 +95,12 @@ def update_system(
 
         if not pcm_defaults_override:
             fields_to_replace = [
-                key
-                for key, value in component.model_dump().items()
-                if value is None and key in pcm_values
+                key for key, value in component.model_dump().items() if value is None and key in pcm_values
             ]
         else:
-            fields_to_replace = [
-                key for key in pcm_values
-                if key in type(component).model_fields
-            ]
+            fields_to_replace = [key for key in pcm_values if key in type(component).model_fields]
 
-        for field in sorted(
-            fields_to_replace,
-            key=lambda x: fields_weight.get(x, -999)
-        ):
+        for field in sorted(fields_to_replace, key=lambda x: fields_weight.get(x, -999)):
             value = pcm_values[field]
             if _check_if_null(value):
                 continue

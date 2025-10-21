@@ -13,12 +13,7 @@ from r2x_reeds.parser import ReEDSParser
 
 
 # @PluginManager.register_system_update("ccs_credit")
-def update_system(
-    config: ReEDSConfig,
-    system: System,
-    parser: ReEDSParser | None,
-    **kwargs
-) -> System:
+def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser | None, **kwargs) -> System:
     """Apply CCS incentive to CCS eligible technologies.
 
     The incentive is calculated with the capture incentive ($/ton) and capture rate
@@ -51,7 +46,7 @@ def update_system(
         return system
 
     required_files = ["co2_incentive", "emission_capture_rate", "upgrade_link"]
-    parser_data = getattr(parser, 'data', {})
+    parser_data = getattr(parser, "data", {})
     if not all(key in parser_data for key in required_files):
         logger.warning("Missing required files for ccs_credit. Skipping plugin.")
         return system
@@ -68,8 +63,7 @@ def update_system(
     ccs_techs = ccs_techs.unique().extend(incentive["from"].unique())
 
     for generator in system.get_components(
-        ReEDSGenerator,
-        filter_func=lambda gen: gen.technology in ccs_techs
+        ReEDSGenerator, filter_func=lambda gen: gen.technology in ccs_techs
     ):
         reeds_tech = generator.technology
         reeds_vintage = generator.vintage

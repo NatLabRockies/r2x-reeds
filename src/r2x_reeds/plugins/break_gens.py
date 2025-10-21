@@ -2,8 +2,9 @@
 
 This plugin breaks apart generators that are to big in conmparisson with the
 WECC database. If the generator is to small after the breakup than the capacity
-threshold variable, we drop the genrator entirely.
+threshold variable, we drop the generator entirely.
 """
+
 # System packages
 import re
 from pathlib import Path
@@ -40,7 +41,7 @@ def update_system(
             pcm_data_file = DataFile(
                 name="pcm_defaults",
                 fpath=pcm_defaults_path,
-                description="PCM defaults for generator breaking"
+                description="PCM defaults for generator breaking",
             )
             data_store = DataStore(folder=pcm_data_file.fpath.parent)
             data_store.add_data_file(pcm_data_file)
@@ -54,9 +55,7 @@ def update_system(
         pcm_path = Path(pcm_defaults_fpath)
 
         pcm_data_file = DataFile(
-            name="pcm_defaults",
-            fpath=pcm_path,
-            description="Custom PCM defaults for generator breaking"
+            name="pcm_defaults", fpath=pcm_path, description="Custom PCM defaults for generator breaking"
         )
         data_store = DataStore(folder=pcm_path.parent)
         data_store.add_data_file(pcm_data_file)
@@ -89,7 +88,9 @@ def break_generators(
     regex_pattern = f"^(?!{'|'.join(non_break_techs)})." if non_break_techs else ".*"
 
     capacity_dropped = 0
-    for component in system.get_components(ReEDSGenerator, filter_func=lambda x: re.search(regex_pattern, x.name)):
+    for component in system.get_components(
+        ReEDSGenerator, filter_func=lambda x: re.search(regex_pattern, x.name)
+    ):
         if not (tech := getattr(component, break_category, None)):
             logger.trace("Skipping component {} with missing category", component.name)
             continue
@@ -140,7 +141,9 @@ def break_generators(
     return system
 
 
-def _create_split_generator(system: System, original: ReEDSGenerator, name: str, new_capacity: float, original_capacity: float) -> ReEDSGenerator:
+def _create_split_generator(
+    system: System, original: ReEDSGenerator, name: str, new_capacity: float, original_capacity: float
+) -> ReEDSGenerator:
     """Create a new split generator component."""
     new_component = ReEDSGenerator(
         name=name,
@@ -156,12 +159,6 @@ def _create_split_generator(system: System, original: ReEDSGenerator, name: str,
         vom_cost=original.vom_cost,
         vintage=original.vintage,
     )
-
-    new_component.ext = {
-        "original_capacity": original_capacity,
-        "original_name": original.name,
-        "broken": True
-    }
 
     system.add_component(new_component)
 

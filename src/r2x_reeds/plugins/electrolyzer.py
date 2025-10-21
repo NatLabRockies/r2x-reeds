@@ -24,12 +24,7 @@ MONTHLY_H2_FPRICE_FMAP = "h2_fuel_price"
 
 
 # @PluginManager.register_system_update("electrolyzer")
-def update_system(
-    config: ReEDSConfig,
-    system: System,
-    parser: ReEDSParser,
-    **kwargs
-) -> System:
+def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser, **kwargs) -> System:
     """Modify infrasys system to include electrolyzer load and monthly hydrogen fuel price.
 
     Parameters
@@ -58,12 +53,12 @@ def update_system(
 
 def electrolyzer_load(config: ReEDSConfig, parser: ReEDSParser, system: System) -> System:
     """Add electrolyzer load to each region as a fixed load."""
-    if not hasattr(config, 'weather_year') or config.weather_year is None:
+    if not hasattr(config, "weather_year") or config.weather_year is None:
         logger.warning("Weather year not specified in config. Skipping electrolyzer load.")
         return system
 
     # Check if parser has the required data
-    parser_data = getattr(parser, 'data', {})
+    parser_data = getattr(parser, "data", {})
     if ELECTROLYZER_LOAD_FMAP not in parser_data:
         logger.warning("No electrolyzer data found on parser. Check parsing filenames.")
         return system
@@ -110,14 +105,14 @@ def electrolyzer_load(config: ReEDSConfig, parser: ReEDSParser, system: System) 
             name=f"{region_name}_electrolyzer",
             region=region,
             peak_demand=max_load,  # MW
-            category="electrolyzer"
+            category="electrolyzer",
         )
 
         # Store electrolyzer metadata
         electrolyzer_demand.ext = {
             "load_type": "electrolyzer",
             "interruptible": True,
-            "original_region": region_name
+            "original_region": region_name,
         }
 
         system.add_component(electrolyzer_demand)
@@ -139,12 +134,12 @@ def electrolyzer_load(config: ReEDSConfig, parser: ReEDSParser, system: System) 
 
 def hydrogen_fuel_price(config: ReEDSConfig, parser: ReEDSParser, system: System) -> System:
     """Add monthly hydrogen fuel price for generator using hydrogen."""
-    parser_data = getattr(parser, 'data', {})
+    parser_data = getattr(parser, "data", {})
     if MONTHLY_H2_FPRICE_FMAP not in parser_data:
         logger.warning("No monthly electrolyzer data found on parser. Check parsing filenames.")
         return system
 
-    if not hasattr(config, 'weather_year') or config.weather_year is None:
+    if not hasattr(config, "weather_year") or config.weather_year is None:
         logger.warning("Weather year not specified in config. Skipping hydrogen fuel price.")
         return system
 
@@ -162,8 +157,7 @@ def hydrogen_fuel_price(config: ReEDSConfig, parser: ReEDSParser, system: System
 
     # Adding fuel price for all hydrogen generators
     for h2_generator in system.get_components(
-        ReEDSGenerator,
-        filter_func=lambda x: "h2" in x.name.lower() or "hydrogen" in x.technology.lower()
+        ReEDSGenerator, filter_func=lambda x: "h2" in x.name.lower() or "hydrogen" in x.technology.lower()
     ):
         region_name = h2_generator.region.name
 

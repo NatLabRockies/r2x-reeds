@@ -2,6 +2,7 @@
 
 This plugin is only applicable for ReEDs, but could work with similarly arrange data
 """
+
 from infrasys import System
 from loguru import logger
 
@@ -45,7 +46,7 @@ def update_system(
 
     # Validate parser data if provided
     if parser is not None:
-        parser_data = getattr(parser, 'data', {})
+        parser_data = getattr(parser, "data", {})
         if "hierarchy" not in parser_data:
             logger.warning("Did not find hierarchy file on parser. Check parser object.")
         else:
@@ -60,10 +61,7 @@ def update_system(
         if region_to != region_from:
             if previous_hurdle := line.ext.get("Wheeling Charge"):
                 logger.debug(
-                    "Changing hurdle rate for {} from {} to {}.",
-                    line.name,
-                    previous_hurdle,
-                    hurdle_rate
+                    "Changing hurdle rate for {} from {} to {}.", line.name, previous_hurdle, hurdle_rate
                 )
 
             # Apply hurdle rate in both directions
@@ -75,7 +73,7 @@ def update_system(
                 hurdle_rate,
                 line.name,
                 region_from,
-                region_to
+                region_to,
             )
 
     logger.info("Finished applying hurdle rate to transmission lines")

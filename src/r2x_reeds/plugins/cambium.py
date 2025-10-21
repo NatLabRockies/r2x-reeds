@@ -2,6 +2,7 @@
 
 This plugin is only applicable for ReEDS, but could work with similarly arranged data
 """
+
 import polars as pl
 from infrasys import System
 from loguru import logger
@@ -13,11 +14,7 @@ from r2x_reeds.parser import ReEDSParser
 
 # @PluginManager.register_system_update("cambium")
 def update_system(
-    config: ReEDSConfig,
-    system: System,
-    parser: ReEDSParser,
-    perturb: float,
-    **kwargs
+    config: ReEDSConfig, system: System, parser: ReEDSParser, perturb: float, **kwargs
 ) -> System:
     """Apply hurdle rate between regions.
 
@@ -50,7 +47,7 @@ def update_system(
         region.ext["Load Scalar"] = perturb
 
     if parser is not None:
-        hurdle_rate_data = getattr(parser, 'hurdle_rate_data', None)
+        hurdle_rate_data = getattr(parser, "hurdle_rate_data", None)
 
         if hurdle_rate_data is not None:
             for line in system.get_components(ReEDSTransmissionLine):
@@ -63,7 +60,9 @@ def update_system(
                         .filter(pl.col("to_region") == to_region)["hurdle_rate"]
                         .item()
                     )
-                    logger.debug(f"Setting hurdle rate between {to_region=} and {from_region=} of {hurdle_rate=}")
+                    logger.debug(
+                        f"Setting hurdle rate between {to_region=} and {from_region=} of {hurdle_rate=}"
+                    )
 
                     if to_region != from_region:
                         if previous_hurdle := line.ext.get("Wheeling Charge"):
@@ -95,15 +94,13 @@ def _derate_plants(system: System) -> System:
 
         original_capacity = generator.capacity
         derated_capacity = (
-            (1 - generator.planned_outage_rate) *
-            (1 - generator.forced_outage_rate) *
-            original_capacity
+            (1 - generator.planned_outage_rate) * (1 - generator.forced_outage_rate) * original_capacity
         )
         generator.capacity = derated_capacity
         generator.planned_outage_rate = None
         generator.forced_outage_rate = None
 
-        if hasattr(generator, 'mean_time_to_repair'):
+        if hasattr(generator, "mean_time_to_repair"):
             generator.mean_time_to_repair = None
 
     return system

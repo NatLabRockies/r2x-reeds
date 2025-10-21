@@ -39,7 +39,7 @@ def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser | Non
     System
         The updated system object.
     """
-    if not hasattr(config, 'weather_year') or config.weather_year is None:
+    if not hasattr(config, "weather_year") or config.weather_year is None:
         logger.warning("Weather year not specified in config. Skipping imports plugin.")
         return system
 
@@ -51,7 +51,7 @@ def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser | Non
         return system
 
     # Check if required data files are available
-    parser_data = getattr(parser, 'data', {})
+    parser_data = getattr(parser, "data", {})
     required_files = ["canada_imports", "canada_szn_frac", "hour_map"]
 
     if not all(key in parser_data for key in required_files):
@@ -81,9 +81,7 @@ def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser | Non
 
     # NOTE: Since the seasons can be repeated, the szn frac can be greater than one. To avoid this, we
     # normalize it again to redistribute the fraction throughout the 365 or 366 days.
-    daily_time_series_normalized = daily_time_series.with_columns(
-        pl.col("value") / pl.col("value").sum()
-    )
+    daily_time_series_normalized = daily_time_series.with_columns(pl.col("value") / pl.col("value").sum())
 
     # NOTE: This will need change if we modify the model for the imports. Currently all is assumed to be
     # modeled as HydroEnergyReservoir. Currently we only apply it to can-imports.
@@ -92,7 +90,7 @@ def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser | Non
     # Find Canadian import generators - updated to use ReEDSGenerator
     for generator in system.get_components(
         ReEDSGenerator,
-        filter_func=lambda x: "can-imports" in x.name.lower() or "canada" in x.technology.lower()
+        filter_func=lambda x: "can-imports" in x.name.lower() or "canada" in x.technology.lower(),
     ):
         # Get region name from the generator's region instead of bus
         region_name = generator.region.name
@@ -105,9 +103,7 @@ def update_system(config: ReEDSConfig, system: System, parser: ReEDSParser | Non
             continue
 
         total_import_value = region_imports["value"].item()
-        daily_budget = (
-            total_import_value * daily_time_series_normalized["value"].to_numpy()
-        )
+        daily_budget = total_import_value * daily_time_series_normalized["value"].to_numpy()
         daily_budget_gwh = daily_budget[:-1] / 1e3  # Convert MWh to GWh
 
         ts = SingleTimeSeries.from_array(
