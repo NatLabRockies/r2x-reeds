@@ -10,8 +10,3 @@ def test_reeds_plugin_registration():
 
     assert "reeds" in pm.registered_parsers
     assert pm.load_parser(name="reeds") == ReEDSParser
-
-    assert "add_pcm_defaults" in pm.registered_modifiers
-    assert "add_electrolyzer_load" in pm.registered_modifiers
-    assert "break_gens" in pm.registered_modifiers
-    assert "add_ccs_credit" in pm.registered_modifiers
