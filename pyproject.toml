@@ -45,8 +45,22 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-[project.entry-points.r2x_plugin]
-reeds = "r2x_reeds:register_plugin"
+[project.entry-points."r2x.parser"]
+reeds = "r2x_reeds.parser:ReEDSParser"
+
+[project.entry-points."r2x_plugin"]
+reeds = "r2x_reeds.plugins:register_plugin"
+
+[project.entry-points."r2x.exporter"]
+
+[project.entry-points."r2x.sysmod"]
+add_pcm_defaults = "r2x_reeds.sysmod.pcm_defaults:add_pcm_defaults"
+add_tx_hurdle_rate = "r2x_reeds.sysmod.hurdle_rate:add_tx_hurdle_rate"
+add_emission_cap = "r2x_reeds.sysmod.emission_cap:add_emission_cap"
+add_electrolyzer_load = "r2x_reeds.sysmod.electrolyzer:add_electrolizer_load"
+cambium_assumptions = "r2x_reeds.sysmod.cambium:cambium_assumptions"
+add_ccs_credit = "r2x_reeds.sysmod.ccs_credit:add_ccs_credit"
+break_gens = "r2x_reeds.sysmod.break_gens:break_gens"
 
 [dependency-groups]
 dev = [

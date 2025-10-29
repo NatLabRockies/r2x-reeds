@@ -34,9 +34,8 @@ import polars as pl
 from infrasys import Component
 from infrasys.time_series_models import SingleTimeSeries
 from loguru import logger
-from pluggy import Result
 
-from r2x_core import Err, Ok, ParserError, ValidationError
+from r2x_core import Err, Ok, ParserError, Result, ValidationError
 from r2x_core.parser import BaseParser
 from r2x_reeds.parser_utils import (
     get_technology_category,
