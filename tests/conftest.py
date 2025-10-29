@@ -1,4 +1,4 @@
-import tarfile
+import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -37,13 +37,9 @@ def data_path() -> Path:
 def reeds_run_path(tmp_path_factory, data_path: Path) -> Path:
     """Copy the entire data_path folder into a fresh session tmp directory and return the copied dir."""
     base_tmp = tmp_path_factory.mktemp("reeds_run")
-
-    archive_run = data_path / "test_Pacific.tar.gz"
-
-    if archive_run.exists():
-        logger.debug("Extracting to {} to temporary folder {}", archive_run.name, base_tmp)
-        with tarfile.open(archive_run, "r:gz") as tar:
-            tar.extractall(path=base_tmp, filter="data")
+    archive_run = data_path / "test_Pacific.zip"
+    with zipfile.ZipFile(archive_run, "r") as zip_ref:
+        zip_ref.extractall(base_tmp)
     return base_tmp / "test_Pacific"
 
 
@@ -51,12 +47,9 @@ def reeds_run_path(tmp_path_factory, data_path: Path) -> Path:
 def reeds_run_upgrader(tmp_path_factory, data_path: Path) -> Path:
     """Copy the entire data_path folder into a fresh session tmp directory and return the copied dir."""
     base_tmp = tmp_path_factory.mktemp("reeds_run")
-
-    archive_run = data_path / "test_Upgrader.tar.gz"
-    if archive_run.exists():
-        logger.debug("Extracting to {} to temporary folder {}", archive_run.name, base_tmp)
-        with tarfile.open(archive_run, "r:gz") as tar:
-            tar.extractall(path=base_tmp, filter="data")
+    archive_run = data_path / "test_Upgrader.zip"
+    with zipfile.ZipFile(archive_run, "r") as zip_ref:
+        zip_ref.extractall(base_tmp)
     return base_tmp / "test_Upgrader"
 
 

@@ -28,7 +28,7 @@ from r2x_reeds.parser import ReEDSParser
 @pytest.fixture
 def legacy_system_path() -> Path:
     """Path to legacy system JSON file."""
-    return Path(__file__).parent / "data" / "test_Pacific.json"
+    return Path(__file__).parent / "data" / "legacy_system.json"
 
 
 @pytest.fixture
