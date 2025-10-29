@@ -65,21 +65,15 @@ def legacy_component_names(legacy_system_data: dict[str, Any]) -> set[str]:
 
 
 @pytest.fixture
-def test_data_path() -> Path:
-    """Path to test data directory."""
-    return Path(__file__).parent / "data" / "test_Pacific"
-
-
-@pytest.fixture
 def reeds_config() -> ReEDSConfig:
     """Create ReEDS configuration matching legacy system."""
     return ReEDSConfig(solve_year=2032, weather_year=2012)
 
 
 @pytest.fixture
-def data_store(test_data_path: Path, reeds_config: ReEDSConfig) -> DataStore:
+def data_store(reeds_run_path: Path, reeds_config: ReEDSConfig) -> DataStore:
     """Create DataStore from file mapping."""
-    return DataStore.from_json(reeds_config.file_mapping_path, folder_path=test_data_path)
+    return DataStore.from_json(reeds_config.file_mapping_path, folder_path=reeds_run_path)
 
 
 @pytest.fixture
