@@ -15,7 +15,8 @@ def test_excluded_techs_empty_list_default(reeds_run_path):
         case_name="test",
     )
 
-    defaults = config.load_defaults()
+    # Use classmethod API per migration: pass config_path explicitly
+    defaults = config.__class__.load_defaults(config_path=config.config_path)
     assert defaults.get("excluded_techs") == ["can-imports", "electrolyzer"]
 
     data_store = DataStore.from_json(config.file_mapping_path, folder_path=reeds_run_path)

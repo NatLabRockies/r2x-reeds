@@ -12,11 +12,27 @@ from pydantic import Field
 class ReEDSComponent(Component):
     """Base class for ReEDS components with common metadata fields.
 
-    Note: Version information should be stored at the System level using
+    Provides an extensible ext field for storing additional metadata and component
+    information that doesn't fit into standard fields.
+
+    Attributes
+    ----------
+    category : str, optional
+        Technology category that this component belongs to.
+    ext : dict
+        Additional information and metadata for the component. Can store any
+        serializable key-value pairs for extended functionality.
+
+    Notes
+    -----
+    Version information should be stored at the System level using
     system.data_format_version, not on individual components.
     """
 
     category: Annotated[str | None, Field(description="Technology category")] = None
+    ext: dict = Field(
+        default_factory=dict, description="Additional information and metadata for the component."
+    )
 
 
 class FromTo_ToFrom(InfraSysBaseModel):  # noqa: N801

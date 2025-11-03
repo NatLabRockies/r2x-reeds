@@ -5,34 +5,27 @@ from pathlib import Path
 from infrasys import System
 from loguru import logger
 
-from r2x_core import PluginManager
 from r2x_core.datafile import DataFile
 from r2x_core.store import DataStore
-from r2x_reeds.config import ReEDSConfig
 from r2x_reeds.models.components import ReEDSGenerator
-from r2x_reeds.parser import ReEDSParser
 
 
-@PluginManager.register_system_modifier("add_pcm_defaults")
 def add_pcm_defaults(
-    config: ReEDSConfig,
     system: System,
-    parser: ReEDSParser | None = None,
     pcm_defaults_fpath: str | None = None,
+    pcm_defaults_dict: dict | None = None,
     pcm_defaults_override: bool = False,
 ) -> System:
     """Augment data model using PCM defaults dictionary.
 
     Parameters
     ----------
-    config : ReEDSConfig
-        The ReEDS configuration.
     system : System
-        InfraSys system.
-    parser : ReEDSParser | None
-        The parser object used for parsing.
-    pcm_defaults_fpath : str | None
+        InfraSys system to modify.
+    pcm_defaults_fpath : str, optional
         Path for json file containing the PCM defaults.
+    pcm_defaults_dict : dict, optional
+        Dictionary of PCM defaults. If provided, takes precedence over pcm_defaults_fpath.
     pcm_defaults_override : bool, default False
         Flag to override all the PCM related fields with the JSON values.
 
@@ -47,14 +40,14 @@ def add_pcm_defaults(
     """
     logger.info("Augmenting generators attributes with PCM defaults.")
 
-    # Get PCM defaults file path
-    if pcm_defaults_fpath is None:
-        defaults = config.load_defaults()
-        pcm_defaults_fpath = defaults.get("pcm_defaults_fpath")
-
-    if not pcm_defaults_fpath:
-        logger.warning("No PCM defaults file path provided. Skipping plugin.")
-        return system
+    # Use pcm_defaults_dict if provided, otherwise load from file
+    if pcm_defaults_dict is not None:
+        logger.debug("Using provided pcm_defaults_dict")
+        pcm_defaults = pcm_defaults_dict
+    else:
+        if not pcm_defaults_fpath:
+            logger.warning("No PCM defaults file path or dict provided. Skipping plugin.")
+            return system
 
     logger.debug("Using PCM defaults from: {}", pcm_defaults_fpath)
 

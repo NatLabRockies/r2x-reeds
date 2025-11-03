@@ -3,19 +3,14 @@
 from pathlib import Path
 from typing import Any
 
-from r2x_core import GitVersioningStrategy, PluginUpgrader, UpgradeStep
-from r2x_core.versioning import VersionDetector
-from r2x_reeds.upgrader.helpers import COMMIT_HISTORY
+from r2x_core import PluginUpgrader, UpgradeStep
+from r2x_core.versioning import VersionReader
 
 
-class ReEDSVersionDetector(VersionDetector):
+class ReEDSVersionDetector(VersionReader):
     """Version detector class for ReEDS."""
 
-    def __init__(self) -> None:
-        """Initialize ReEDS version detection."""
-        super().__init__()
-
-    def detect_version(self, folder_path: Path) -> str | None:
+    def read_version(self, folder_path: Path) -> str | None:
         """Read ReEDS model version."""
         import csv
 
@@ -41,16 +36,8 @@ class ReEDSUpgrader(PluginUpgrader):
         self,
         folder_path: Path | str,
         steps: list[UpgradeStep] | None = None,
-        version: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize ReEDS upgrader."""
-        strategy = GitVersioningStrategy(commit_history=COMMIT_HISTORY)
-        version_detector = ReEDSVersionDetector()
-        super().__init__(
-            folder_path=folder_path,
-            strategy=strategy,
-            steps=steps,
-            version=version,
-            version_detector=version_detector,
-        )
+        self.folder_path = Path(folder_path)
+        self.steps = steps or self.__class__.steps

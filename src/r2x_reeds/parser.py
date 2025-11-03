@@ -277,7 +277,8 @@ class ReEDSParser(BaseParser):
             }
         )
 
-        self.defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        self.defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         self.technology_categories = self.defaults.get("tech_categories")
         self.excluded_technologies = self.defaults.get("excluded_techs", [])
 
@@ -663,7 +664,8 @@ class ReEDSParser(BaseParser):
             logger.warning("Hierarchy data is empty, skipping reserves")
             return
 
-        defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         reserve_types = defaults.get("default_reserve_types", [])
         reserve_duration = defaults.get("reserve_duration", {})
         reserve_time_frame = defaults.get("reserve_time_frame", {})
@@ -906,7 +908,8 @@ class ReEDSParser(BaseParser):
         """
         logger.info("Attaching reserve profiles...")
 
-        defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         excluded_from_reserves = defaults.get("excluded_from_reserves", {})
 
         if not excluded_from_reserves:
@@ -962,7 +965,8 @@ class ReEDSParser(BaseParser):
             f"Calculating reserve requirement for {reserve.name} (region: {region_name}, type: {reserve_type_name})"
         )
 
-        defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         wind_percentages = defaults.get("wind_reserves", {})
         solar_percentages = defaults.get("solar_reserves", {})
         load_percentages = defaults.get("load_reserves", {})

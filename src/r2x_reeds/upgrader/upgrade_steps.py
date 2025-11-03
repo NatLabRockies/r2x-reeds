@@ -5,13 +5,13 @@ from typing import Any
 
 from loguru import logger
 
-from r2x_core.upgrader import UpgradeType
+from r2x_core.upgrader_utils import UpgradeType
 from r2x_reeds.upgrader.helpers import LATEST_COMMIT
 
 from .data_upgrader import ReEDSUpgrader
 
 
-@ReEDSUpgrader.register_upgrade_step(target_version=LATEST_COMMIT, upgrade_type=UpgradeType.FILE, priority=30)
+@ReEDSUpgrader.register_step(target_version=LATEST_COMMIT, upgrade_type=UpgradeType.FILE, priority=30)
 def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None):
     """Move hmap to new folder.
 
