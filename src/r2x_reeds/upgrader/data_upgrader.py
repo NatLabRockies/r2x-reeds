@@ -3,7 +3,8 @@
 from pathlib import Path
 from typing import Any
 
-from r2x_core import PluginUpgrader, UpgradeStep
+from r2x_core import UpgradeStep
+from r2x_core.upgrader import PluginUpgrader
 from r2x_core.versioning import VersionReader
 
 
