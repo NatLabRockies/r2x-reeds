@@ -27,7 +27,9 @@ def _add_generator(
     technology: str = "Hydrogen Turbine",
     category: str = "hydrogen",
 ) -> ReEDSGenerator:
-    generator = ReEDSGenerator(name=name, region=region, capacity=75.0, technology=technology, category=category)
+    generator = ReEDSGenerator(
+        name=name, region=region, capacity=75.0, technology=technology, category=category
+    )
     system.add_component(generator)
     return generator
 
@@ -101,8 +103,12 @@ def test_electrolyzer_scope_weather_missing(tmp_path: Path, caplog) -> None:
 def test_electrolyzer_scope_missing_hour_map(tmp_path: Path, caplog) -> None:
     """Missing hour map stops the plugin before modifying the system."""
     system, _, _ = _build_regions()
-    load_path = _write_csv(tmp_path / "electrolyzer_load.csv", {"region": ["west"], "hour": [1], "load_MW": [5.0]})
-    price_path = _write_csv(tmp_path / "h2_price.csv", {"region": ["west"], "month": ["m1"], "h2_price": [2.0]})
+    load_path = _write_csv(
+        tmp_path / "electrolyzer_load.csv", {"region": ["west"], "hour": [1], "load_MW": [5.0]}
+    )
+    price_path = _write_csv(
+        tmp_path / "h2_price.csv", {"region": ["west"], "month": ["m1"], "h2_price": [2.0]}
+    )
 
     electrolyzer.add_electrolizer_load(
         system,

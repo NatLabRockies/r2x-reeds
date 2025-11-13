@@ -130,7 +130,9 @@ def test_ccs_credit_scope_missing_paths(caplog) -> None:
     """If any file path is missing the plugin exits early."""
     system, _ = _build_system()
 
-    ccs_credit.add_ccs_credit(system, co2_incentive_fpath=None, emission_capture_rate_fpath=None, upgrade_link_fpath=None)
+    ccs_credit.add_ccs_credit(
+        system, co2_incentive_fpath=None, emission_capture_rate_fpath=None, upgrade_link_fpath=None
+    )
 
     assert "Missing required data file paths for ccs_credit" in caplog.text
 

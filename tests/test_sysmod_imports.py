@@ -112,9 +112,7 @@ def test_imports_scope_empty_join(tmp_path: Path, caplog) -> None:
     """Empty hourly join logs a warning and skips adding time series."""
     system, generator = _build_generator()
 
-    hour_map_path = _write_csv(
-        tmp_path / "hour_map_empty.csv", {"hour": [], "time_index": [], "season": []}
-    )
+    hour_map_path = _write_csv(tmp_path / "hour_map_empty.csv", {"hour": [], "time_index": [], "season": []})
     szn_frac_path = _write_csv(
         tmp_path / "szn_frac.csv",
         {"season": ["winter"], "value": [1.0]},

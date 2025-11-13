@@ -117,7 +117,9 @@ def _add_electrolyzer_load(
         return system
 
     # Pivot load data to have sum of load for all techs on each column
-    load_data_pivot = electrolyzer_load.pivot(index="hour", on="region", values="load_MW", aggregate_function="sum")
+    load_data_pivot = electrolyzer_load.pivot(
+        index="hour", on="region", values="load_MW", aggregate_function="sum"
+    )
 
     # Join with hour map to get full 8760 hours
     total_load_per_region = hour_map.join(load_data_pivot, on="hour", how="left").fill_null(0)

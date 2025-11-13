@@ -14,7 +14,9 @@ def _build_generator(name: str = "GEN1", category: str = "coal") -> tuple[System
     system = System(name="test_pcm_defaults")
     region = ReEDSRegion(name="west")
     system.add_component(region)
-    generator = ReEDSGenerator(name=name, region=region, capacity=100.0, technology=category, category=category)
+    generator = ReEDSGenerator(
+        name=name, region=region, capacity=100.0, technology=category, category=category
+    )
     system.add_component(generator)
     return system, generator
 
