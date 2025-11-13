@@ -1,4 +1,4 @@
-"""Basic ReEDS parser tests using r2x-core 0.0.5b3 API.
+"""Basic ReEDS parser tests using r2x-core 0.1.1 API.
 
 These tests verify basic parser instantiation and configuration using
 a minimal test data set.

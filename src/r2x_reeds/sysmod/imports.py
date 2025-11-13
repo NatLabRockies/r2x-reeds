@@ -13,11 +13,10 @@ from infrasys import System
 from infrasys.time_series_models import SingleTimeSeries
 from loguru import logger
 
-from r2x_core import DataStore, PluginManager
+from r2x_core import DataStore
 from r2x_reeds.models.components import ReEDSGenerator
 
 
-@PluginManager.register_system_modifier("add_imports")
 def add_imports(
     system: System,
     weather_year: int | None = None,

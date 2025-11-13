@@ -67,7 +67,7 @@ def example_data_store(reeds_run_path: Path, example_reeds_config: "ReEDSConfig"
 
     from r2x_core import DataStore
 
-    return DataStore.from_plugin_config(example_reeds_config, folder_path=reeds_run_path)
+    return DataStore.from_plugin_config(example_reeds_config, path=reeds_run_path)
 
 
 @pytest.fixture(scope="session")

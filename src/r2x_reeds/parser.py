@@ -13,7 +13,7 @@ The :class:`ReEDSParser` is used to build an infrasys.System from ReEDS model ou
 >>> config = ReEDSConfig(solve_years=2030, weather_years=2012, case_name="High_Renewable")
 >>> mapping_path = ReEDSConfig.get_file_mapping_path()
 >>> data_folder = Path("tests/data/test_Pacific")
->>> data_store = DataStore.from_json(mapping_path, folder=data_folder)
+>>> data_store = DataStore.from_json(mapping_path, path=data_folder)
 >>>
 >>> # Create parser and build system
 >>> parser = ReEDSParser(config, data_store=data_store, name="ReEDS_System")
@@ -80,7 +80,7 @@ class ReEDSParser(BaseParser):
        - Renewable capacity factors from CF data
        - Reserve requirements calculated from wind/solar/load contributions
 
-    3. **Post-Processing** (:meth:`post_process_system`):
+    3. **Post-Processing** (:meth:`postprocess_system`):
        - System metadata and description
 
     Key Implementation Details
@@ -122,7 +122,7 @@ class ReEDSParser(BaseParser):
         Construct all system components (regions, generators, transmission, loads, reserves)
     build_time_series()
         Attach time series data to components
-    post_process_system()
+    postprocess_system()
         Apply post-processing steps to the system
 
     See Also
@@ -143,7 +143,7 @@ class ReEDSParser(BaseParser):
     >>> config = ReEDSConfig(solve_years=2030, weather_years=2012, case_name="High_Renewable")
     >>> mapping_path = ReEDSConfig.get_file_mapping_path()
     >>> data_folder = Path("tests/data/test_Pacific")
-    >>> data_store = DataStore.from_json(mapping_path, folder=data_folder)
+    >>> data_store = DataStore.from_json(mapping_path, path=data_folder)
     >>> parser = ReEDSParser(config, data_store=data_store, name="ReEDS_System")
     >>> system = parser.build_system()
 
@@ -338,7 +338,7 @@ class ReEDSParser(BaseParser):
         logger.info("Time series attachment complete")
         return Ok()
 
-    def post_process_system(self) -> Result[None, ParserError]:
+    def postprocess_system(self) -> Result[None, ParserError]:
         """Perform post-processing on the built system.
 
         Sets system metadata including:

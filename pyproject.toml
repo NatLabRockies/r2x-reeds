@@ -18,7 +18,7 @@ dependencies = [
     "h5py>=3.13.0",
     "numpy>=1.20.0",
     "loguru>=0.7.0",
-    "r2x-core>=0.1.0, <1.0.0",
+    "r2x-core>=0.1.1,<1.0.0",
 ]
 keywords=["ReEDS"]
 classifiers = [
@@ -46,7 +46,7 @@ classifiers = [
 ]
 
 [project.entry-points."r2x_plugin"]
-reeds = "r2x_reeds.plugins:register_plugin"
+reeds = "r2x_reeds.plugins:manifest"
 
 [dependency-groups]
 dev = [

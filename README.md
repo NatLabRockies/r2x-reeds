@@ -41,7 +41,7 @@ config = ReEDSConfig(
 file_mapping = ReEDSConfig.get_file_mapping_path()
 data_store = DataStore.from_json(
     file_mapping,
-    folder="path/to/reeds_folder/"
+    path="path/to/reeds_folder/"
 )
 
 # Parse

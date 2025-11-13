@@ -56,7 +56,7 @@ def add_pcm_defaults(
     pcm_data_file = DataFile(
         name="pcm_defaults", fpath=pcm_path, description="PCM defaults for generator augmentation"
     )
-    data_store = DataStore(folder_path=pcm_path.parent)
+    data_store = DataStore(path=pcm_path.parent)
     data_store.add_data(pcm_data_file)
 
     pcm_defaults: dict = data_store.read_data(name="pcm_defaults")
