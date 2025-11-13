@@ -167,8 +167,7 @@ def test_ccs_credit_scope_no_incentive(caplog, tmp_path: Path) -> None:
 
 def test_ccs_credit_scope_caught_exception(caplog, tmp_path: Path) -> None:
     """Exceptions during incentive calculation are logged and skipped."""
-    system, region = _build_system()
-    generator = _add_generator(system, region, "Coal_CCS_1", "coal_ccs")
+    system, _ = _build_system()
 
     co2_path = _write_csv(
         tmp_path / "co2.csv",

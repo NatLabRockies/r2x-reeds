@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import polars as pl
-import pytest
 from infrasys import System
 
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
@@ -137,7 +136,7 @@ def test_imports_scope_empty_join(tmp_path: Path, caplog) -> None:
 
 def test_imports_scope_exception_logs(tmp_path: Path, caplog) -> None:
     """Missing fraction values cause errors that are logged."""
-    system, generator = _build_generator()
+    system, _ = _build_generator()
 
     hour_map_path = _write_csv(
         tmp_path / "hour_map.csv",

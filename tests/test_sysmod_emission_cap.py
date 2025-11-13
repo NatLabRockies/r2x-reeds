@@ -86,7 +86,7 @@ def test_emission_cap_scope(tmp_path: Path, with_ext: bool) -> None:
         co2_cap_fpath=co2_cap_path,
     )
 
-    storage = system.ext["emission_constraints"] if with_ext else getattr(system, "_emission_constraints")
+    storage = system.ext["emission_constraints"] if with_ext else system._emission_constraints
     constraint = storage["Annual_EmissionType.CO2_cap"]
     assert constraint["rhs_value"] == 1250.0
     assert constraint["units"] == "tonne"

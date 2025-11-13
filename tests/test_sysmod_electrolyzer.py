@@ -5,6 +5,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 from infrasys import System
+from infrasys.exceptions import ISNotStored
 
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import electrolyzer
@@ -124,7 +125,7 @@ def test_electrolyzer_scope_empty_load(caplog) -> None:
     electrolyzer._add_electrolyzer_load(system, load, hour_map, weather_year=2024)
 
     assert "Electrolyzer load data is empty" in caplog.text
-    with pytest.raises(Exception):
+    with pytest.raises(ISNotStored):
         system.get_component(ReEDSDemand, f"{west.name}_electrolyzer")
 
 

@@ -71,7 +71,7 @@ def test_break_generators_splits_and_preserves_data() -> None:
 
 def test_break_generators_drops_small_remainder() -> None:
     system, region = _build_system()
-    generator = _add_generator(system, region, "coal_small_rem", "coal", 82.0)
+    _add_generator(system, region, "coal_small_rem", "coal", 82.0)
     reference = {"coal": {"avg_capacity_MW": 40}}
 
     break_gens.break_generators(system, reference, capacity_threshold=5)

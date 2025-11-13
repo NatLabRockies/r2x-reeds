@@ -3,8 +3,6 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-import pytest
-
 from r2x_reeds.upgrader.data_upgrader import ReEDSVersionDetector
 from r2x_reeds.upgrader.upgrade_steps import move_hmap_file
 
