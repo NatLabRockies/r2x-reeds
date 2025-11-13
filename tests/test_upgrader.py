@@ -1,14 +1,12 @@
 import pytest
 
-from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader, ReEDSVersionDetector
-from r2x_reeds.upgrader.helpers import COMMIT_HISTORY
+from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader
 
 
 @pytest.fixture
 def upgraded_system(reeds_run_upgrader, example_reeds_config, caplog):
     from r2x_core import DataStore
     from r2x_reeds.parser import ReEDSParser
-    from r2x_reeds.upgrader import ReEDSUpgrader
 
     # Create upgrader but don't pass it to DataStore
     # DataStore.from_plugin_config doesn't accept upgrader argument

@@ -233,7 +233,9 @@
         "data_key": "data",
         "columns_key": "columns",
         "datetime_key": "index_1",
-        "additional_keys": ["index_0"]
+        "additional_keys": [
+          "index_0"
+        ]
       },
       "function": null
     },
@@ -323,7 +325,9 @@
         "f": "fuel_type",
         "i": "technology"
       },
-      "drop_columns": ["value"]
+      "drop_columns": [
+        "value"
+      ]
     }
   },
   {
@@ -527,7 +531,10 @@
     "reader": {
       "kwargs": {
         "has_header": false,
-        "new_columns": ["technology", "maxage_years"]
+        "new_columns": [
+          "technology",
+          "maxage_years"
+        ]
       },
       "function": null
     },

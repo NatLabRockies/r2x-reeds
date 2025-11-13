@@ -1,8 +1,9 @@
 """Tests for ReEDS configuration."""
 
-from pathlib import Path
 import json
+
 import pytest
+
 from r2x_reeds.config import ReEDSConfig
 
 

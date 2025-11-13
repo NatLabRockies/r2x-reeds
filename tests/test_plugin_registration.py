@@ -1,5 +1,4 @@
 from r2x_core import PluginKind
-
 from r2x_reeds.plugins import manifest
 
 

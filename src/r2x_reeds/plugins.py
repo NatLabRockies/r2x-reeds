@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from r2x_core import GitVersioningStrategy, PluginManifest, PluginSpec
-
 from r2x_reeds.config import ReEDSConfig
 from r2x_reeds.parser import ReEDSParser
 from r2x_reeds.sysmod.break_gens import break_gens
