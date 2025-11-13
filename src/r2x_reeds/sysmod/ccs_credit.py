@@ -12,6 +12,8 @@ from r2x_reeds.models.components import ReEDSGenerator
 
 
 def _cast_string_columns(frame: pl.DataFrame | None, string_columns: tuple[str, ...]) -> pl.DataFrame:
+    """Ensure the listed columns are UTF-8 strings for joining/filtering."""
+
     if frame is None or frame.is_empty():
         return frame or pl.DataFrame()
 
