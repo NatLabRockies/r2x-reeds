@@ -43,23 +43,23 @@ def add_pcm_defaults(
     # Use pcm_defaults_dict if provided, otherwise load from file
     if pcm_defaults_dict is not None:
         logger.debug("Using provided pcm_defaults_dict")
-        pcm_defaults = pcm_defaults_dict
+        pcm_defaults: dict = pcm_defaults_dict
     else:
         if not pcm_defaults_fpath:
             logger.warning("No PCM defaults file path or dict provided. Skipping plugin.")
             return system
 
-    logger.debug("Using PCM defaults from: {}", pcm_defaults_fpath)
+        logger.debug("Using PCM defaults from: {}", pcm_defaults_fpath)
 
-    # Read PCM defaults using DataStore
-    pcm_path = Path(pcm_defaults_fpath)
-    pcm_data_file = DataFile(
-        name="pcm_defaults", fpath=pcm_path, description="PCM defaults for generator augmentation"
-    )
-    data_store = DataStore(path=pcm_path.parent)
-    data_store.add_data(pcm_data_file)
+        # Read PCM defaults using DataStore
+        pcm_path = Path(pcm_defaults_fpath)
+        pcm_data_file = DataFile(
+            name="pcm_defaults", fpath=pcm_path, description="PCM defaults for generator augmentation"
+        )
+        data_store = DataStore(path=pcm_path.parent)
+        data_store.add_data(pcm_data_file)
 
-    pcm_defaults: dict = data_store.read_data(name="pcm_defaults")
+        pcm_defaults = data_store.read_data(name="pcm_defaults")
 
     # Fields that need to be multiplied by generator capacity
     needs_multiplication = {"start_cost_per_MW", "ramp_limits"}

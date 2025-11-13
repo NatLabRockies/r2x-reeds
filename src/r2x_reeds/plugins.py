@@ -35,44 +35,51 @@ manifest.add(
     )
 )
 
-for plugin_name, func, description in [
-    (
-        "r2x_reeds.add_pcm_defaults",
-        add_pcm_defaults,
-        "Augment generators with PCM default attributes.",
-    ),
-    (
-        "r2x_reeds.add_emission_cap",
-        add_emission_cap,
-        "Add annual CO2 emission cap constraints.",
-    ),
-    (
-        "r2x_reeds.add_electrolyzer_load",
-        add_electrolizer_load,
-        "Attach electrolyzer load and hydrogen price profiles.",
-    ),
-    (
-        "r2x_reeds.add_ccs_credit",
-        add_ccs_credit,
-        "Apply CCS credit adjustments to generators.",
-    ),
-    (
-        "r2x_reeds.break_gens",
-        break_gens,
-        "Split large generators into average-sized units.",
-    ),
-    (
-        "r2x_reeds.add_imports",
-        add_imports,
-        "Create Canadian import time series for eligible regions.",
-    ),
-]:
-    manifest.add(
-        PluginSpec.function(
-            name=plugin_name,
-            entry=func,
-            description=description,
-        )
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_pcm_defaults",
+        entry=add_pcm_defaults,
+        description="Augment generators with PCM default attributes.",
     )
+)
 
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_emission_cap",
+        entry=add_emission_cap,
+        description="Add annual CO2 emission cap constraints.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_electrolyzer_load",
+        entry=add_electrolizer_load,
+        description="Attach electrolyzer load and hydrogen price profiles.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_ccs_credit",
+        entry=add_ccs_credit,
+        description="Apply CCS credit adjustments to generators.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.break_gens",
+        entry=break_gens,
+        description="Split large generators into average-sized units.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_imports",
+        entry=add_imports,
+        description="Create Canadian import time series for eligible regions.",
+    )
+)
 __all__ = ["manifest"]

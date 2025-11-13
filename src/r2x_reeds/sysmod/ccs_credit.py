@@ -11,6 +11,16 @@ from r2x_core import DataStore
 from r2x_reeds.models.components import ReEDSGenerator
 
 
+def _cast_string_columns(frame: pl.DataFrame | None, string_columns: tuple[str, ...]) -> pl.DataFrame:
+    if frame is None or frame.is_empty():
+        return frame or pl.DataFrame()
+
+    casts = [pl.col(column).cast(pl.Utf8) for column in string_columns if column in frame.columns]
+    if casts:
+        frame = frame.with_columns(casts)
+    return frame
+
+
 def add_ccs_credit(
     system: System,
     co2_incentive_fpath: str | None = None,
@@ -58,10 +68,20 @@ def add_ccs_credit(
         return system
 
     try:
-        # Load data files using DataStore helper
         co2_incentive = DataStore.load_file(co2_incentive_fpath, name="co2_incentive")
         emission_capture_rate = DataStore.load_file(emission_capture_rate_fpath, name="emission_capture_rate")
         upgrade_link = DataStore.load_file(upgrade_link_fpath, name="upgrade_link")
+
+        if isinstance(co2_incentive, pl.LazyFrame):
+            co2_incentive = co2_incentive.collect()
+        if isinstance(emission_capture_rate, pl.LazyFrame):
+            emission_capture_rate = emission_capture_rate.collect()
+        if isinstance(upgrade_link, pl.LazyFrame):
+            upgrade_link = upgrade_link.collect()
+
+        co2_incentive = _cast_string_columns(co2_incentive, ("tech", "region", "vintage"))
+        emission_capture_rate = _cast_string_columns(emission_capture_rate, ("tech", "region", "vintage"))
+        upgrade_link = _cast_string_columns(upgrade_link, ("from", "to", "region", "vintage"))
 
         # Apply CCS incentives using loaded data
         system = _apply_ccs_credit(system, co2_incentive, emission_capture_rate, upgrade_link)
@@ -105,8 +125,9 @@ def _apply_ccs_credit(
 
     # Get list of CCS technologies
     ccs_techs = incentive["tech"].unique().to_list()
-    from_techs = incentive.select("from").unique().to_list()
-    ccs_techs.extend(from_techs)
+    from_column = incentive["from"]
+    if from_column is not None:
+        ccs_techs.extend(from_column.drop_nulls().unique().to_list())
     ccs_techs = list(set(ccs_techs))  # Remove duplicates
 
     for generator in system.get_components(

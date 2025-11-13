@@ -71,6 +71,13 @@ def add_imports(
         szn_frac = DataStore.load_file(canada_szn_frac_fpath, name="canada_szn_frac")
         total_imports = DataStore.load_file(canada_imports_fpath, name="canada_imports")
 
+        if hour_map is not None:
+            hour_map = hour_map.collect()
+        if szn_frac is not None:
+            szn_frac = szn_frac.collect()
+        if total_imports is not None:
+            total_imports = total_imports.collect()
+
         # Create hourly time series by joining hour map with seasonal fractions
         hourly_time_series = hour_map.join(szn_frac, on="season", how="left")
 
@@ -114,8 +121,8 @@ def add_imports(
 
             ts = SingleTimeSeries.from_array(
                 data=daily_budget_gwh,  # Data in GWh
-                variable_name="hydro_budget",
-                initial_time=initial_time,
+                name="hydro_budget",
+                initial_timestamp=initial_time,
                 resolution=timedelta(days=1),
             )
 

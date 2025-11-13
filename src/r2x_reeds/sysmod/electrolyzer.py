@@ -66,6 +66,12 @@ def add_electrolizer_load(
         h2_prices = (
             DataStore.load_file(h2_fuel_price_fpath, name="h2_fuel_price") if h2_fuel_price_fpath else None
         )
+        if hour_map is not None:
+            hour_map = hour_map.collect()
+        if electrolyzer_load is not None:
+            electrolyzer_load = electrolyzer_load.collect()
+        if h2_prices is not None:
+            h2_prices = h2_prices.collect()
 
         if hour_map is None:
             logger.warning("hour_map data not available. Cannot add electrolyzer load.")
@@ -106,17 +112,15 @@ def _add_electrolyzer_load(
     System
         The modified system.
     """
-    if electrolyzer_load.is_empty():
+    if electrolyzer_load is None or electrolyzer_load.is_empty():
         logger.warning("Electrolyzer load data is empty. Skipping electrolyzer load.")
         return system
 
     # Pivot load data to have sum of load for all techs on each column
-    load_data_pivot = electrolyzer_load.pivot(
-        index="hour", columns="region", values="load_MW", aggregate_function="sum"
-    ).lazy()
+    load_data_pivot = electrolyzer_load.pivot(index="hour", on="region", values="load_MW", aggregate_function="sum")
 
     # Join with hour map to get full 8760 hours
-    total_load_per_region = hour_map.join(load_data_pivot, on="hour", how="left").fill_null(0).collect()
+    total_load_per_region = hour_map.join(load_data_pivot, on="hour", how="left").fill_null(0)
 
     for region_name in electrolyzer_load.select("region").unique().to_series():
         # Get the ReEDS region component
@@ -143,7 +147,7 @@ def _add_electrolyzer_load(
         electrolyzer_demand = ReEDSDemand(
             name=f"{region_name}_electrolyzer",
             region=region,
-            peak_demand=max_load,  # MW
+            max_active_power=max_load,
             category="electrolyzer",
         )
 
@@ -159,8 +163,8 @@ def _add_electrolyzer_load(
         # Create time series for hourly load
         ts = SingleTimeSeries.from_array(
             data=region_load_data,  # Data in MW
-            variable_name="fixed_load",
-            initial_time=datetime(year=weather_year, month=1, day=1),
+            name="fixed_load",
+            initial_timestamp=datetime(year=weather_year, month=1, day=1),
             resolution=timedelta(hours=1),
         )
 
@@ -188,7 +192,10 @@ def _add_hydrogen_fuel_price(system: System, h2_prices: pl.DataFrame, weather_ye
     System
         The modified system.
     """
-    if h2_prices.is_empty():
+    if isinstance(h2_prices, pl.LazyFrame):
+        h2_prices = h2_prices.collect()
+
+    if h2_prices is None or h2_prices.is_empty():
         logger.warning("Hydrogen fuel price data is empty. Skipping hydrogen fuel price.")
         return system
 
@@ -236,8 +243,8 @@ def _add_hydrogen_fuel_price(system: System, h2_prices: pl.DataFrame, weather_ye
 
         ts = SingleTimeSeries.from_array(
             data=month_datetime_series,  # Data in $/MWh
-            variable_name="fuel_price",
-            initial_time=datetime(year=weather_year, month=1, day=1),
+            name="fuel_price",
+            initial_timestamp=datetime(year=weather_year, month=1, day=1),
             resolution=timedelta(hours=1),
         )
 

@@ -78,6 +78,8 @@ def add_emission_cap(
     if emission_cap is None and co2_cap_fpath is not None:
         try:
             co2_cap_data = DataStore.load_file(co2_cap_fpath, name="co2_cap")
+            if co2_cap_data is not None:
+                co2_cap_data = co2_cap_data.collect()
             if co2_cap_data is not None and not co2_cap_data.is_empty():
                 emission_cap = co2_cap_data["value"].item()
                 logger.debug(f"Loaded emission cap from file: {emission_cap}")
@@ -89,7 +91,12 @@ def add_emission_cap(
         try:
             switches = DataStore.load_file(switches_fpath, name="switches")
             emit_rates = DataStore.load_file(emission_rates_fpath, name="emission_rates")
-            _add_precombustion_if_enabled(system, switches, emit_rates)
+            if switches is not None:
+                switches = switches.collect()
+            if emit_rates is not None:
+                emit_rates = emit_rates.collect()
+            if switches is not None and emit_rates is not None:
+                _add_precombustion_if_enabled(system, switches, emit_rates)
         except Exception as e:
             logger.debug(f"Could not process precombustion emissions: {e}")
 
