@@ -1,6 +1,6 @@
 [project]
 name = "r2x-reeds"
-version = "0.0.0"
+version = "0.0.1"
 readme = "README.md"
 description = "ReEDS model plugin"
 license = {file = "LICENSE.txt"}
@@ -10,7 +10,7 @@ authors = [
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "infrasys>=1.0.0rc1",
     "pydantic>=2.11.0,<3",
