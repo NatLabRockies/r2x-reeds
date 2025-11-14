@@ -1,38 +1,85 @@
-"""R2X-core plugin discovery."""
+"""Plugin manifest for the r2x-reeds package."""
 
+from __future__ import annotations
 
-def register_plugin() -> str | None:
-    """Register the ReEDS plugin with the R2X plugin manager.
+from r2x_core import GitVersioningStrategy, PluginManifest, PluginSpec
+from r2x_reeds.config import ReEDSConfig
+from r2x_reeds.parser import ReEDSParser
+from r2x_reeds.sysmod.break_gens import break_gens
+from r2x_reeds.sysmod.ccs_credit import add_ccs_credit
+from r2x_reeds.sysmod.electrolyzer import add_electrolizer_load
+from r2x_reeds.sysmod.emission_cap import add_emission_cap
+from r2x_reeds.sysmod.imports import add_imports
+from r2x_reeds.sysmod.pcm_defaults import add_pcm_defaults
+from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader, ReEDSVersionDetector
 
-    This function is called automatically when the plugin is discovered
-    via entry points. It registers the ReEDS parser, config, and optionally
-    an exporter with the PluginManager.
-    """
+manifest = PluginManifest(package="r2x-reeds")
 
-    from r2x_core.plugins import PluginManager
-    from r2x_reeds.config import ReEDSConfig
-    from r2x_reeds.parser import ReEDSParser
-    from r2x_reeds.sysmods import break_gens
-    from r2x_reeds.sysmods.cambium import cambium_assumptions
-    from r2x_reeds.sysmods.ccs_credit import add_ccs_credit
-    from r2x_reeds.sysmods.electrolyzer import add_electrolizer_load
-    from r2x_reeds.sysmods.emission_cap import add_emission_cap
-    from r2x_reeds.sysmods.hurdle_rate import add_tx_hurdle_rate
-    from r2x_reeds.sysmods.pcm_defaults import add_pcm_defaults
-    from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader
-
-    PluginManager.register_model_plugin(
-        name="reeds",
+manifest.add(
+    PluginSpec.parser(
+        name="r2x_reeds.parser",
+        entry=ReEDSParser,
         config=ReEDSConfig,
-        parser=ReEDSParser,
-        upgrader=ReEDSUpgrader,  # Steps already registered via decorators
+        description="Parse ReEDS run directories into an infrasys.System.",
     )
-    PluginManager.register_system_modifier("add_pcm_defaults")(add_pcm_defaults)
-    PluginManager.register_system_modifier("add_tx_hurdle_rate")(add_tx_hurdle_rate)
-    PluginManager.register_system_modifier("add_emission_cap")(add_emission_cap)
-    PluginManager.register_system_modifier("add_electrolyzer_load")(add_electrolizer_load)
-    PluginManager.register_system_modifier("cambium_assumptions")(cambium_assumptions)
-    PluginManager.register_system_modifier("add_ccs_credit")(add_ccs_credit)
-    PluginManager.register_system_modifier("break_gens")(break_gens)
+)
 
-    return None
+manifest.add(
+    PluginSpec.upgrader(
+        name="r2x_reeds.upgrader",
+        entry=ReEDSUpgrader,
+        version_strategy=GitVersioningStrategy,
+        version_reader=ReEDSVersionDetector,
+        steps=ReEDSUpgrader.steps,
+        description="Apply file-level upgrades to ReEDS run folders.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_pcm_defaults",
+        entry=add_pcm_defaults,
+        description="Augment generators with PCM default attributes.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_emission_cap",
+        entry=add_emission_cap,
+        description="Add annual CO2 emission cap constraints.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_electrolyzer_load",
+        entry=add_electrolizer_load,
+        description="Attach electrolyzer load and hydrogen price profiles.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_ccs_credit",
+        entry=add_ccs_credit,
+        description="Apply CCS credit adjustments to generators.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.break_gens",
+        entry=break_gens,
+        description="Split large generators into average-sized units.",
+    )
+)
+
+manifest.add(
+    PluginSpec.function(
+        name="r2x_reeds.add_imports",
+        entry=add_imports,
+        description="Create Canadian import time series for eligible regions.",
+    )
+)
+__all__ = ["manifest"]

@@ -1,22 +1,12 @@
 """Tests for excluded_techs functionality."""
 
-from pathlib import Path
-
-import pytest
-
 from r2x_core.store import DataStore
 from r2x_reeds.config import ReEDSConfig
 from r2x_reeds.models.components import ReEDSGenerator
 from r2x_reeds.parser import ReEDSParser
 
 
-@pytest.fixture
-def data_folder():
-    """Return path to test data folder."""
-    return Path(__file__).parent / "data" / "test_Pacific"
-
-
-def test_excluded_techs_empty_list_default(data_folder):
+def test_excluded_techs_empty_list_default(reeds_run_path):
     """Test that default excluded_techs includes can-imports and electrolyzer."""
     config = ReEDSConfig(
         solve_year=[2032],
@@ -25,10 +15,11 @@ def test_excluded_techs_empty_list_default(data_folder):
         case_name="test",
     )
 
-    defaults = config.load_defaults()
+    # Use classmethod API per migration: pass config_path explicitly
+    defaults = config.__class__.load_defaults(config_path=config.config_path)
     assert defaults.get("excluded_techs") == ["can-imports", "electrolyzer"]
 
-    data_store = DataStore.from_json(config.file_mapping_path, folder_path=data_folder)
+    data_store = DataStore.from_json(config.file_mapping_path, path=reeds_run_path)
     parser = ReEDSParser(config, data_store=data_store)
     system = parser.build_system()
     generators = list(system.get_components(ReEDSGenerator))

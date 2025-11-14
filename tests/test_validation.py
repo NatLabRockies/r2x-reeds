@@ -15,7 +15,7 @@ def test_invalid_solve_year_raises_error(reeds_run_path):
         case_name="test",
     )
 
-    data_store = DataStore.from_json(config.file_mapping_path, folder_path=reeds_run_path)
+    data_store = DataStore.from_json(config.file_mapping_path, path=reeds_run_path)
     parser = ReEDSParser(config, data_store=data_store)
 
     result = parser.validate_inputs()
@@ -33,7 +33,7 @@ def test_invalid_weather_year_raises_error(reeds_run_path):
         case_name="test",
     )
 
-    data_store = DataStore.from_json(config.file_mapping_path, folder_path=reeds_run_path)
+    data_store = DataStore.from_json(config.file_mapping_path, path=reeds_run_path)
     parser = ReEDSParser(config, data_store=data_store)
     result = parser.validate_inputs()
     assert result.is_err()
@@ -50,7 +50,7 @@ def test_valid_years_pass_validation(reeds_run_path):
         case_name="test",
     )
 
-    data_store = DataStore.from_json(config.file_mapping_path, folder_path=reeds_run_path)
+    data_store = DataStore.from_json(config.file_mapping_path, path=reeds_run_path)
     parser = ReEDSParser(config, data_store=data_store, name="test_valid_years")
 
     result = parser.validate_inputs()

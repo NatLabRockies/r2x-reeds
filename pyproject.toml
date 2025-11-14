@@ -1,6 +1,6 @@
 [project]
 name = "r2x-reeds"
-version = "0.0.1"
+version = "0.0.0"
 readme = "README.md"
 description = "ReEDS model plugin"
 license = {file = "LICENSE.txt"}
@@ -18,7 +18,7 @@ dependencies = [
     "h5py>=3.13.0",
     "numpy>=1.20.0",
     "loguru>=0.7.0",
-    "r2x-core>=0.1.0rc2",
+    "r2x-core>=0.1.1,<1.0.0",
 ]
 keywords=["ReEDS"]
 classifiers = [
@@ -45,8 +45,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-[project.entry-points.r2x_plugin]
-reeds = "r2x_reeds:register_plugin"
+[project.entry-points."r2x_plugin"]
+reeds = "r2x_reeds.plugins:manifest"
 
 [dependency-groups]
 dev = [

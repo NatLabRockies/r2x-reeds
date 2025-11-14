@@ -3,25 +3,32 @@
 from pathlib import Path
 from typing import Any
 
-from r2x_core import GitVersioningStrategy, PluginUpgrader, UpgradeStep
-from r2x_core.versioning import VersionDetector
-from r2x_reeds.upgrader.helpers import COMMIT_HISTORY
+from r2x_core import UpgradeStep
+from r2x_core.upgrader import PluginUpgrader
+from r2x_core.versioning import VersionReader
 
 
-class ReEDSVersionDetector(VersionDetector):
+class ReEDSVersionDetector(VersionReader):
     """Version detector class for ReEDS."""
 
-    def __init__(self) -> None:
-        """Initialize ReEDS version detection."""
-        super().__init__()
+    def read_version(self, path: Path) -> str | None:
+        """Read ReEDS model version.
 
-    def detect_version(self, folder_path: Path) -> str | None:
-        """Read ReEDS model version."""
+        Parameters
+        ----------
+        path : Path
+            Path to directory containing meta.csv file.
+
+        Returns
+        -------
+        str | None
+            Version string from meta.csv fourth column, or None if not found.
+        """
         import csv
 
-        folder_path = Path(folder_path)
+        path = Path(path)
 
-        csv_path = folder_path / "meta.csv"
+        csv_path = path / "meta.csv"
         if not csv_path.exists():
             msg = f"ReEDS version file {csv_path} not found."
             return FileNotFoundError(msg)
@@ -39,18 +46,20 @@ class ReEDSUpgrader(PluginUpgrader):
 
     def __init__(
         self,
-        folder_path: Path | str,
+        path: Path | str,
         steps: list[UpgradeStep] | None = None,
-        version: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize ReEDS upgrader."""
-        strategy = GitVersioningStrategy(commit_history=COMMIT_HISTORY)
-        version_detector = ReEDSVersionDetector()
-        super().__init__(
-            folder_path=folder_path,
-            strategy=strategy,
-            steps=steps,
-            version=version,
-            version_detector=version_detector,
-        )
+        """Initialize ReEDS upgrader.
+
+        Parameters
+        ----------
+        path : Path | str
+            Path to ReEDS data directory containing meta.csv and other data files.
+        steps : list[UpgradeStep] | None
+            Optional list of upgrade steps. If None, uses class-level steps.
+        **kwargs
+            Additional keyword arguments (unused, for compatibility).
+        """
+        self.path = Path(path)
+        self.steps = steps or self.__class__.steps

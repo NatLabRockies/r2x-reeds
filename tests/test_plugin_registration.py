@@ -1,17 +1,18 @@
-from r2x_core import PluginManager
-from r2x_reeds.parser import ReEDSParser
-from r2x_reeds.plugins import register_plugin
+from r2x_core import PluginKind
+from r2x_reeds.plugins import manifest
 
 
-def test_reeds_plugin_registration():
-    pm = PluginManager()
+def test_manifest_exports_parser() -> None:
+    parser = manifest.get_plugin("r2x_reeds.parser")
 
-    register_plugin()
+    assert parser.entry.endswith("ReEDSParser")
+    assert parser.resources is not None
+    assert parser.io.produces
 
-    assert "reeds" in pm.registered_parsers
-    assert pm.load_parser(name="reeds") == ReEDSParser
 
-    assert "add_pcm_defaults" in pm.registered_modifiers
-    assert "add_electrolyzer_load" in pm.registered_modifiers
-    assert "break_gens" in pm.registered_modifiers
-    assert "add_ccs_credit" in pm.registered_modifiers
+def test_manifest_has_modifiers() -> None:
+    modifiers = manifest.group_by_kind(PluginKind.MODIFIER)
+    names = {plugin.name for plugin in modifiers}
+
+    assert "r2x_reeds.add_pcm_defaults" in names
+    assert "r2x_reeds.break_gens" in names

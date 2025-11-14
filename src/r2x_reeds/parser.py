@@ -13,7 +13,7 @@ The :class:`ReEDSParser` is used to build an infrasys.System from ReEDS model ou
 >>> config = ReEDSConfig(solve_years=2030, weather_years=2012, case_name="High_Renewable")
 >>> mapping_path = ReEDSConfig.get_file_mapping_path()
 >>> data_folder = Path("tests/data/test_Pacific")
->>> data_store = DataStore.from_json(mapping_path, folder=data_folder)
+>>> data_store = DataStore.from_json(mapping_path, path=data_folder)
 >>>
 >>> # Create parser and build system
 >>> parser = ReEDSParser(config, data_store=data_store, name="ReEDS_System")
@@ -34,9 +34,8 @@ import polars as pl
 from infrasys import Component
 from infrasys.time_series_models import SingleTimeSeries
 from loguru import logger
-from pluggy import Result
 
-from r2x_core import Err, Ok, ParserError, ValidationError
+from r2x_core import Err, Ok, ParserError, Result, ValidationError
 from r2x_core.parser import BaseParser
 from r2x_reeds.parser_utils import (
     get_technology_category,
@@ -81,7 +80,7 @@ class ReEDSParser(BaseParser):
        - Renewable capacity factors from CF data
        - Reserve requirements calculated from wind/solar/load contributions
 
-    3. **Post-Processing** (:meth:`post_process_system`):
+    3. **Post-Processing** (:meth:`postprocess_system`):
        - System metadata and description
 
     Key Implementation Details
@@ -123,7 +122,7 @@ class ReEDSParser(BaseParser):
         Construct all system components (regions, generators, transmission, loads, reserves)
     build_time_series()
         Attach time series data to components
-    post_process_system()
+    postprocess_system()
         Apply post-processing steps to the system
 
     See Also
@@ -144,7 +143,7 @@ class ReEDSParser(BaseParser):
     >>> config = ReEDSConfig(solve_years=2030, weather_years=2012, case_name="High_Renewable")
     >>> mapping_path = ReEDSConfig.get_file_mapping_path()
     >>> data_folder = Path("tests/data/test_Pacific")
-    >>> data_store = DataStore.from_json(mapping_path, folder=data_folder)
+    >>> data_store = DataStore.from_json(mapping_path, path=data_folder)
     >>> parser = ReEDSParser(config, data_store=data_store, name="ReEDS_System")
     >>> system = parser.build_system()
 
@@ -278,7 +277,8 @@ class ReEDSParser(BaseParser):
             }
         )
 
-        self.defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        self.defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         self.technology_categories = self.defaults.get("tech_categories")
         self.excluded_technologies = self.defaults.get("excluded_techs", [])
 
@@ -338,7 +338,7 @@ class ReEDSParser(BaseParser):
         logger.info("Time series attachment complete")
         return Ok()
 
-    def post_process_system(self) -> Result[None, ParserError]:
+    def postprocess_system(self) -> Result[None, ParserError]:
         """Perform post-processing on the built system.
 
         Sets system metadata including:
@@ -664,7 +664,8 @@ class ReEDSParser(BaseParser):
             logger.warning("Hierarchy data is empty, skipping reserves")
             return
 
-        defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         reserve_types = defaults.get("default_reserve_types", [])
         reserve_duration = defaults.get("reserve_duration", {})
         reserve_time_frame = defaults.get("reserve_time_frame", {})
@@ -907,7 +908,8 @@ class ReEDSParser(BaseParser):
         """
         logger.info("Attaching reserve profiles...")
 
-        defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         excluded_from_reserves = defaults.get("excluded_from_reserves", {})
 
         if not excluded_from_reserves:
@@ -963,7 +965,8 @@ class ReEDSParser(BaseParser):
             f"Calculating reserve requirement for {reserve.name} (region: {region_name}, type: {reserve_type_name})"
         )
 
-        defaults = self.config.load_defaults()
+        # Load defaults via classmethod to keep PluginConfig as a pure model
+        defaults = self.config.__class__.load_defaults(config_path=self.config.config_path)
         wind_percentages = defaults.get("wind_reserves", {})
         solar_percentages = defaults.get("solar_reserves", {})
         load_percentages = defaults.get("load_reserves", {})

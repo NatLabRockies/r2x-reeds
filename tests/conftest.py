@@ -1,3 +1,4 @@
+import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,35 +30,27 @@ def empty_file(tmp_path) -> Path:
 @pytest.fixture(scope="session")
 def data_path() -> Path:
     """Path to test data directory."""
-    return Path(__file__).parent / "data" / "test_Pacific"
-
-
-@pytest.fixture(scope="session")
-def upgrader_run_path() -> Path:
-    """Path to test data directory."""
-    return Path(__file__).parent / "data" / "test_Upgrader"
+    return Path(__file__).parent / "data"
 
 
 @pytest.fixture(scope="session")
 def reeds_run_path(tmp_path_factory, data_path: Path) -> Path:
     """Copy the entire data_path folder into a fresh session tmp directory and return the copied dir."""
-    import shutil
-
     base_tmp = tmp_path_factory.mktemp("reeds_run")
-    dst = base_tmp / data_path.name
-    shutil.copytree(data_path, dst)
-    return dst
+    archive_run = data_path / "test_Pacific.zip"
+    with zipfile.ZipFile(archive_run, "r") as zip_ref:
+        zip_ref.extractall(base_tmp)
+    return base_tmp / "test_Pacific"
 
 
 @pytest.fixture(scope="session")
-def reeds_run_upgrader(tmp_path_factory, upgrader_run_path: Path) -> Path:
+def reeds_run_upgrader(tmp_path_factory, data_path: Path) -> Path:
     """Copy the entire data_path folder into a fresh session tmp directory and return the copied dir."""
-    import shutil
-
     base_tmp = tmp_path_factory.mktemp("reeds_run")
-    dst = base_tmp / upgrader_run_path.name
-    shutil.copytree(upgrader_run_path, dst)
-    return dst
+    archive_run = data_path / "test_Upgrader.zip"
+    with zipfile.ZipFile(archive_run, "r") as zip_ref:
+        zip_ref.extractall(base_tmp)
+    return base_tmp / "test_Upgrader"
 
 
 @pytest.fixture(scope="session")
@@ -74,7 +67,7 @@ def example_data_store(reeds_run_path: Path, example_reeds_config: "ReEDSConfig"
 
     from r2x_core import DataStore
 
-    return DataStore.from_plugin_config(example_reeds_config, folder_path=reeds_run_path)
+    return DataStore.from_plugin_config(example_reeds_config, path=reeds_run_path)
 
 
 @pytest.fixture(scope="session")
