@@ -182,6 +182,13 @@ class ReEDSParser(BaseParser):
         """Validate input data and configuration before building system."""
         assert self._store, "REeDS parser requires DataStore object."
         logger.debug("Validating input files")
+        logger.trace(
+            "Solve year(s): {}, weather year(s): {}, case: {}, scenario: {}",
+            self.config.solve_year,
+            self.config.weather_year,
+            self.config.case_name,
+            self.config.scenario,
+        )
 
         res = self._ensure_config_assets()
         if res.is_err():
@@ -223,6 +230,7 @@ class ReEDSParser(BaseParser):
                 continue
             required_inputs.append(dataset_name)
 
+        logger.trace("Validating presence of {} required datasets", len(required_inputs))
         for dataset_name in required_inputs:
             presence_result = check_dataset_non_empty(self._store, dataset_name, placeholders=placeholders)
             if presence_result.is_err():
@@ -232,7 +240,9 @@ class ReEDSParser(BaseParser):
 
     def prepare_data(self) -> Result[None, ParserError]:
         """Prepare and normalize configuration and time-related data."""
+        logger.trace("Preparing parser data caches and context")
         self._initialize_caches()
+        logger.trace("Parser caches initialized")
 
         res = self._initialize_parser_globals()
         if res.is_err():
@@ -243,18 +253,22 @@ class ReEDSParser(BaseParser):
             return res
 
         self._ctx = create_parser_context(self.system, self.config, self._defaults)
+        logger.trace("Parser context created")
 
         generator_data_result = self._prepare_generator_datasets()
         if generator_data_result.is_err():
             return generator_data_result
+        logger.trace("Generator datasets prepared")
 
         hydro_result = self._prepare_hydro_datasets()
         if hydro_result.is_err():
             return hydro_result
+        logger.trace("Hydro datasets prepared")
 
         reserve_data_result = self._prepare_reserve_datasets()
         if reserve_data_result.is_err():
             return reserve_data_result
+        logger.trace("Reserve datasets prepared")
 
         return Ok()
 
@@ -265,6 +279,8 @@ class ReEDSParser(BaseParser):
         regions → generators → transmission → loads → reserves → emissions
         """
         logger.info("Building ReEDS system components")
+        starting_components = len(list(self.system.get_components(Component)))
+        logger.trace("System has {} components before build", starting_components)
 
         region_result = self._build_regions()
         if region_result.is_err():
@@ -287,7 +303,7 @@ class ReEDSParser(BaseParser):
 
         total_components = len(list(self.system.get_components(Component)))
         logger.info(
-            "Built {} total components: regions, generators, transmission, loads, reserves, emissions",
+            "Attached {} total components.",
             total_components,
         )
         return Ok()
@@ -306,6 +322,10 @@ class ReEDSParser(BaseParser):
         None
         """
         logger.info("Building time series data")
+        logger.trace(
+            "Attaching time series for {} components",
+            len(list(self.system.get_components(Component))),
+        )
         reserve_membership_result = self._attach_reserve_membership()
         if reserve_membership_result.is_err():
             return reserve_membership_result
@@ -342,6 +362,7 @@ class ReEDSParser(BaseParser):
         None
         """
         logger.info("Post-processing ReEDS system...")
+        logger.trace("Setting data format version to {}", LATEST_COMMIT)
 
         self.system.data_format_version = LATEST_COMMIT
         self.system.description = (
@@ -366,6 +387,7 @@ class ReEDSParser(BaseParser):
         logger.info("Building regions...")
 
         hierarchy_data = self.read_data_file("hierarchy").collect()
+        logger.trace("Hierarchy dataset rows: {}", hierarchy_data.height)
 
         region_rule_result = get_rule_for_target(
             self._rules_by_target, name="region", target_type=ReEDSRegion.__name__
@@ -401,15 +423,20 @@ class ReEDSParser(BaseParser):
             failure_list = "; ".join(creation_errors)
             return Err(ParserError(f"Failed to build the following regions: {failure_list}"))
 
-        logger.info("Built {} regions", created)
+        logger.info("Attached {} region components", created)
         return Ok()
 
     def _build_generators(self) -> Result[None, ParserError]:
         """Build generator components from cached datasets."""
-        logger.info("Building generators...")
+        logger.info("Building ReEDS generator components")
 
         if self._variable_generator_df is None or self._non_variable_generator_df is None:
             return Err(ParserError("Generator datasets were not prepared"))
+        logger.trace(
+            "Generator dataset sizes - variable: {}, non-variable: {}",
+            self._variable_generator_df.height,
+            self._non_variable_generator_df.height,
+        )
 
         variable_result = self._build_generator_group(self._variable_generator_df, "variable renewable")
         if variable_result.is_err():
@@ -438,6 +465,7 @@ class ReEDSParser(BaseParser):
         label: str,
     ) -> Result[int, ParserError]:
         logger.info("Starting {} generator build", label)
+        logger.trace("Processing {} {} generator rows", df.height, label)
         if df.is_empty():
             logger.info("No {} generator data found; attached 0 generators", label)
             return Ok(0)
@@ -516,6 +544,7 @@ class ReEDSParser(BaseParser):
             return Ok(None)
 
         trancap = trancap_data.collect()
+        logger.trace("Transmission capacity rows: {}", trancap.height)
 
         if trancap.is_empty():
             logger.warning("Transmission capacity data is empty, skipping transmission")
@@ -559,6 +588,7 @@ class ReEDSParser(BaseParser):
             )
             .unique()
         )
+        logger.trace("Derived {} unique transmission interface rows", interface_rows.height)
 
         interface_rule_result = get_rule_for_target(
             self._rules_by_target, name="transmission_interface", target_type=ReEDSInterface.__name__
@@ -632,12 +662,14 @@ class ReEDSParser(BaseParser):
         logger.info("Building loads...")
 
         load_profiles = self.read_data_file("load_profiles").collect()
+        logger.trace("Load profile columns: {}", load_profiles.columns)
 
         region_columns = [col for col in load_profiles.columns if col not in {"datetime", "solve_year"}]
         if not region_columns:
             msg = "Load data has no region columns"
             logger.warning(msg)
             return Err(ParserError(msg))
+        logger.trace("Found {} load regions", len(region_columns))
 
         rows = []
         for region in region_columns:
@@ -681,7 +713,7 @@ class ReEDSParser(BaseParser):
             failure_list = "; ".join(creation_errors)
             return Err(ParserError(f"Failed to build the following loads: {failure_list}"))
 
-        logger.info("Built {} load components", load_count)
+        logger.info("Attached {} load components", load_count)
         return Ok(None)
 
     def _build_reserves(self) -> Result[None, ParserError]:
@@ -723,6 +755,11 @@ class ReEDSParser(BaseParser):
             transmission_regions = df["transmission_region"].unique().to_list()
         else:
             transmission_regions = []
+        logger.trace(
+            "Preparing reserves for {} transmission regions and {} reserve types",
+            len(transmission_regions),
+            len(reserve_types),
+        )
 
         reserve_region_errors: list[str] = []
         for region_name in transmission_regions:
@@ -772,6 +809,7 @@ class ReEDSParser(BaseParser):
             logger.debug("No reserve rows generated, skipping reserves")
             logger.info("Attached {} reserve regions and 0 reserve components", reserve_region_count)
             return Ok(None)
+        logger.trace("Generated {} reserve component rows", len(rows))
 
         rows_df = pl.DataFrame(rows)
         if self._ctx is None:
@@ -827,6 +865,7 @@ class ReEDSParser(BaseParser):
             return Ok(None)
 
         df = emit_data.collect()
+        logger.trace("Emission dataset rows: {}", df.height)
         if df.is_empty():
             logger.warning("Emission rates data is empty, skipping emissions")
             logger.info("Attached 0 emission components")
@@ -906,6 +945,11 @@ class ReEDSParser(BaseParser):
         logger.info("Starting load profile attachment")
 
         load_profiles = self.read_data_file("load_profiles").collect()
+        logger.trace(
+            "Load profile dataset size: {} rows, {} columns",
+            load_profiles.height,
+            load_profiles.width,
+        )
         attached_count = 0
         for demand in self.system.get_components(ReEDSDemand):
             region_name = demand.name.replace("_load", "")
@@ -941,6 +985,11 @@ class ReEDSParser(BaseParser):
         logger.info("Starting renewable profile attachment")
 
         renewable_profiles = self.read_data_file("renewable_profiles").collect()
+        logger.trace(
+            "Renewable profiles dataset size: {} rows, {} columns",
+            renewable_profiles.height,
+            renewable_profiles.width,
+        )
 
         profile_count = 0
         tech_regions = (
@@ -961,6 +1010,7 @@ class ReEDSParser(BaseParser):
             )
             .select("col", "tech", "region")
         )
+        logger.trace("Parsed {} tech-region renewable profile columns", tech_regions.height)
 
         for row in tech_regions.iter_rows(named=True):
             tech = row["tech"]
@@ -1008,7 +1058,10 @@ class ReEDSParser(BaseParser):
         """
         logger.info("Starting reserve requirement attachment")
         attached_count = 0
-        for reserve in self.system.get_components(ReEDSReserve):
+        reserves = list(self.system.get_components(ReEDSReserve))
+        logger.trace("Attaching reserve requirements for {} reserve components", len(reserves))
+        for reserve in reserves:
+            logger.trace("Calculating reserve requirement for {}", reserve.name)
             reserve_type_name = reserve.reserve_type.value.upper()
             if reserve_type_name in ("FLEXIBILITY_UP", "FLEXIBILITY_DOWN"):
                 reserve_type_name = "FLEXIBILITY"
@@ -1054,6 +1107,13 @@ class ReEDSParser(BaseParser):
                 for load in self.system.get_components(ReEDSDemand)
                 if load.region and load.region.transmission_region == region_name
             ]
+            logger.trace(
+                "Reserve {} inputs - wind: {}, solar: {}, loads: {}",
+                reserve.name,
+                len(wind_generators),
+                len(solar_generators),
+                len(loads),
+            )
 
             calc_result = calculate_reserve_requirement(
                 wind_generators=wind_generators,
@@ -1087,10 +1147,21 @@ class ReEDSParser(BaseParser):
     def _attach_reserve_membership(self) -> Result[None, ParserError]:
         """Attach reserves to generators in the same transmission region, excluding configured techs."""
         excluded_map = self._defaults.get("excluded_from_reserves", {})
+        logger.info("Starting reserve membership attachment")
+        attached_memberships = 0
         if not excluded_map:
+            logger.info("Attached 0 reserve membership links")
             return Ok()
 
-        for reserve in self.system.get_components(ReEDSReserve):
+        reserves = list(self.system.get_components(ReEDSReserve))
+        generators = list(self.system.get_components(ReEDSGenerator))
+        logger.trace(
+            "Evaluating reserve membership for {} reserves across {} generators",
+            len(reserves),
+            len(generators),
+        )
+
+        for reserve in reserves:
             reserve_type_name = reserve.reserve_type.value.upper()
             if reserve_type_name in ("FLEXIBILITY_UP", "FLEXIBILITY_DOWN"):
                 reserve_type_name = "FLEXIBILITY"
@@ -1098,7 +1169,7 @@ class ReEDSParser(BaseParser):
             excluded_categories = excluded_map.get(reserve_type_name, [])
             region_name = reserve.name.rsplit("_", 1)[0]
 
-            for gen in self.system.get_components(ReEDSGenerator):
+            for gen in generators:
                 if not gen.region or gen.region.transmission_region != region_name:
                     continue
 
@@ -1112,7 +1183,9 @@ class ReEDSParser(BaseParser):
                 if reserve.name not in reserve_list:
                     reserve_list.append(reserve.name)
                     gen.ext["reserves"] = reserve_list
+                    attached_memberships += 1
 
+        logger.info("Attached {} reserve membership links", attached_memberships)
         return Ok()
 
     def _attach_hydro_budgets(self) -> Result[None, ParserError]:
@@ -1129,6 +1202,7 @@ class ReEDSParser(BaseParser):
             for gen_name, gen in self._generator_cache.items()
             if tech_matches_category(gen.technology, "hydro", self._tech_categories)
         ]
+        logger.trace("Hydro generators detected: {}", len(hydro_generators))
 
         if not hydro_generators:
             logger.warning("No hydro generators found, skipping hydro budgets")
@@ -1139,6 +1213,7 @@ class ReEDSParser(BaseParser):
             logger.warning("Hydro CF data not prepared, skipping hydro budgets")
             logger.info("Attached 0 hydro budget profiles")
             return Ok()
+        logger.trace("Hydro CF prepared rows: {}", self._hydro_cf_prepared.height)
 
         hydro_capacity = pl.DataFrame(
             [
@@ -1232,7 +1307,7 @@ class ReEDSParser(BaseParser):
         res = self._prepare_default_metadata()
         if res.is_err():
             return res
-        logger.trace("Parser global vraibles set")
+        logger.trace("Parser global variables set")
         return Ok()
 
     def _prepare_default_metadata(self) -> Result[None, ParserError]:
@@ -1245,6 +1320,7 @@ class ReEDSParser(BaseParser):
 
     def _prepare_generator_datasets(self) -> Result[None, ParserError]:
         """Load and preprocess generator-related datasets."""
+        logger.trace("Preparing generator datasets with excluded techs: {}", self._excluded_techs)
         capacity_data = self.read_data_file("online_capacity")
         fuel_price = self.read_data_file("fuel_price")
         biofuel = self.read_data_file("biofuel_price")
@@ -1279,6 +1355,11 @@ class ReEDSParser(BaseParser):
         if generator_data_result.is_err():
             return Err(generator_data_result.err())
         self._variable_generator_df, self._non_variable_generator_df = generator_data_result.ok()
+        logger.trace(
+            "Prepared generator datasets - variable rows: {}, non-variable rows: {}",
+            self._variable_generator_df.height,
+            self._non_variable_generator_df.height,
+        )
         return Ok()
 
     def _prepare_hydro_datasets(self) -> Result[None, ParserError]:
@@ -1286,6 +1367,7 @@ class ReEDSParser(BaseParser):
         hydro_cf = self.read_data_file("hydro_cf")
         if hydro_cf is None:
             self._hydro_cf_prepared = None
+            logger.trace("No hydro CF dataset available")
             return Ok()
 
         hydro_cf = (
@@ -1300,10 +1382,12 @@ class ReEDSParser(BaseParser):
         self._hydro_cf_prepared = hydro_cf.join(
             self.year_month_day_hours, on=["year", "month_num"], how="left"
         )
+        logger.trace("Hydro CF prepared rows: {}", self._hydro_cf_prepared.height)
         return Ok()
 
     def _prepare_reserve_datasets(self) -> Result[None, ParserError]:
         """Prepare reserve-related inputs (percentages, costs)."""
+        logger.trace("Preparing reserve dataset defaults")
         pct_map: dict[str, dict[str, float]] = {}
         reserve_pct_df = self.read_data_file("reserve_percentages")
         if reserve_pct_df is not None:
@@ -1329,6 +1413,7 @@ class ReEDSParser(BaseParser):
                     "or_pv_percentage": solar_res.get(rtype),
                 }
         self._reserve_percentages = pct_map
+        logger.trace("Prepared reserve percentage map entries: {}", len(self._reserve_percentages))
 
         cost_map: dict[str, dict[str, float]] = {}
         cost_df = self.read_data_file("reserve_costs_default")
@@ -1346,6 +1431,7 @@ class ReEDSParser(BaseParser):
                     if val is not None:
                         cost_map[rtype] = {col: float(val)}
         self._reserve_costs = cost_map
+        logger.trace("Prepared reserve cost map entries: {}", len(self._reserve_costs))
         return Ok()
 
     def _prepare_rules_by_target(self) -> Result[list[Rule], ParserError]:
