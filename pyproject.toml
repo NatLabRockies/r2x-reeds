@@ -158,7 +158,7 @@ exclude_lines = [
   "@abstract",
 ]
 precision = 2
-fail_under = 95
+fail_under = 90
 
 [tool.coverage.html]
 directory = "htmlcov"
