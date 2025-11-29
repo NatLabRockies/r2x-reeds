@@ -10,7 +10,7 @@ from loguru import logger
 from rust_ok import Err, Ok, Result
 
 from r2x_core import DataStore
-from r2x_reeds.models import ReEDSEmission, ReEDSGenerator
+from r2x_reeds.models import ReEDSGenerator
 
 from .utils import _coerce_path, _deduplicate_records
 
@@ -168,11 +168,12 @@ def _create_split_generator(
 
     system.add_component(new_component)
 
-    for attribute in system.get_supplemental_attributes_with_component(original, ReEDSEmission):
+    for attribute in system.get_supplemental_attributes_with_component(original):
+        logger.trace("Component {} has supplemental attribute {}. Copying.", original.label, attribute.label)
         system.add_supplemental_attribute(new_component, attribute)
 
     if system.has_time_series(original):
-        logger.trace(f"Component {original.name} has time series attached. Copying.")
+        logger.trace("Component {} has time series attached. Copying.", original.label)
         ts = system.get_time_series(original)
         system.add_time_series(ts, new_component)
 

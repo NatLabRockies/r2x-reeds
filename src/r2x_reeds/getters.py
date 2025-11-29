@@ -41,8 +41,7 @@ def lookup_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Excep
     from r2x_reeds.models.components import ReEDSRegion
 
     try:
-        # Handle both dict and SimpleNamespace
-        region_name = getattr(row, "region", None) if hasattr(row, "region") else row.get("region")
+        region_name = get_row_field(row, "region")
         if region_name is None:
             return Err(ValueError("Row missing required 'region' field"))
 
@@ -57,11 +56,7 @@ def build_region_description(context: ParserContext, row: Any) -> Result[str, Ex
     """Return a consistent description for a region row."""
 
     try:
-        if isinstance(row, dict):
-            region_name = row.get("region_id") or row.get("region")
-        else:
-            region_name = getattr(row, "region_id", None) or getattr(row, "region", None)
-
+        region_name = get_row_field(row, "region_id") or get_row_field(row, "region")
         if region_name is None:
             return Err(ValueError("Row missing region identifier for description"))
 
@@ -75,14 +70,7 @@ def build_region_name(context: ParserContext, row: Any) -> Result[str, Exception
     """Build a canonical region name for parser records."""
 
     def _lookup(field: str) -> Any:
-        if isinstance(row, dict):
-            return row.get(field)
-        if hasattr(row, "get"):
-            try:
-                return row.get(field)
-            except Exception:
-                pass
-        return getattr(row, field, None)
+        return get_row_field(row, field)
 
     try:
         region_id = _lookup("region_id") or _lookup("region") or _lookup("r") or _lookup("*r")
@@ -112,8 +100,7 @@ def compute_is_dispatchable(context: ParserContext, row: Any) -> Result[bool, Ex
     from r2x_reeds.parser_utils import tech_matches_category
 
     try:
-        # Handle both dict and SimpleNamespace
-        tech = getattr(row, "technology", None) if hasattr(row, "technology") else row.get("technology")
+        tech = get_row_field(row, "technology")
         if tech is None:
             return Ok(False)
 
@@ -141,15 +128,9 @@ def build_generator_name(context: ParserContext, row: Any) -> Result[str, Except
         Ok(name) with generated name in format: {tech}_{vintage}_{region} or {tech}_{region}
     """
     try:
-        # Handle both dict and SimpleNamespace
-        if hasattr(row, "__dict__"):  # SimpleNamespace
-            tech = getattr(row, "technology", "unknown")
-            region = getattr(row, "region", "unknown")
-            vintage = getattr(row, "vintage", None)
-        else:  # dict
-            tech = row.get("technology", "unknown")
-            region = row.get("region", "unknown")
-            vintage = row.get("vintage")
+        tech = get_row_field(row, "technology", "unknown")
+        region = get_row_field(row, "region", "unknown")
+        vintage = get_row_field(row, "vintage")
 
         if vintage:
             return Ok(f"{tech}_{vintage}_{region}")

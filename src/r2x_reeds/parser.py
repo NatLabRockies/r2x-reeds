@@ -163,7 +163,32 @@ class ReEDSParser(BaseParser):
         overrides: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
-        """Initialize ReEDS parser."""
+        """Initialize the ReEDS parser with configuration and data access.
+
+        Parameters
+        ----------
+        config : ReEDSConfig
+            Configuration object specifying solve years, weather years, case name, and scenario
+        data_store : DataStore
+            Initialized DataStore with ReEDS file mappings and data access
+        auto_add_composed_components : bool, optional
+            Whether to automatically add composed components to the system, by default True
+        skip_validation : bool, optional
+            Skip Pydantic validation for performance (use with caution), by default False
+        overrides : dict[str, Any] | None, optional
+            Configuration overrides to apply, by default None
+        **kwargs
+            Additional keyword arguments passed to parent BaseParser class
+
+        Attributes
+        ----------
+        system : infrasys.System
+            The constructed power system model (populated by build_system())
+        config : ReEDSConfig
+            The ReEDS configuration instance
+        data_store : DataStore
+            The DataStore for accessing ReEDS data files
+        """
         self._config_overrides = overrides
         self._config_assets: dict[str, Any] | None = None
         self._defaults: dict[str, Any] | None = None
@@ -179,7 +204,25 @@ class ReEDSParser(BaseParser):
         )
 
     def validate_inputs(self) -> Result[None, ParserError]:
-        """Validate input data and configuration before building system."""
+        """Validate input data and configuration before building the system.
+
+        Performs comprehensive validation including:
+        - Presence of required datasets
+        - Validity of configured solve and weather years
+        - Loading and parsing of configuration assets
+        - Rule validation from parser configuration
+
+        Returns
+        -------
+        Result[None, ParserError]
+            Ok() if all validation checks pass, Err() with detailed error message otherwise
+
+        Raises
+        ------
+        ParserError
+            If required datasets are missing, configured years don't exist in data,
+            or configuration files cannot be loaded
+        """
         assert self._store, "REeDS parser requires DataStore object."
         logger.debug("Validating input files")
         logger.trace(
@@ -239,7 +282,25 @@ class ReEDSParser(BaseParser):
         return Ok()
 
     def prepare_data(self) -> Result[None, ParserError]:
-        """Prepare and normalize configuration and time-related data."""
+        """Prepare and normalize configuration, time arrays, and component datasets.
+
+        Initializes internal caches and datasets required for component building:
+        - Parser context with configuration and defaults
+        - Time indices and calendar mappings for the weather year
+        - Generator datasets separated into variable and non-variable groups
+        - Hydro capacity factor data for budget calculations
+        - Reserve requirement configuration and costs
+
+        Returns
+        -------
+        Result[None, ParserError]
+            Ok() on successful preparation, Err() with ParserError if any step fails
+
+        Notes
+        -----
+        This method must be called after validate_inputs() and before build_system_components().
+        It populates internal caches used throughout the build process.
+        """
         logger.trace("Preparing parser data caches and context")
         self._initialize_caches()
         logger.trace("Parser caches initialized")
@@ -273,10 +334,28 @@ class ReEDSParser(BaseParser):
         return Ok()
 
     def build_system_components(self) -> Result[None, ParserError]:
-        """Create all system components from ReEDS data.
+        """Create all system components from ReEDS data in dependency order.
 
-        Components are built in dependency order:
-        regions → generators → transmission → loads → reserves → emissions
+        Builds the complete set of power system components by calling builder methods
+        in sequence: regions, generators, transmission interfaces/lines, loads,
+        reserves, and emissions. Each step validates success before proceeding to
+        the next.
+
+        Returns
+        -------
+        Result[None, ParserError]
+            Ok() if all components created successfully, Err() with ParserError
+            listing any creation failures
+
+        Notes
+        -----
+        Components are built in strict dependency order:
+        1. Regions (required by all other components)
+        2. Generators (requires regions)
+        3. Transmission interfaces and lines
+        4. Loads (requires regions)
+        5. Reserves and reserve regions (requires transmission regions)
+        6. Emissions (requires generators)
         """
         logger.info("Building ReEDS system components")
         starting_components = len(list(self.system.get_components(Component)))
@@ -309,17 +388,29 @@ class ReEDSParser(BaseParser):
         return Ok()
 
     def build_time_series(self) -> Result[None, ParserError]:
-        """Attach time series data to all system components.
+        """Attach time series data to all system components in a specific sequence.
 
-        Applies time series in order:
-        1. Load profiles to demand components
-        2. Renewable capacity factors to renewable generators
-        3. Reserve requirement profiles
-        4. Hydro budget constraints
+        Populates time series data for various component types in dependency order:
+        1. Reserve membership associations (which reserves apply to which generators)
+        2. Load profiles (hourly demand by region)
+        3. Renewable capacity factors (hourly availability for wind/solar)
+        4. Reserve requirement profiles (dynamic requirements based on load/wind/solar)
+        5. Hydro budget constraints (daily energy constraints by month)
+
+        Time series data is filtered to match configured weather and solve years,
+        and multiple time series per component are supported for multi-year scenarios.
 
         Returns
         -------
-        None
+        Result[None, ParserError]
+            Ok() if all time series attached successfully, Err() with ParserError
+            if any attachment step fails
+
+        Raises
+        ------
+        ParserError
+            If required time series datasets are empty or mismatched with
+            configured years
         """
         logger.info("Building time series data")
         logger.trace(
@@ -350,16 +441,26 @@ class ReEDSParser(BaseParser):
         return Ok()
 
     def postprocess_system(self) -> Result[None, ParserError]:
-        """Perform post-processing on the built system.
+        """Perform post-processing and finalization of the constructed system.
 
-        Sets system metadata including:
-        - Data format version
-        - System description with case, scenario, and year information
-        - Logs component summary statistics
+        Sets system-level metadata and logs summary statistics:
+        - Data format version (from repository commit hash)
+        - System description incorporating case name, scenario, solve/weather years
+        - Component statistics and system validation information
+
+        This is the final step after components and time series are built,
+        ensuring the system is properly documented and ready for export.
 
         Returns
         -------
-        None
+        Result[None, ParserError]
+            Ok() on successful post-processing, Err() with ParserError if metadata
+            application fails
+
+        Notes
+        -----
+        This method should be called after both build_system_components() and
+        build_time_series() have completed successfully.
         """
         logger.info("Post-processing ReEDS system...")
         logger.trace("Setting data format version to {}", LATEST_COMMIT)
@@ -379,11 +480,7 @@ class ReEDSParser(BaseParser):
         return Ok()
 
     def _build_regions(self) -> Result[None, ParserError]:
-        """Build region components from hierarchy data.
-
-        Creates ReEDSRegion components with all hierarchical attributes
-        (state, NERC region, transmission region, interconnect, etc.).
-        """
+        """Build region components from hierarchy data."""
         logger.info("Building regions...")
 
         hierarchy_data = self.read_data_file("hierarchy").collect()
@@ -464,6 +561,7 @@ class ReEDSParser(BaseParser):
         df: pl.DataFrame,
         label: str,
     ) -> Result[int, ParserError]:
+        """Build a group of generators (variable renewable or non-variable) from DataFrame."""
         logger.info("Starting {} generator build", label)
         logger.trace("Processing {} {} generator rows", df.height, label)
         if df.is_empty():
@@ -509,6 +607,7 @@ class ReEDSParser(BaseParser):
         identifier: str,
         kwargs: dict[str, Any],
     ) -> Result[ReEDSGenerator, ParserError]:
+        """Instantiate a generator component with technology-specific class resolution."""
         technology = kwargs.get("technology")
         if technology is None:
             return Err(ParserError(f"Generator {identifier} missing technology"))
@@ -530,11 +629,7 @@ class ReEDSParser(BaseParser):
         return Ok(generator)
 
     def _build_transmission(self) -> Result[None, ParserError]:
-        """Build transmission interface and line components.
-
-        Creates bi-directional transmission lines with separate forward/reverse ratings.
-        Uses canonical alphabetical ordering for interface naming to avoid duplicates.
-        """
+        """Build transmission interface and line components with bi-directional ratings."""
         logger.info("Building transmission interfaces...")
 
         trancap_data = self.read_data_file("transmission_capacity")
@@ -551,10 +646,31 @@ class ReEDSParser(BaseParser):
             logger.info("Attached 0 transmission interfaces and 0 lines")
             return Ok(None)
 
-        line_count = 0
-        interface_count = 0
-        creation_errors: list[str] = []
+        if self._ctx is None:
+            return Err(ParserError("Parser context is missing"))
 
+        interfaces_result = self._build_transmission_interfaces(trancap)
+        if interfaces_result.is_err():
+            return interfaces_result
+        interface_count, creation_errors = interfaces_result.ok()
+
+        line_result = self._build_transmission_lines(trancap)
+        if line_result.is_err():
+            return line_result
+        line_count, line_errors = line_result.ok()
+        creation_errors.extend(line_errors)
+
+        logger.info("Attached {} transmission interfaces and {} lines", interface_count, line_count)
+
+        if creation_errors:
+            failure_list = "; ".join(creation_errors)
+            return Err(ParserError(f"Failed to create transmission components: {failure_list}"))
+
+        return Ok(None)
+
+    def _build_transmission_interfaces(
+        self, trancap: pl.DataFrame
+    ) -> Result[tuple[int, list[str]], ParserError]:
         if self._ctx is None:
             return Err(ParserError("Parser context is missing"))
 
@@ -590,13 +706,6 @@ class ReEDSParser(BaseParser):
         )
         logger.trace("Derived {} unique transmission interface rows", interface_rows.height)
 
-        interface_rule_result = get_rule_for_target(
-            self._rules_by_target, name="transmission_interface", target_type=ReEDSInterface.__name__
-        )
-        if interface_rule_result.is_err():
-            return interface_rule_result
-        interface_rule = interface_rule_result.ok()
-
         interface_kwargs_result = _collect_component_kwargs_from_rule(
             data=interface_rows,
             rule_provider=interface_rule,
@@ -606,6 +715,8 @@ class ReEDSParser(BaseParser):
         if interface_kwargs_result.is_err():
             return interface_kwargs_result
 
+        creation_errors: list[str] = []
+        interface_count = 0
         for identifier, kwargs in interface_kwargs_result.ok() or []:
             try:
                 interface = self.create_component(ReEDSInterface, **kwargs)
@@ -617,6 +728,12 @@ class ReEDSParser(BaseParser):
             self.add_component(interface)
             self._interface_cache[identifier] = interface
             interface_count += 1
+
+        return Ok((interface_count, creation_errors))
+
+    def _build_transmission_lines(self, trancap: pl.DataFrame) -> Result[tuple[int, list[str]], ParserError]:
+        if self._ctx is None:
+            return Err(ParserError("Parser context is missing"))
 
         line_rule_result = get_rule_for_target(
             self._rules_by_target, name="transmission_line", target_type=ReEDSTransmissionLine.__name__
@@ -634,6 +751,8 @@ class ReEDSParser(BaseParser):
         if line_kwargs_result.is_err():
             return line_kwargs_result
 
+        creation_errors: list[str] = []
+        line_count = 0
         for identifier, kwargs in line_kwargs_result.ok() or []:
             try:
                 line = self.create_component(ReEDSTransmissionLine, **kwargs)
@@ -645,20 +764,10 @@ class ReEDSParser(BaseParser):
             self.add_component(line)
             line_count += 1
 
-        logger.info("Attached {} transmission interfaces and {} lines", interface_count, line_count)
-
-        if creation_errors:
-            failure_list = "; ".join(creation_errors)
-            return Err(ParserError(f"Failed to create transmission components: {failure_list}"))
-
-        return Ok(None)
+        return Ok((line_count, creation_errors))
 
     def _build_loads(self) -> Result[None, ParserError]:
-        """Build load components from demand data.
-
-        Filters load data by weather year and solve year.
-        Stores filtered data for later time series attachment.
-        """
+        """Build load components from demand data."""
         logger.info("Building loads...")
 
         load_profiles = self.read_data_file("load_profiles").collect()
@@ -717,11 +826,7 @@ class ReEDSParser(BaseParser):
         return Ok(None)
 
     def _build_reserves(self) -> Result[None, ParserError]:
-        """Build reserve requirement components.
-
-        Creates reserve components for each transmission region and reserve type.
-        Configuration loaded from defaults.json includes types, duration, timeframe, etc.
-        """
+        """Build reserve requirement components for each transmission region and type."""
         logger.info("Building reserves...")
         reserve_region_count = 0
         reserve_count = 0
@@ -928,20 +1033,7 @@ class ReEDSParser(BaseParser):
         return Ok(None)
 
     def _attach_load_profiles(self) -> Result[None, ParserError]:
-        """Attach load time series to demand components.
-
-        Extracts hourly load profiles from load data filtered by weather and solve years.
-        Matches profile columns to demand components by region name.
-
-        Returns
-        -------
-        Result[None, ParserError]
-            Ok() on success, Err() with ParserError if data is empty or demands not found
-
-        Notes
-        -----
-        Load data must be filtered during :meth:`_build_loads` before calling this method.
-        """
+        """Attach load time series to demand components."""
         logger.info("Starting load profile attachment")
 
         load_profiles = self.read_data_file("load_profiles").collect()
@@ -1285,6 +1377,7 @@ class ReEDSParser(BaseParser):
         self._reserve_costs: dict[str, dict[str, float]] = {}
 
     def _initialize_parser_globals(self) -> Result[None, ParserError]:
+        """Initialize parser configuration, rules, and metadata from loaded assets."""
         res = self._ensure_config_assets()
         if res.is_err():
             return res

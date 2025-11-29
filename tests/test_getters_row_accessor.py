@@ -16,27 +16,14 @@ from typing import Any
 
 import pytest
 
-from r2x_core import System
-from r2x_core.context import ParserContext
-from r2x_reeds.getters import (
-    build_generator_name,
-    build_region_description,
-    build_region_name,
-    get_storage_duration,
-    lookup_region,
-    resolve_emission_source,
-    resolve_emission_type,
-    resolve_reserve_type,
-)
-from r2x_reeds.models.components import ReEDSRegion, ReEDSReserveRegion
-from r2x_reeds.plugin_config import ReEDSConfig
-
-# Fixtures
-
 
 @pytest.fixture
-def test_system() -> System:
+def test_system():
     """Create a test system with sample regions."""
+    from infrasys import System
+
+    from r2x_reeds.models import ReEDSRegion, ReEDSReserveRegion
+
     system = System(name="test_system")
     region = ReEDSRegion(name="p1", state="CA")
     system.add_component(region)
@@ -46,8 +33,11 @@ def test_system() -> System:
 
 
 @pytest.fixture
-def test_context(test_system: System) -> ParserContext:
+def test_context(test_system):
     """Create a parser context for getter tests."""
+    from r2x_core import ParserContext
+    from r2x_reeds import ReEDSConfig
+
     config = ReEDSConfig(solve_year=2030, weather_year=2012, case_name="test_getters")
     return ParserContext(
         system=test_system,
@@ -62,52 +52,61 @@ def test_context(test_system: System) -> ParserContext:
     )
 
 
-# Row Accessor Pattern Tests - Dictionary Input
-
-
 @pytest.mark.unit
-def test_lookup_region_dict(test_context: ParserContext) -> None:
+def test_lookup_region_dict(test_context) -> None:
     """Test getter with dict input accessing region field."""
+    from r2x_reeds.getters import lookup_region
+
     row: dict[str, Any] = {"region": "p1"}
     result = lookup_region(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_build_region_description_dict(test_context: ParserContext) -> None:
+def test_build_region_description_dict(test_context) -> None:
     """Test getter with dict input accessing region_id/region fields."""
+    from r2x_reeds.getters import build_region_description
+
     row: dict[str, Any] = {"region_id": "p1"}
     result = build_region_description(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_build_region_name_dict(test_context: ParserContext) -> None:
+def test_build_region_name_dict(test_context) -> None:
     """Test getter with dict input accessing multiple fallback fields."""
+    from r2x_reeds.getters import build_region_name
+
     row: dict[str, Any] = {"region_id": "p1"}
     result = build_region_name(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_build_generator_name_dict(test_context: ParserContext) -> None:
+def test_build_generator_name_dict(test_context) -> None:
     """Test getter with dict input accessing technology, region, vintage fields."""
+    from r2x_reeds.getters import build_generator_name
+
     row: dict[str, Any] = {"technology": "wind", "region": "p1"}
     result = build_generator_name(test_context, row)
     assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
 @pytest.mark.unit
-def test_resolve_reserve_type_dict(test_context: ParserContext) -> None:
+def test_resolve_reserve_type_dict(test_context) -> None:
     """Test getter with dict input accessing reserve_type field."""
+    from r2x_reeds.getters import resolve_reserve_type
+
     row: dict[str, Any] = {"reserve_type": "SPINNING"}
     result = resolve_reserve_type(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_get_storage_duration_dict(test_context: ParserContext) -> None:
+def test_get_storage_duration_dict(test_context) -> None:
     """Test getter with dict input accessing numeric field."""
+    from r2x_reeds.getters import get_storage_duration
+
     row: dict[str, Any] = {"storage_duration": 2.0}
     result = get_storage_duration(test_context, row)
     assert isinstance(result.is_ok() or result.is_err(), bool)
@@ -117,48 +116,60 @@ def test_get_storage_duration_dict(test_context: ParserContext) -> None:
 
 
 @pytest.mark.unit
-def test_lookup_region_namespace(test_context: ParserContext) -> None:
+def test_lookup_region_namespace(test_context) -> None:
     """Test getter with SimpleNamespace input accessing region field."""
+    from r2x_reeds.getters import lookup_region
+
     row = SimpleNamespace(region="p1")
     result = lookup_region(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_build_region_description_namespace(test_context: ParserContext) -> None:
+def test_build_region_description_namespace(test_context) -> None:
     """Test getter with SimpleNamespace accessing region_id/region fields."""
+    from r2x_reeds.getters import build_region_description
+
     row = SimpleNamespace(region_id="p1")
     result = build_region_description(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_build_region_name_namespace(test_context: ParserContext) -> None:
+def test_build_region_name_namespace(test_context) -> None:
     """Test getter with SimpleNamespace accessing multiple fallback fields."""
+    from r2x_reeds.getters import build_region_name
+
     row = SimpleNamespace(region_id="p1")
     result = build_region_name(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_build_generator_name_namespace(test_context: ParserContext) -> None:
+def test_build_generator_name_namespace(test_context) -> None:
     """Test getter with SimpleNamespace accessing technology, region, vintage."""
+    from r2x_reeds.getters import build_generator_name
+
     row = SimpleNamespace(technology="wind", region="p1")
     result = build_generator_name(test_context, row)
     assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
 @pytest.mark.unit
-def test_resolve_reserve_type_namespace(test_context: ParserContext) -> None:
+def test_resolve_reserve_type_namespace(test_context) -> None:
     """Test getter with SimpleNamespace accessing reserve_type field."""
+    from r2x_reeds.getters import resolve_reserve_type
+
     row = SimpleNamespace(reserve_type="SPINNING")
     result = resolve_reserve_type(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_get_storage_duration_namespace(test_context: ParserContext) -> None:
+def test_get_storage_duration_namespace(test_context) -> None:
     """Test getter with SimpleNamespace accessing numeric field."""
+    from r2x_reeds.getters import get_storage_duration
+
     row = SimpleNamespace(storage_duration=2.0)
     result = get_storage_duration(test_context, row)
     assert isinstance(result.is_ok() or result.is_err(), bool)
@@ -168,8 +179,10 @@ def test_get_storage_duration_namespace(test_context: ParserContext) -> None:
 
 
 @pytest.mark.unit
-def test_region_lookup_consistency(test_context: ParserContext) -> None:
+def test_region_lookup_consistency(test_context) -> None:
     """Test that dict and namespace inputs produce same result for region lookup."""
+    from r2x_reeds.getters import lookup_region
+
     dict_row: dict[str, Any] = {"region": "p1"}
     ns_row = SimpleNamespace(region="p1")
 
@@ -180,8 +193,10 @@ def test_region_lookup_consistency(test_context: ParserContext) -> None:
 
 
 @pytest.mark.unit
-def test_generator_name_consistency(test_context: ParserContext) -> None:
+def test_generator_name_consistency(test_context) -> None:
     """Test that dict and namespace inputs produce same result for name building."""
+    from r2x_reeds.getters import build_generator_name
+
     dict_row: dict[str, Any] = {"technology": "wind", "region": "p1"}
     ns_row = SimpleNamespace(technology="wind", region="p1")
 
@@ -192,8 +207,10 @@ def test_generator_name_consistency(test_context: ParserContext) -> None:
 
 
 @pytest.mark.unit
-def test_reserve_type_consistency(test_context: ParserContext) -> None:
+def test_reserve_type_consistency(test_context) -> None:
     """Test that dict and namespace produce consistent enum resolution."""
+    from r2x_reeds.getters import resolve_reserve_type
+
     dict_row: dict[str, Any] = {"reserve_type": "SPINNING"}
     ns_row = SimpleNamespace(reserve_type="SPINNING")
 
@@ -209,16 +226,20 @@ def test_reserve_type_consistency(test_context: ParserContext) -> None:
 
 
 @pytest.mark.unit
-def test_lookup_region_missing_field_dict(test_context: ParserContext) -> None:
+def test_lookup_region_missing_field_dict(test_context) -> None:
     """Test getter errors when field missing from dict."""
+    from r2x_reeds.getters import lookup_region
+
     row: dict[str, Any] = {"other_field": "value"}
     result = lookup_region(test_context, row)
     assert result.is_err()
 
 
 @pytest.mark.unit
-def test_lookup_region_missing_field_namespace(test_context: ParserContext) -> None:
+def test_lookup_region_missing_field_namespace(test_context) -> None:
     """Test getter errors when field missing from namespace."""
+    from r2x_reeds.getters import lookup_region
+
     row = SimpleNamespace(other_field="value")
     result = lookup_region(test_context, row)
     assert result.is_err()
@@ -226,24 +247,27 @@ def test_lookup_region_missing_field_namespace(test_context: ParserContext) -> N
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "getter_func,field_dict,field_ns",
+    "getter_name,field_dict,field_ns",
     [
         pytest.param(
-            build_generator_name,
+            "build_generator_name",
             {"technology": "wind"},
             SimpleNamespace(technology="wind"),
             id="build_generator_name",
         ),
-        pytest.param(resolve_reserve_type, {}, SimpleNamespace(), id="resolve_reserve_type"),
+        pytest.param("resolve_reserve_type", {}, SimpleNamespace(), id="resolve_reserve_type"),
     ],
 )
 def test_various_getters_missing_fields(
-    test_context: ParserContext,
-    getter_func: Any,
+    test_context,
+    getter_name: str,
     field_dict: dict[str, Any],
     field_ns: SimpleNamespace,
 ) -> None:
     """Test various getters handle missing required fields consistently."""
+    from r2x_reeds import getters as getters_mod
+
+    getter_func = getattr(getters_mod, getter_name)
     dict_result = getter_func(test_context, field_dict)
     ns_result = getter_func(test_context, field_ns)
 
@@ -254,32 +278,40 @@ def test_various_getters_missing_fields(
 
 
 @pytest.mark.unit
-def test_reserve_type_mapping(test_context: ParserContext) -> None:
+def test_reserve_type_mapping(test_context) -> None:
     """Test reserve type enum resolution."""
+    from r2x_reeds.getters import resolve_reserve_type
+
     row: dict[str, Any] = {"reserve_type": "SPINNING"}
     result = resolve_reserve_type(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_emission_type_mapping(test_context: ParserContext) -> None:
+def test_emission_type_mapping(test_context) -> None:
     """Test emission type enum resolution."""
+    from r2x_reeds.getters import resolve_emission_type
+
     row: dict[str, Any] = {"emission_type": "CO2"}
     result = resolve_emission_type(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_emission_source_mapping(test_context: ParserContext) -> None:
+def test_emission_source_mapping(test_context) -> None:
     """Test emission source enum resolution."""
+    from r2x_reeds.getters import resolve_emission_source
+
     row: dict[str, Any] = {"emission_source": "COMBUSTION"}
     result = resolve_emission_source(test_context, row)
     assert result.is_ok()
 
 
 @pytest.mark.unit
-def test_invalid_enum_values(test_context: ParserContext) -> None:
+def test_invalid_enum_values(test_context) -> None:
     """Test that invalid enum values are rejected."""
+    from r2x_reeds.getters import resolve_reserve_type
+
     row: dict[str, Any] = {"reserve_type": "INVALID_TYPE"}
     result = resolve_reserve_type(test_context, row)
     assert result.is_err()

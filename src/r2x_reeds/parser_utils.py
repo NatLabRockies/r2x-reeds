@@ -348,32 +348,6 @@ def _prepare_generator_dataset(
     return Ok(df)
 
 
-def _filter_by_category(
-    df: pl.DataFrame,
-    category: str,
-    include: bool = True,
-) -> pl.DataFrame:
-    """Filter DataFrame by category presence.
-
-    Parameters
-    ----------
-    df : pl.DataFrame
-        DataFrame with 'categories' column containing list of category strings
-    category : str
-        Category to filter by
-    include : bool, default=True
-        If True, return rows where category is present; if False, return rows where category is absent
-
-    Returns
-    -------
-    pl.DataFrame
-        Filtered DataFrame
-    """
-    if include:
-        return df.filter(pl.col("categories").list.contains(category))
-    return df.filter(~pl.col("categories").list.contains(category))
-
-
 def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
     """Aggregate variable renewable generators by tech-region-category.
 
@@ -540,29 +514,6 @@ def _collect_component_kwargs_from_rule(
         return Err(ParserError(f"Failed to build the following components: {failure_list}"))
 
     return Ok(collected)
-
-
-def find_rule_for_target(
-    rules: list[Rule],
-    name: str,
-    target_type: str,
-    *,
-    version: int | None = None,
-) -> Result[Rule, ParserError]:
-    """Find a specific rule by name and target type."""
-
-    matching = [rule for rule in rules if rule.name == name and target_type in rule.get_target_types()]
-
-    if version is not None:
-        matching = [rule for rule in matching if rule.version == version]
-
-    if not matching:
-        return Err(ParserError(f"No rule '{name}' found for target {target_type} (v{version})"))
-
-    if len(matching) > 1:
-        logger.warning("Multiple rules found for %s → %s; using first match", name, target_type)
-
-    return Ok(matching[0])
 
 
 def _resolve_generator_rule_from_row(
