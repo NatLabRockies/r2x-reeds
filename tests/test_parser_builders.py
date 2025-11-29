@@ -11,10 +11,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import polars as pl
 import pytest
+from rust_ok import Ok
 
 if TYPE_CHECKING:
     from r2x_reeds import ReEDSParser
+
+
+class DummyRule:  # reuse within file for custom rules
+    def __init__(self) -> None:
+        self.name = "transmission_interface"
+
+    def get_target_types(self) -> list[str]:
+        return ["ReEDSInterface"]
 
 
 @pytest.fixture
@@ -135,6 +145,38 @@ def test_transmission_interfaces_are_cached(initialized_parser: ReEDSParser) -> 
     """Test that transmission interfaces can be built without errors."""
     result = initialized_parser._build_transmission()
     assert result.is_ok() or result.is_err()
+
+
+@pytest.mark.unit
+def test_build_transmission_interfaces_handles_component_creation_errors(
+    initialized_parser: ReEDSParser, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure interface builder captures creation failures."""
+    import r2x_reeds.parser as parser_module
+    from r2x_core import ComponentCreationError
+
+    parser = initialized_parser
+    parser._rules_by_target["ReEDSInterface"] = [DummyRule()]
+
+    monkeypatch.setattr(
+        parser_module,
+        "_collect_component_kwargs_from_rule",
+        lambda *args, **kwargs: Ok(
+            [("p1||p2", {"name": "p1||p2", "from_region": "p1", "to_region": "p2", "trtype": "ac"})]
+        ),
+    )
+
+    def failing_create(cls, **kwargs):
+        raise ComponentCreationError("boom")
+
+    monkeypatch.setattr(parser, "create_component", failing_create)
+
+    data = pl.DataFrame({"from_region": ["p1"], "to_region": ["p2"], "trtype": ["ac"]})
+    result = parser._build_transmission_interfaces(data)
+    assert result.is_ok()
+    count, errors = result.ok()
+    assert count == 0
+    assert errors
 
 
 @pytest.mark.unit

@@ -250,6 +250,7 @@ def test_break_generators_small_capacity_not_split(system_with_region) -> None:
     assert list(system.get_components(ReEDSGenerator)) == [generator]
 
 
+@pytest.mark.slow
 def test_break_generators_respects_drop_threshold(system_with_region) -> None:
     """Ensure remainder above/below threshold controls final split count."""
     system, region = system_with_region
@@ -268,3 +269,34 @@ def test_break_generators_respects_drop_threshold(system_with_region) -> None:
     generators = list(system.get_components(ReEDSGenerator))
     assert len(generators) == 2
     assert sorted(gen.capacity for gen in generators) == [50.0, 50.0]
+
+
+def test_normalize_reference_data_skips_invalid_records(caplog) -> None:
+    """Ensure invalid reference records are skipped with warnings."""
+    from r2x_reeds.sysmod.break_gens import _normalize_reference_data
+
+    caplog.set_level("WARNING")
+    result = _normalize_reference_data({"wind": "bad"}, "name", "<source>")
+    assert result.is_err()
+    assert "Skipping non-dict reference record" in caplog.text
+    assert "No reference technologies" in str(result.unwrap_err())
+
+
+def test_normalize_reference_data_missing_keys(caplog) -> None:
+    """Ensure entries missing dedup key are skipped and reported."""
+    from r2x_reeds.sysmod.break_gens import _normalize_reference_data
+
+    caplog.set_level("WARNING")
+    data = [{"avg_capacity_MW": 50}, {"name": None}]
+    result = _normalize_reference_data(data, "name", "<source>")
+    assert result.is_err()
+    assert "Skipping reference record missing key 'name'" in caplog.text
+
+
+def test_normalize_reference_data_invalid_type() -> None:
+    """Ensure invalid reference data types raise TypeError."""
+    from r2x_reeds.sysmod.break_gens import _normalize_reference_data
+
+    result = _normalize_reference_data("string", "name", "<source>")
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), TypeError)
