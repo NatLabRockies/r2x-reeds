@@ -55,7 +55,7 @@ def check_column_exists(
         msg = (
             f"Column {column!r} not found in dataset {dataset!r} "
             f"from file {meta.fpath}. "
-            f"Available columns: {sorted(df.columns)}"
+            f"Available columns: {df.collect_schema().names()}"
         )
         return Err(ValidationError(msg))
 
