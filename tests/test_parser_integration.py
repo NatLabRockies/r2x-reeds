@@ -42,7 +42,7 @@ def test_load_count_for_test_data(example_system) -> None:
 def test_renewable_generator_count(example_system, example_reeds_config) -> None:
     """Test expected renewable generator count for test_Pacific data."""
     # Use classmethod API per migration guide
-    defaults = example_reeds_config.__class__.load_defaults(config_path=example_reeds_config.config_path)
+    defaults = example_reeds_config.load_config()["defaults"]
     ren_gens = example_system.get_components(
         ReEDSGenerator,
         filter_func=lambda comp: get_technology_category(comp.technology, defaults["tech_categories"]),

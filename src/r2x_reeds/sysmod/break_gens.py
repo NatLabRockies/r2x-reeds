@@ -1,131 +1,103 @@
-"""Plugin to dissaggregate and aggregate generators.
+"""Split oversized generators into multiple reference-sized units."""
 
-This plugin breaks apart generators that are too big in comparison with the
-WECC database. If the generator is too small after the breakup than the capacity
-threshold variable, we drop the generator entirely.
-"""
+from __future__ import annotations
 
-# System packages
-import re
+from os import PathLike
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import pandas as pd
-from infrasys import System
 from loguru import logger
+from rust_ok import Err, Ok, Result
 
-from r2x_core.store import DataStore
-from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator
+from r2x_core import DataStore
+from r2x_reeds.models import ReEDSEmission, ReEDSGenerator
 
-CAPACITY_THRESHOLD = 5
+from .utils import _coerce_path, _deduplicate_records
 
-
-def break_gens(
-    system: System,
-    folder_path: str | None = None,
-    pcm_defaults_fpath: str | None = None,
-    pcm_defaults_dict: dict | None = None,
-    capacity_threshold: int = CAPACITY_THRESHOLD,
-    non_break_techs: list[str] | None = None,
-) -> System:
-    """Break apart large generators based on average capacity.
-
-    Parameters
-    ----------
-    system : System
-        The system to modify.
-    folder_path : str, optional
-        Path to the folder containing ReEDS data (used to resolve relative paths).
-    pcm_defaults_fpath : str, optional
-        Path to PCM defaults file. If not provided, will look for it in the
-        folder_path under defaults/pcm_generator_defaults.csv.
-    pcm_defaults_dict : dict, optional
-        Dictionary of PCM defaults. If provided, takes precedence over pcm_defaults_fpath.
-        Should be a dict mapping technology names to dicts with 'avg_capacity_MW' key.
-    capacity_threshold : int, default 5
-        Minimum capacity threshold for generators (MW).
-    non_break_techs : list[str], optional
-        List of technology names that should not be broken apart.
-
-    Returns
-    -------
-    System
-        Modified system with broken generators.
-    """
-    logger.info("Dividing generators into average size generators")
-
-    reference_generators = None
-
-    if pcm_defaults_dict is not None and not pcm_defaults_fpath:
-        logger.debug("Using provided pcm_defaults_dict")
-        reference_generators = pcm_defaults_dict
-        return break_generators(system, reference_generators, capacity_threshold, non_break_techs)
-
-    reference_generators = DataStore.load_file(pcm_defaults_fpath)
-
-    reference_generators = (
-        pd.DataFrame.from_dict(reference_generators)
-        .transpose()
-        .reset_index()
-        .rename(columns={"index": "tech"})
-        .set_index("tech")
-        .replace({np.nan: None})
-        .to_dict(orient="index")
-    )
-
-    # Default non-break techs if not provided
-    if non_break_techs is None:
-        non_break_techs = []
-
-    return break_generators(system, reference_generators, capacity_threshold, non_break_techs)
+if TYPE_CHECKING:
+    from r2x_core import System
 
 
 def break_generators(
     system: System,
-    reference_generators: dict[str, dict],
-    capacity_threshold: int = CAPACITY_THRESHOLD,
-    non_break_techs: list[str] | None = None,
+    reference_technologies: Path | str | PathLike | dict[str, Any],
+    drop_capacity_threshold: int = 5,
+    skip_categories: list[str] | None = None,
+    break_category: str = "category",
+) -> None:
+    """Public API for breaking generators with fail-fast error handling."""
+    match _break_generators_result(
+        system=system,
+        reference_technologies=reference_technologies,
+        drop_capacity_threshold=drop_capacity_threshold,
+        skip_categories=skip_categories,
+        break_category=break_category,
+    ):
+        case Ok(_):
+            return None
+        case Err(error):
+            raise error
+
+
+def _break_generators_result(
+    system: System,
+    reference_technologies: Path | str | PathLike | dict[str, Any],
+    drop_capacity_threshold: int,
+    skip_categories: list[str] | None,
+    break_category: str,
+) -> Result[None, Exception]:
+    """Load references, run splitting logic, and propagate errors via Result."""
+    if drop_capacity_threshold < 0:
+        msg = "drop_capacity_threshold must be non-negative"
+        return Err(ValueError(msg))
+
+    match _load_reference_generators(reference_technologies):
+        case Ok(reference_generators):
+            _break_generators(
+                system=system,
+                reference_generators=reference_generators,
+                capacity_threshold=drop_capacity_threshold,
+                skip_categories=skip_categories,
+                break_category=break_category,
+            )
+            return Ok(None)
+        case Err(error):
+            return Err(error)
+
+
+def _break_generators(
+    system: System,
+    reference_generators: dict[str, dict[str, Any]],
+    capacity_threshold: float,
+    skip_categories: list[str] | None = None,
     break_category: str = "category",
 ) -> System:
-    """Break component generator into smaller units.
-
-    Parameters
-    ----------
-    system : System
-        The system containing generators to break.
-    reference_generators : dict[str, dict]
-        Dictionary mapping technology names to their reference data including avg_capacity_MW.
-    capacity_threshold : int, default 5
-        Minimum capacity threshold (MW). Generators smaller than this are dropped.
-    non_break_techs : list[str], optional
-        List of technology names that should not be broken apart.
-    break_category : str, default "category"
-        Attribute name to use for categorizing generators.
-
-    Returns
-    -------
-    System
-        Modified system with broken generators.
-    """
-    regex_pattern = f"^(?!{'|'.join(non_break_techs)})." if non_break_techs else ".*"
+    """Break component generator into smaller units."""
+    skip_set: set[str] = {str(value) for value in skip_categories} if skip_categories else set()
 
     capacity_dropped = 0
     for component in system.get_components(
-        ReEDSGenerator, filter_func=lambda x: re.search(regex_pattern, x.name)
+        ReEDSGenerator, filter_func=lambda comp: getattr(comp, break_category, None)
     ):
-        if not (tech := getattr(component, break_category, None)):
-            logger.trace(f"Skipping component {component.name} with missing category")
+        tech_key = str(getattr(component, break_category))
+
+        if skip_set and tech_key in skip_set:
+            logger.trace(
+                "Skipping component {} because {}={} is in skip list",
+                component.name,
+                break_category,
+                tech_key,
+            )
             continue
 
         logger.trace(f"Breaking {component.name}")
 
-        if not (reference_tech := reference_generators.get(tech)):
-            logger.trace(f"{tech} not found in reference_generators")
+        if not (reference_tech := reference_generators.get(tech_key)):
+            logger.trace(f"{tech_key} not found in reference_generators")
             continue
 
         if not (avg_capacity := reference_tech.get("avg_capacity_MW", None)):
             continue
-
-        logger.trace(f"Average_capacity: {avg_capacity}")
 
         # Use .capacity field directly (float in MW)
         reference_base_power = component.capacity
@@ -134,7 +106,6 @@ def break_generators(
 
         if no_splits <= 1:
             continue
-
         split_no = 1
         logger.trace(
             f"Breaking generator {component.name} with capacity {reference_base_power} "
@@ -143,24 +114,24 @@ def break_generators(
 
         for _ in range(no_splits):
             component_name = component.name + f"_{split_no:02}"
-            _create_split_generator(system, component, component_name, avg_capacity, reference_base_power)
+            _create_split_generator(system, component, component_name, avg_capacity)
             split_no += 1
 
         if remainder > capacity_threshold:
             component_name = component.name + f"_{split_no:02}"
-            _create_split_generator(system, component, component_name, remainder, reference_base_power)
+            _create_split_generator(system, component, component_name, remainder)
         else:
             capacity_dropped += remainder
             logger.debug(f"Dropped {remainder} capacity for {component.name}")
 
         system.remove_component(component)
 
-    logger.info(f"Total capacity dropped {capacity_dropped} MW")
+    logger.debug(f"Total capacity dropped {capacity_dropped} MW")
     return system
 
 
 def _create_split_generator(
-    system: System, original: ReEDSGenerator, name: str, new_capacity: float, original_capacity: float
+    system: System, original: ReEDSGenerator, name: str, new_capacity: float
 ) -> ReEDSGenerator:
     """Create a new split generator component.
 
@@ -174,8 +145,6 @@ def _create_split_generator(
         Name for the new split generator.
     new_capacity : float
         Capacity of the new generator (MW).
-    original_capacity : float
-        Original capacity before splitting (MW).
 
     Returns
     -------
@@ -199,14 +168,77 @@ def _create_split_generator(
 
     system.add_component(new_component)
 
-    # Copy supplemental attributes (emissions)
     for attribute in system.get_supplemental_attributes_with_component(original, ReEDSEmission):
         system.add_supplemental_attribute(new_component, attribute)
 
-    # Copy time series if present
     if system.has_time_series(original):
         logger.trace(f"Component {original.name} has time series attached. Copying.")
         ts = system.get_time_series(original)
         system.add_time_series(ts, new_component)
 
     return new_component
+
+
+def _load_reference_generators(
+    reference_technologies: Path | str | PathLike | dict[str, Any], *, dedup_key: str = "name"
+) -> Result[dict[str, dict[str, Any]], Exception]:
+    """Load reference generator definitions and deduplicate them."""
+    if isinstance(reference_technologies, dict):
+        return _normalize_reference_data(
+            reference_technologies, dedup_key, "<in-memory reference technologies>"
+        )
+
+    match _coerce_path(reference_technologies):
+        case Ok(path_value):
+            try:
+                reference_data = DataStore.load_file(path_value)
+            except Exception as exc:  # pragma: no cover - propagate load failures
+                return Err(exc)
+        case Err(error):
+            return Err(error)
+
+    return _normalize_reference_data(reference_data, dedup_key, path_value)
+
+
+def _normalize_reference_data(
+    reference_data: Any, dedup_key: str, source: Path | str | PathLike
+) -> Result[dict[str, dict[str, Any]], Exception]:
+    """Convert raw reference data into a keyed dict with helpful errors."""
+    if isinstance(reference_data, dict):
+        normalized_input: list[dict[str, Any]] = []
+        for key, record in reference_data.items():
+            if not isinstance(record, dict):
+                logger.warning("Skipping non-dict reference record for key '{}': {}", key, record)
+                continue
+            normalized_record = dict(record)
+            normalized_record.setdefault(dedup_key, key)
+            normalized_input.append(normalized_record)
+        reference_data = normalized_input
+
+    if isinstance(reference_data, list):
+        reference_generators: dict[str, dict[str, Any]] = {}
+        for record in _deduplicate_records(reference_data, key=dedup_key):
+            if not isinstance(record, dict):
+                logger.warning("Skipping non-dict reference record: {}", record)
+                continue
+            key_value = record.get(dedup_key)
+            if key_value is None:
+                logger.warning(
+                    "Skipping reference record missing key '{}' in {}",
+                    dedup_key,
+                    source,
+                )
+                continue
+            reference_generators[str(key_value)] = record
+
+        if reference_generators:
+            return Ok(reference_generators)
+
+        msg = (
+            f"No reference technologies with key '{dedup_key}' were found in {source}. "
+            "Ensure the file contains at least one valid entry."
+        )
+        return Err(ValueError(msg))
+
+    msg = f"reference_technologies must be a dict or JSON array of dicts, got {type(reference_data).__name__}"
+    return Err(TypeError(msg))

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from r2x_core import GitVersioningStrategy, PluginManifest, PluginSpec
-from r2x_reeds.config import ReEDSConfig
-from r2x_reeds.parser import ReEDSParser
-from r2x_reeds.sysmod.break_gens import break_gens
+from r2x_reeds import ReEDSConfig, ReEDSParser
+from r2x_reeds.sysmod.break_gens import _break_generators
 from r2x_reeds.sysmod.ccs_credit import add_ccs_credit
 from r2x_reeds.sysmod.electrolyzer import add_electrolizer_load
 from r2x_reeds.sysmod.emission_cap import add_emission_cap
@@ -70,7 +69,7 @@ manifest.add(
 manifest.add(
     PluginSpec.function(
         name="r2x_reeds.break_gens",
-        entry=break_gens,
+        entry=_break_generators,
         description="Split large generators into average-sized units.",
     )
 )

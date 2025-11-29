@@ -9,14 +9,22 @@ if TYPE_CHECKING:
     from r2x_core import DataStore, System
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
+pytest_plugins = [
+    "tests.fixtures.data_fixtures",
+    "tests.fixtures.component_fixtures",
+]
+
 
 @pytest.fixture
 def caplog(caplog):
-    logger.enable("r2x_core")
-    logger.enable("r2x_reeds")
+    from r2x_core.logger import setup_logging
+
+    setup_logging(level="DEBUG", tracing=True, enable_console_log=False)
     handler_id = logger.add(caplog.handler, format="{message}")
-    yield caplog
-    logger.remove(handler_id)
+    try:
+        yield caplog
+    finally:
+        logger.remove(handler_id)
 
 
 @pytest.fixture(scope="function")

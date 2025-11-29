@@ -20,9 +20,8 @@ from typing import Any
 import pytest
 from infrasys import Component, System
 
-from r2x_core.store import DataStore
-from r2x_reeds.config import ReEDSConfig
-from r2x_reeds.parser import ReEDSParser
+from r2x_core import DataStore
+from r2x_reeds import ReEDSConfig, ReEDSParser
 
 
 @pytest.fixture
@@ -73,7 +72,7 @@ def reeds_config() -> ReEDSConfig:
 @pytest.fixture
 def data_store(reeds_run_path: Path, reeds_config: ReEDSConfig) -> DataStore:
     """Create DataStore from file mapping."""
-    return DataStore.from_json(reeds_config.file_mapping_path, path=reeds_run_path)
+    return DataStore.from_plugin_config(reeds_config, path=reeds_run_path)
 
 
 @pytest.fixture
@@ -113,16 +112,29 @@ def test_component_types_match(legacy_component_types: dict[str, int], new_syste
         comp_type = type(comp).__name__
         new_types[comp_type] = new_types.get(comp_type, 0) + 1
 
-    type_mapping = {
-        "RenewableDispatch": "ReEDSGenerator",
-        "PowerLoad": "ReEDSDemand",
-        "ACBus": "ReEDSRegion",
-        "MonitoredLine": "ReEDSTransmissionLine",
+    type_mapping: dict[str, tuple[str, ...]] = {
+        "RenewableDispatch": (
+            "ReEDSGenerator",
+            "ReEDSThermalGenerator",
+            "ReEDSVariableGenerator",
+            "ReEDSStorage",
+            "ReEDSHydroGenerator",
+            "ReEDSConsumingTechnology",
+        ),
+        "PowerLoad": ("ReEDSDemand",),
+        "ACBus": ("ReEDSRegion",),
+        "MonitoredLine": ("ReEDSTransmissionLine",),
     }
 
     for legacy_type in legacy_component_types:
-        new_type = type_mapping.get(legacy_type, legacy_type)
-        assert new_type in new_types or legacy_type not in type_mapping
+        allowed_types = type_mapping.get(legacy_type)
+        if allowed_types is None:
+            # No expectations for other legacy types
+            continue
+
+        assert any(new_type in new_types for new_type in allowed_types), (
+            f"Legacy type {legacy_type} expects one of {allowed_types} but new system has {list(new_types)}"
+        )
 
 
 def test_component_names_match(legacy_component_names: set[str], new_system: System) -> None:

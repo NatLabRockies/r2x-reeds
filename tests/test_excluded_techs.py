@@ -1,26 +1,17 @@
 """Tests for excluded_techs functionality."""
 
-from r2x_core.store import DataStore
-from r2x_reeds.config import ReEDSConfig
-from r2x_reeds.models.components import ReEDSGenerator
-from r2x_reeds.parser import ReEDSParser
 
-
-def test_excluded_techs_empty_list_default(reeds_run_path):
-    """Test that default excluded_techs includes can-imports and electrolyzer."""
-    config = ReEDSConfig(
-        solve_year=[2032],
-        weather_year=[2012],
-        scenario="test",
-        case_name="test",
-    )
+def test_excluded_techs_empty_list_default(reeds_config, reeds_run_path):
+    from r2x_core import DataStore
+    from r2x_reeds import ReEDSParser
+    from r2x_reeds.models import ReEDSGenerator
 
     # Use classmethod API per migration: pass config_path explicitly
-    defaults = config.__class__.load_defaults(config_path=config.config_path)
-    assert defaults.get("excluded_techs") == ["can-imports", "electrolyzer"]
+    config_dicts = reeds_config.load_config()
+    assert config_dicts["defaults"].get("excluded_techs") == ["can-imports", "electrolyzer"]
 
-    data_store = DataStore.from_json(config.file_mapping_path, path=reeds_run_path)
-    parser = ReEDSParser(config, data_store=data_store)
+    data_store = DataStore.from_plugin_config(reeds_config, path=reeds_run_path)
+    parser = ReEDSParser(reeds_config, data_store=data_store)
     system = parser.build_system()
     generators = list(system.get_components(ReEDSGenerator))
 

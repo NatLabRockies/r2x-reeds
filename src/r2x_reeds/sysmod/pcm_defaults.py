@@ -89,7 +89,7 @@ def add_pcm_defaults(
 
         if not pcm_defaults_override:
             fields_to_replace = [
-                key for key, value in component.model_dump().items() if value is None and key in pcm_values
+                key for key in pcm_values if _check_if_null(_get_component_attribute(component, key))
             ]
         else:
             fields_to_replace = [key for key in pcm_values if key in type(component).model_fields]
@@ -132,3 +132,11 @@ def _check_if_null(val):
     if isinstance(val, dict):
         return all(not v for v in val.values())
     return val is None
+
+
+def _get_component_attribute(component, attr):
+    """Safely retrieve an attribute that may not exist on the component."""
+    try:
+        return getattr(component, attr)
+    except AttributeError:
+        return None

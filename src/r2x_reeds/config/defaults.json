@@ -56,6 +56,7 @@
         "coal",
         "gas-cc",
         "gas-ct",
+        "lfill-gas",
         "nuclear",
         "o-g-s",
         "biopower",
@@ -143,6 +144,21 @@
       ],
       "exact": []
     }
+  },
+  "category_class_mapping": {
+    "storage": "ReEDSStorage",
+    "pumped_storage": "ReEDSStorage",
+    "hydro": "ReEDSHydroGenerator",
+    "hydro_dispatchable": "ReEDSHydroGenerator",
+    "hydro_nondispatchable": "ReEDSHydroGenerator",
+    "electrolyzer": "ReEDSConsumingTechnology",
+    "thermal": "ReEDSThermalGenerator",
+    "solar": "ReEDSVariableGenerator",
+    "wind": "ReEDSVariableGenerator",
+    "geothermal": "ReEDSVariableGenerator",
+    "renewable": "ReEDSVariableGenerator",
+    "variable_renewable": "ReEDSVariableGenerator",
+    "hydrogen": "ReEDSConsumingTechnology"
   },
   "default_values": {
     "base_year": 2020,

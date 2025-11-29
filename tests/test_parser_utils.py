@@ -17,6 +17,7 @@ def test_tech_matches_category_with_prefixes() -> None:
 def test_get_technology_category_ok_and_err() -> None:
     categories = {
         "wind": {"prefixes": ["wind"], "exact": []},
+        "renewable": {"prefixes": ["wind"], "exact": []},
         "solar": ["upv", "dupv"],
     }
 
@@ -26,6 +27,21 @@ def test_get_technology_category_ok_and_err() -> None:
     err_result = parser_utils.get_technology_category("unknown", categories)
     assert err_result.is_err()
     assert isinstance(err_result.unwrap_err(), KeyError)
+
+
+def test_get_technology_categories_multiple_matches() -> None:
+    categories = {
+        "wind": {"prefixes": ["wind"], "exact": []},
+        "renewable": {"prefixes": ["wind", "upv"], "exact": []},
+        "variable_renewable": {"prefixes": ["wind", "upv"], "exact": []},
+    }
+
+    multi_result = parser_utils.get_technology_categories("wind-ons", categories)
+    assert multi_result.unwrap() == ["wind", "renewable", "variable_renewable"]
+
+    # Legacy helper still returns only the first match
+    first_match = parser_utils.get_technology_category("wind-ons", categories)
+    assert first_match.unwrap() == "wind"
 
 
 def test_monthly_to_hourly_polars() -> None:

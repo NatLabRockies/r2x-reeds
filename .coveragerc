@@ -1,0 +1,22 @@
+[run]
+source = src/r2x_reeds
+omit =
+    */tests/*
+    */__pycache__/*
+    */site-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abstract
+precision = 2
+fail_under = 95
+
+[html]
+directory = htmlcov

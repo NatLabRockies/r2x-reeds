@@ -10,32 +10,36 @@ from loguru import logger
 
 __version__ = version("r2x_reeds")
 
-from .config import ReEDSConfig
+# Import getters to register them with r2x-core
+from . import getters  # noqa: F401
 from .models import (
     EmissionRate,
     EmissionType,
-    EnergyMWh,
     FromTo_ToFrom,
     Percentage,
-    PowerMW,
     ReEDSComponent,
+    ReEDSConsumingTechnology,
     ReEDSDemand,
     ReEDSEmission,
     ReEDSGenerator,
+    ReEDSH2Pipeline,
+    ReEDSH2Storage,
+    ReEDSHydroGenerator,
     ReEDSInterface,
     ReEDSRegion,
     ReEDSReserve,
     ReEDSReserveRegion,
     ReEDSResourceClass,
+    ReEDSStorage,
+    ReEDSThermalGenerator,
     ReEDSTransmissionLine,
+    ReEDSVariableGenerator,
     ReserveDirection,
     ReserveType,
-    TimeHours,
 )
 from .parser import ReEDSParser
+from .plugin_config import ReEDSConfig
 
-# Disable default loguru handler for library usage
-# Applications using this library should configure their own handlers
 logger.disable("r2x_reeds")
 
 latest_commit = "401c0bb15cbf93d2ff9696b14b799edad763247a"
@@ -43,24 +47,28 @@ latest_commit = "401c0bb15cbf93d2ff9696b14b799edad763247a"
 __all__ = [
     "EmissionRate",
     "EmissionType",
-    "EnergyMWh",
     "FromTo_ToFrom",
     "Percentage",
-    "PowerMW",
     "ReEDSComponent",
     "ReEDSConfig",
+    "ReEDSConsumingTechnology",
     "ReEDSDemand",
     "ReEDSEmission",
     "ReEDSGenerator",
+    "ReEDSH2Pipeline",
+    "ReEDSH2Storage",
+    "ReEDSHydroGenerator",
     "ReEDSInterface",
     "ReEDSParser",
     "ReEDSRegion",
     "ReEDSReserve",
     "ReEDSReserveRegion",
     "ReEDSResourceClass",
+    "ReEDSStorage",
+    "ReEDSThermalGenerator",
     "ReEDSTransmissionLine",
+    "ReEDSVariableGenerator",
     "ReserveDirection",
     "ReserveType",
-    "TimeHours",
     "__version__",
 ]

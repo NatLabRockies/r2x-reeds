@@ -1,41 +1,68 @@
+default_stages:
+  - pre-commit
+
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+  - pre-push
+
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: trailing-whitespace
-      - id: check-added-large-files
-        args: ["--maxkb=50000"]
-        exclude: '\.h5$'
-      - id: check-json
-      - id: pretty-format-json
-        args: ["--autofix", "--no-sort-keys"]
-      - id: check-yaml
-        args: ["--allow-multiple-documents"]
-        exclude: ".github"
-      - id: check-case-conflict
-      - id: check-xml
-      - id: end-of-file-fixer
-      - id: check-merge-conflict
-      - id: debug-statements
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.36.3
-    hooks:
-      - id: typos
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.2
+  - repo: local
     hooks:
       - id: ruff-format
-        args: [--verbose]
+        name: ruff format
+        entry: uv run ruff format --verbose
+        language: system
         types_or: [python, pyi]
+
       - id: ruff-check
-        args: [--fix, --config=pyproject.toml]
+        name: ruff check
+        entry: uv run ruff check --fix --config=pyproject.toml
+        language: system
         types_or: [python, pyi]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.18.2"
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-case-conflict
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.10.0
+    hooks:
+      - id: commitizen
+        stages:
+          - commit-msg
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (quick)
+        entry: uv run pytest -q -m "not slow" --maxfail=1 --disable-warnings
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.9.4
+    hooks:
+      - id: uv-lock
+
+  - repo: local
     hooks:
       - id: mypy
-        types: [python]
-        args: [--config-file=pyproject.toml, -p, r2x_reeds]
-        pass_filenames: false
+        name: mypy
+        entry: uv run mypy --config-file=pyproject.toml src/r2x_reeds
         language: system
-        entry: uv run mypy
+        types: [python]
+        pass_filenames: false
+        stages: [manual]

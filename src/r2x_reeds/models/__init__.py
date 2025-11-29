@@ -7,39 +7,54 @@ This package contains all data models for ReEDS components including:
 - Component models for regions, generators, transmission, etc.
 """
 
-from .base import FromTo_ToFrom, ReEDSComponent
+from .base import FromTo_ToFrom, MinMax, ReEDSComponent, UpDown
 from .components import (
+    ReEDSConsumingTechnology,
     ReEDSDemand,
     ReEDSEmission,
     ReEDSGenerator,
+    ReEDSH2Pipeline,
+    ReEDSH2Storage,
+    ReEDSHydroGenerator,
     ReEDSInterface,
     ReEDSRegion,
     ReEDSReserve,
     ReEDSReserveRegion,
     ReEDSResourceClass,
+    ReEDSStorage,
+    ReEDSThermalGenerator,
     ReEDSTransmissionLine,
+    ReEDSVariableGenerator,
 )
-from .enums import EmissionType, ReserveDirection, ReserveType
-from .units import EmissionRate, EnergyMWh, Percentage, PowerMW, TimeHours
+from .enums import EmissionSource, EmissionType, FuelType, ReserveDirection, ReserveType
+from .units import EmissionRate, Percentage
 
 __all__ = [
     "EmissionRate",
+    "EmissionSource",
     "EmissionType",
-    "EnergyMWh",
     "FromTo_ToFrom",
+    "FuelType",
+    "MinMax",
     "Percentage",
-    "PowerMW",
     "ReEDSComponent",
+    "ReEDSConsumingTechnology",
     "ReEDSDemand",
     "ReEDSEmission",
     "ReEDSGenerator",
+    "ReEDSH2Pipeline",
+    "ReEDSH2Storage",
+    "ReEDSHydroGenerator",
     "ReEDSInterface",
     "ReEDSRegion",
     "ReEDSReserve",
     "ReEDSReserveRegion",
     "ReEDSResourceClass",
+    "ReEDSStorage",
+    "ReEDSThermalGenerator",
     "ReEDSTransmissionLine",
+    "ReEDSVariableGenerator",
     "ReserveDirection",
     "ReserveType",
-    "TimeHours",
+    "UpDown",
 ]

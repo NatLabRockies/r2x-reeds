@@ -395,10 +395,10 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "i": "tech",
+        "i": "technology",
         "v": "vintage",
         "t": "year",
-        "value": "cf_adj"
+        "value": "capacity_factor_adjustment"
       },
       "filter_by": {
         "year": "{solve_year}"
@@ -416,8 +416,8 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "i": "tech",
-        "value": "ilr"
+        "i": "technology",
+        "value": "inverter_loading_ratio"
       }
     },
     "note": "Different from 1 for inverter-based technologies. 1 otherwise."
@@ -436,7 +436,9 @@
         "i": "technology",
         "r": "region",
         "rscbin": "resource_class",
-        "value": "capacity"
+        "value": "capacity",
+        "supply_curve_cost_per_mw": "supply_curve_cost",
+        "capital_adder_per_mw": "transmission_adder"
       }
     }
   },
@@ -686,6 +688,257 @@
       },
       "filter_by": {
         "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "ramprate",
+    "fpath": "inputs_case/ramprate.csv",
+    "info": {
+      "description": "Ramp rate by technology",
+      "is_input": true,
+      "is_optional": true,
+      "units": "fraction/hour"
+    },
+    "reader": {
+      "kwargs": {
+        "has_header": false,
+        "new_columns": ["technology", "ramp_rate"]
+      },
+      "function": null
+    },
+    "proc_spec": {
+      "column_schema": {
+        "technology": "string",
+        "ramp_rate": "float"
+      }
+    }
+  },
+  {
+    "name": "minloadfrac",
+    "fpath": "inputs_case/minloadfrac0.csv",
+    "info": {
+      "description": "Minimum load fraction by technology",
+      "is_input": true,
+      "is_optional": true,
+      "units": "fraction"
+    },
+    "reader": {
+      "kwargs": {
+        "has_header": false,
+        "new_columns": ["technology", "min_load_frac"]
+      },
+      "function": null
+    },
+    "proc_spec": {
+      "column_schema": {
+        "technology": "string",
+        "min_load_frac": "float"
+      }
+    }
+  },
+  {
+    "name": "startcost",
+    "fpath": "inputs_case/startcost.csv",
+    "info": {
+      "description": "Startup cost by technology",
+      "is_input": true,
+      "is_optional": true,
+      "units": "$/MW"
+    },
+    "reader": {
+      "kwargs": {
+        "has_header": true,
+        "skip_rows": 1
+      },
+      "function": null
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "*i": "technology",
+        "$2004/MW": "startup_cost"
+      }
+    }
+  },
+  {
+    "name": "storage_efficiency",
+    "fpath": "outputs/storage_eff.csv",
+    "info": {
+      "description": "Round-trip efficiency for storage technologies",
+      "is_input": false,
+      "is_optional": true,
+      "units": "fraction"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "i": "technology",
+        "t": "year",
+        "value": "round_trip_efficiency"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "storage_duration_out",
+    "fpath": "outputs/storage_duration_out.csv",
+    "info": {
+      "description": "Storage duration per vintage/region for storage technologies",
+      "is_input": false,
+      "is_optional": true,
+      "units": "hours"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "i": "technology",
+        "v": "vintage",
+        "r": "region",
+        "t": "year",
+        "value": "storage_duration"
+      }
+    }
+  },
+  {
+    "name": "storage_duration",
+    "fpath": "outputs/storage_duration.csv",
+    "info": {
+      "description": "Storage duration for storage technologies",
+      "is_input": false,
+      "is_optional": true,
+      "units": "hours"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "i": "technology",
+        "value": "storage_duration"
+      }
+    }
+  },
+  {
+    "name": "cost_capital",
+    "fpath": "outputs/cost_cap.csv",
+    "info": {
+      "description": "Capital cost by technology",
+      "is_input": false,
+      "is_optional": true,
+      "units": "$/MW"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "i": "technology",
+        "t": "year",
+        "Value": "capital_cost"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "cost_capital_energy",
+    "fpath": "outputs/cost_cap_energy.csv",
+    "info": {
+      "description": "Capital cost for energy component of storage",
+      "is_input": false,
+      "is_optional": true,
+      "units": "$/MWh"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "i": "technology",
+        "t": "year",
+        "Value": "capital_cost_energy"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "consume_characteristics",
+    "fpath": "inputs_case/consume_char.csv",
+    "info": {
+      "description": "Consuming technology characteristics (electrolyzer, DAC, etc.)",
+      "is_input": true,
+      "is_optional": true
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "*i": "technology",
+        "t": "year",
+        "parameter": "parameter",
+        "value": "value"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "reserve_percentages",
+    "fpath": "inputs_case/orperc.csv",
+    "info": {
+      "description": "Operating reserve category percentages by reserve type (load, wind, PV)",
+      "is_input": true,
+      "is_optional": true
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "*i": "reserve_type",
+        "or_load": "or_load_percentage",
+        "or_wind": "or_wind_percentage",
+        "or_pv": "or_pv_percentage"
+      }
+    }
+  },
+  {
+    "name": "reserve_seasons",
+    "fpath": "inputs_case/opres_periods.csv",
+    "info": {
+      "description": "Operating reserve seasonal periods",
+      "is_input": true,
+      "is_optional": true
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "*szn": "season"
+      }
+    }
+  },
+  {
+    "name": "reserve_costs_default",
+    "fpath": "inputs_case/cost_opres_default.csv",
+    "info": {
+      "description": "Operating reserve costs by technology and reserve type (default scenario)",
+      "is_input": true,
+      "is_optional": true,
+      "units": "$/MW"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "*i": "technology",
+        "reg": "reg_cost",
+        "flex": "flex_cost",
+        "spin": "spin_cost"
+      }
+    }
+  },
+  {
+    "name": "reserve_costs_market",
+    "fpath": "inputs_case/cost_opres_market.csv",
+    "info": {
+      "description": "Operating reserve costs by technology and reserve type (market scenario)",
+      "is_input": true,
+      "is_optional": true,
+      "units": "$/MW"
+    },
+    "proc_spec": {
+      "column_mapping": {
+        "*i": "technology",
+        "reg": "reg_cost",
+        "flex": "flex_cost",
+        "spin": "spin_cost"
       }
     }
   }

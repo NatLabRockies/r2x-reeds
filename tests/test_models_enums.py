@@ -20,12 +20,12 @@ def test_emission_type_is_string_enum():
 
 def test_reserve_type_regulation_exists():
     """Test that Regulation reserve type exists."""
-    assert ReserveType.REGULATION == "Regulation"
+    assert ReserveType.REGULATION == "REGULATION"
 
 
 def test_reserve_type_spinning_exists():
     """Test that Spinning reserve type exists."""
-    assert ReserveType.SPINNING == "Spinning"
+    assert ReserveType.SPINNING == "SPINNING"
 
 
 def test_reserve_direction_up_exists():

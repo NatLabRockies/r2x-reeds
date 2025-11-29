@@ -68,8 +68,7 @@ def add_emission_cap(
 
     # Check if we have CO2 emission type in the system
     if not any(
-        component.emission_type == emission_object
-        for component in system.get_supplemental_attributes(ReEDSEmission)
+        component.type == emission_object for component in system.get_supplemental_attributes(ReEDSEmission)
     ):
         logger.warning("Did not find any emission type to apply emission_cap")
         return system
@@ -204,7 +203,7 @@ def add_precombustion(system: System, emission_rates: pl.DataFrame) -> bool:
 
         # Get emission attributes for this component
         attr = system.get_supplemental_attributes_with_component(
-            component, ReEDSEmission, filter_func=lambda attr, et=emission_type: attr.emission_type == et
+            component, ReEDSEmission, filter_func=lambda attr, et=emission_type: attr.type == et
         )
 
         if not attr:

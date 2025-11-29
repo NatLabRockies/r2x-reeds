@@ -39,7 +39,7 @@ def _add_generator(
 
 
 def _attach_emission(system: System, generator: ReEDSGenerator, rate: float = 1.0) -> None:
-    system.add_supplemental_attribute(generator, ReEDSEmission(rate=rate, emission_type=EmissionType.CO2))
+    system.add_supplemental_attribute(generator, ReEDSEmission(rate=rate, type=EmissionType.CO2))
 
 
 def _write_csv(path: Path, data: dict[str, list]) -> str:

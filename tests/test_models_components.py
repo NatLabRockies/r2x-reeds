@@ -1,143 +1,202 @@
-"""Tests for ReEDS component models."""
+"""Tests for technology-specific component models."""
 
 import pytest
 from pydantic import ValidationError
 
-from r2x_reeds.models import (
-    EmissionType,
-    ReEDSDemand,
-    ReEDSEmission,
-    ReEDSGenerator,
-    ReEDSInterface,
-    ReEDSRegion,
-    ReEDSReserve,
-    ReEDSReserveRegion,
-    ReserveDirection,
-    ReserveType,
-)
+
+def test_thermal_generator_requires_heat_rate(sample_region):
+    from r2x_reeds.models.components import ReEDSThermalGenerator
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSThermalGenerator(
+            name="test",
+            region=sample_region,
+            technology="gas-cc",
+            capacity=100.0,
+            fuel_type="naturalgas",
+        )
+    assert "heat_rate" in str(exc_info.value)
 
 
-def test_reeds_region_creation():
-    """Test creating a ReEDS region."""
-    region = ReEDSRegion(name="p1")
-    assert region.name == "p1"
+def test_thermal_generator_requires_fuel_type(sample_region):
+    from r2x_reeds.models.components import ReEDSThermalGenerator
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSThermalGenerator(
+            name="test",
+            region=sample_region,
+            technology="gas-cc",
+            capacity=100.0,
+            heat_rate=7.5,
+        )
+    assert "fuel_type" in str(exc_info.value)
 
 
-def test_reeds_region_with_state():
-    """Test ReEDS region with state attribute."""
-    region = ReEDSRegion(name="p1", state="CO")
-    assert region.state == "CO"
+def test_storage_generator_requires_duration(sample_region):
+    from r2x_reeds.models.components import ReEDSStorage
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSStorage(
+            name="test",
+            region=sample_region,
+            technology="battery_li",
+            capacity=100.0,
+            round_trip_efficiency=0.85,
+        )
+    assert "storage_duration" in str(exc_info.value)
 
 
-def test_reeds_region_with_max_active_power():
-    """Test ReEDS region with max active power."""
-    region = ReEDSRegion(name="p1", max_active_power=1000.0)
-    assert region.max_active_power == 1000.0
+def test_storage_generator_requires_efficiency(sample_region):
+    from r2x_reeds.models.components import ReEDSStorage
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSStorage(
+            name="test",
+            region=sample_region,
+            technology="battery_li",
+            capacity=100.0,
+            storage_duration=4.0,
+        )
+    assert "round_trip_efficiency" in str(exc_info.value)
 
 
-def test_reeds_region_negative_max_power_fails():
-    """Test that negative max_active_power raises validation error."""
+def test_storage_efficiency_bounded(sample_region):
+    from r2x_reeds.models.components import ReEDSStorage
+
     with pytest.raises(ValidationError):
-        ReEDSRegion(name="p1", max_active_power=-100.0)
+        ReEDSStorage(
+            name="test",
+            region=sample_region,
+            technology="battery_li",
+            capacity=100.0,
+            storage_duration=4.0,
+            round_trip_efficiency=1.5,
+        )
 
 
-def test_reeds_generator_creation():
-    """Test creating a ReEDS generator."""
-    region = ReEDSRegion(name="p1")
-    gen = ReEDSGenerator(name="gen1", region=region, capacity=500.0)
-    assert gen.capacity == 500.0
+def test_hydro_generator_requires_dispatchable_flag(sample_region):
+    from r2x_reeds.models.components import ReEDSHydroGenerator
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSHydroGenerator(
+            name="test",
+            region=sample_region,
+            technology="hyd",
+            capacity=200.0,
+        )
+    assert "is_dispatchable" in str(exc_info.value)
 
 
-def test_reeds_generator_negative_capacity_fails():
-    """Test that negative capacity raises validation error."""
-    region = ReEDSRegion(name="p1")
+def test_consuming_tech_requires_electricity_efficiency(sample_region):
+    from r2x_reeds.models.components import ReEDSConsumingTechnology
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSConsumingTechnology(
+            name="test",
+            region=sample_region,
+            technology="electrolyzer",
+            capacity=100.0,
+        )
+    assert "electricity_efficiency" in str(exc_info.value)
+
+
+def test_h2_storage_requires_storage_type(sample_region):
+    from r2x_reeds.models.components import ReEDSH2Storage
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSH2Storage(
+            name="test",
+            region=sample_region,
+            capacity=1000.0,
+        )
+    assert "storage_type" in str(exc_info.value)
+
+
+def test_h2_pipeline_requires_distance(sample_region):
+    from r2x_reeds.models.components import ReEDSH2Pipeline
+
+    with pytest.raises(ValidationError) as exc_info:
+        ReEDSH2Pipeline(
+            name="test",
+            from_region=sample_region,
+            to_region=sample_region,
+            capacity=500.0,
+        )
+    assert "distance_km" in str(exc_info.value)
+
+
+def test_thermal_generator_valid(thermal_generator):
+    assert thermal_generator.heat_rate == 7.5
+    assert thermal_generator.fuel_type == "naturalgas"
+    assert thermal_generator.ramp_rate == 0.5
+    assert thermal_generator.startup_cost == 50.0
+
+
+def test_renewable_generator_valid(renewable_generator):
+    assert renewable_generator.technology == "upv"
+    assert renewable_generator.inverter_loading_ratio == 1.3
+    assert renewable_generator.resource_class == "class1"
+
+
+def test_storage_generator_valid(storage_generator):
+    assert storage_generator.storage_duration == 4.0
+    assert storage_generator.round_trip_efficiency == 0.85
+    assert storage_generator.energy_capacity == 400.0
+
+
+def test_hydro_generator_valid(hydro_generator):
+    assert hydro_generator.is_dispatchable is True
+    assert hydro_generator.flow_range.min == 0.25
+    assert hydro_generator.ramp_rate == 1.0
+
+
+def test_consuming_technology_valid(consuming_technology):
+    assert consuming_technology.electricity_efficiency == 51.45
+    assert consuming_technology.storage_transport_adder == 390000.0
+
+
+def test_emission_optional_pollutants():
+    from r2x_reeds.models.components import ReEDSEmission
+    from r2x_reeds.models.enums import EmissionSource, EmissionType
+
+    emission = ReEDSEmission(rate=0.45, type=EmissionType.CO2)
+    assert emission.rate == 0.45
+    assert emission.type == EmissionType.CO2
+    assert emission.source == EmissionSource.COMBUSTION
+
+
+def test_base_generator_inheritance(thermal_generator):
+    from r2x_reeds.models.components import ReEDSGenerator
+
+    assert isinstance(thermal_generator, ReEDSGenerator)
+    assert thermal_generator.capacity == 500.0
+    assert thermal_generator.region.name == "p1"
+
+
+def test_generator_negative_capacity_invalid(sample_region):
+    from r2x_reeds.models.components import ReEDSThermalGenerator
+
     with pytest.raises(ValidationError):
-        ReEDSGenerator(name="gen1", region=region, capacity=-100.0)
+        ReEDSThermalGenerator(
+            name="test",
+            region=sample_region,
+            technology="gas-cc",
+            capacity=-100.0,
+            heat_rate=7.5,
+            fuel_type="naturalgas",
+        )
 
 
-def test_reeds_generator_with_technology():
-    """Test generator with technology field."""
-    region = ReEDSRegion(name="p1")
-    gen = ReEDSGenerator(name="gen1", region=region, capacity=500.0, technology="gas-cc")
-    assert gen.technology == "gas-cc"
+def test_generator_outage_rate_bounded(sample_region):
+    from r2x_reeds.models.components import ReEDSThermalGenerator
 
-
-def test_reeds_emission_creation():
-    """Test creating a ReEDS emission."""
-    emission = ReEDSEmission(rate=0.5, emission_type=EmissionType.CO2)
-    assert emission.rate == 0.5
-
-
-def test_reeds_emission_type():
-    """Test emission type attribute."""
-    emission = ReEDSEmission(rate=0.5, emission_type=EmissionType.CO2)
-    assert emission.emission_type == EmissionType.CO2
-
-
-def test_reeds_emission_negative_rate_fails():
-    """Test that negative emission rate raises validation error."""
     with pytest.raises(ValidationError):
-        ReEDSEmission(rate=-1.0, emission_type=EmissionType.CO2)
-
-
-def test_reeds_interface_creation():
-    """Test creating a ReEDS interface."""
-    from_region = ReEDSRegion(name="p1")
-    to_region = ReEDSRegion(name="p2")
-    interface = ReEDSInterface(name="p1_to_p2", from_region=from_region, to_region=to_region)
-    assert interface.from_region.name == "p1"
-
-
-def test_reeds_interface_to_region():
-    """Test interface to_region attribute."""
-    from_region = ReEDSRegion(name="p1")
-    to_region = ReEDSRegion(name="p2")
-    interface = ReEDSInterface(name="p1_to_p2", from_region=from_region, to_region=to_region)
-    assert interface.to_region.name == "p2"
-
-
-def test_reeds_reserve_creation():
-    """Test creating a ReEDS reserve."""
-    reserve = ReEDSReserve(
-        name="reg_up",
-        reserve_type=ReserveType.REGULATION,
-        direction=ReserveDirection.UP,
-    )
-    assert reserve.reserve_type == ReserveType.REGULATION
-
-
-def test_reeds_reserve_direction():
-    """Test reserve direction attribute."""
-    reserve = ReEDSReserve(
-        name="reg_up",
-        reserve_type=ReserveType.REGULATION,
-        direction=ReserveDirection.UP,
-    )
-    assert reserve.direction == ReserveDirection.UP
-
-
-def test_reeds_reserve_region_creation():
-    """Test creating a ReEDS reserve region."""
-    reserve_region = ReEDSReserveRegion(name="west")
-    assert reserve_region.name == "west"
-
-
-def test_reeds_demand_creation():
-    """Test creating a ReEDS demand."""
-    region = ReEDSRegion(name="p1")
-    demand = ReEDSDemand(name="load_p1", region=region)
-    assert demand.region.name == "p1"
-
-
-def test_reeds_demand_with_max_power():
-    """Test demand with max active power."""
-    region = ReEDSRegion(name="p1")
-    demand = ReEDSDemand(name="load_p1", region=region, max_active_power=800.0)
-    assert demand.max_active_power == 800.0
-
-
-def test_reeds_demand_negative_max_power_fails():
-    """Test that negative max power fails validation."""
-    region = ReEDSRegion(name="p1")
-    with pytest.raises(ValidationError):
-        ReEDSDemand(name="load_p1", region=region, max_active_power=-100.0)
+        ReEDSThermalGenerator(
+            name="test",
+            region=sample_region,
+            technology="gas-cc",
+            capacity=100.0,
+            heat_rate=7.5,
+            fuel_type="naturalgas",
+            forced_outage_rate=1.5,
+        )

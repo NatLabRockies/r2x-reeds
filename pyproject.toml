@@ -6,19 +6,17 @@ description = "ReEDS model plugin"
 license = {file = "LICENSE.txt"}
 authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
+    { name = "kodiobika", email = "kodiobika@users.noreply.github.com" },
+    { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
+    { name = "kodiobika", email = "kodiobika@users.noreply.github.com" },
+    { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "infrasys>=1.0.0rc1",
-    "pydantic>=2.11.0,<3",
-    "polars>=1.33.0",
-    "h5py>=3.13.0",
-    "numpy>=1.20.0",
-    "loguru>=0.7.0",
-    "r2x-core>=0.1.1,<1.0.0",
+    "r2x-core>=0.2.0,<1.0.0",
 ]
 keywords=["ReEDS"]
 classifiers = [
@@ -80,21 +78,22 @@ plugins = [
   "pydantic.mypy"
 ]
 
-[[tool.mypy.overrides]]
-module = "r2x_core.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "h5py.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "r2x_reeds.*"
-disable_error_code = ["misc"]
-
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = [
+    "--cov=r2x_reeds",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=json",
+    "--strict-markers",
+    "-v",
+]
+markers = [
+    "unit: Fast unit tests with no external dependencies",
+    "integration: Integration tests requiring system setup",
+    "slow: Slow tests (>1s)",
+]
 
 [tool.ruff]
 line-length = 110
@@ -138,3 +137,28 @@ section-order = ["future", "standard-library", "third-party", "first-party", "lo
 [tool.ruff.lint.mccabe]
 # Cyclomatic complexity threshold
 max-complexity = 10
+
+[tool.coverage.run]
+source = ["src/r2x_reeds"]
+omit = [
+  "*/tests/*",
+  "*/__pycache__/*",
+  "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "@abstractmethod",
+  "@abstract",
+]
+precision = 2
+fail_under = 95
+
+[tool.coverage.html]
+directory = "htmlcov"

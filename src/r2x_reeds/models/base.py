@@ -6,7 +6,7 @@ from typing import Annotated
 
 from infrasys import Component
 from infrasys.models import InfraSysBaseModel
-from pydantic import Field
+from pydantic import Field, PositiveFloat, confloat, model_validator
 
 
 class ReEDSComponent(Component):
@@ -44,3 +44,31 @@ class FromTo_ToFrom(InfraSysBaseModel):  # noqa: N801
 
     from_to: Annotated[float, Field(description="Capacity from origin to destination in MW", ge=0)]
     to_from: Annotated[float, Field(description="Capacity from destination to origin in MW", ge=0)]
+
+
+class UpDown(InfraSysBaseModel):
+    """Bidirectional rate or value.
+
+    Represents rates or values that differ in up and down directions,
+    such as ramp rates or reserve provision capabilities.
+    """
+
+    up: PositiveFloat
+    down: PositiveFloat
+
+
+class MinMax(InfraSysBaseModel):
+    """Min/Max bounds for operational parameters.
+
+    Represents minimum and maximum bounds for operational parameters
+    like capacity factors, flow rates, etc.
+    """
+
+    min: confloat(ge=0, le=1)
+    max: confloat(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def check_min_less_than_max(self):
+        if self.min > self.max:
+            raise ValueError("min must be <= max")
+        return self
