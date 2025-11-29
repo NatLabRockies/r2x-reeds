@@ -331,3 +331,66 @@ def test_build_transmission_flow_missing_fields():
 
     result = build_transmission_flow(SimpleNamespace(), {})
     assert result.is_err()
+
+
+class ExplodingRow:
+    def __getattr__(self, name):
+        raise RuntimeError("boom")
+
+    def get(self, name):
+        raise RuntimeError("boom")
+
+
+class ExplodingSystem:
+    def get_component(self, component_type, name):
+        raise RuntimeError("boom")
+
+
+def test_getters_surface_internal_exceptions(context_with_regions):
+    from r2x_reeds.getters import (
+        build_generator_name,
+        build_load_name,
+        build_region_description,
+        build_region_name,
+        build_reserve_name,
+        build_transmission_interface_name,
+        build_transmission_line_name,
+        compute_is_dispatchable,
+        get_round_trip_efficiency,
+        get_storage_duration,
+        resolve_emission_source,
+        resolve_emission_type,
+        resolve_reserve_direction,
+        resolve_reserve_type,
+    )
+
+    bad_row = ExplodingRow()
+    context = SimpleNamespace(system=context_with_regions.system, metadata={})
+
+    assert build_region_description(context, bad_row).is_err()
+    assert build_region_name(context, bad_row).is_err()
+    assert compute_is_dispatchable(context, bad_row).is_err()
+    assert build_generator_name(context, bad_row).is_err()
+    assert build_load_name(context, bad_row).is_err()
+    assert build_reserve_name(context, bad_row).is_err()
+    assert resolve_reserve_type(context, bad_row).is_err()
+    assert resolve_reserve_direction(context, bad_row).is_err()
+    assert get_storage_duration(context, bad_row).is_err()
+    assert get_round_trip_efficiency(context, bad_row).is_err()
+    assert resolve_emission_type(context, bad_row).is_err()
+    assert resolve_emission_source(context, bad_row).is_err()
+    assert build_transmission_interface_name(context, bad_row).is_err()
+    assert build_transmission_line_name(context, bad_row).is_err()
+
+
+def test_lookup_transmission_interface_and_flow_errors(context_with_regions):
+    from r2x_reeds.getters import build_transmission_flow, lookup_transmission_interface
+
+    bad_context = SimpleNamespace(system=ExplodingSystem(), metadata={})
+    row = {"from_region": "p1", "to_region": "p2", "trtype": "ac", "capacity": "bad"}
+
+    flow_result = build_transmission_flow(SimpleNamespace(), {"capacity": "not-a-number"})
+    assert flow_result.is_err()
+
+    lookup_result = lookup_transmission_interface(bad_context, row)
+    assert lookup_result.is_err()

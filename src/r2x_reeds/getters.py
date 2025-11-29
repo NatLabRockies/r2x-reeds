@@ -70,6 +70,7 @@ def build_region_name(context: ParserContext, row: Any) -> Result[str, Exception
     """Build a canonical region name for parser records."""
 
     def _lookup(field: str) -> Any:
+        """Return the requested field value using row_utils."""
         return get_row_field(row, field)
 
     try:
@@ -271,6 +272,7 @@ def lookup_to_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Ex
 
 
 def _lookup_region_by_field(context: ParserContext, row: Any, field: str) -> Result[ReEDSRegion, Exception]:
+    """Shared helper to look up regions by a configurable field."""
     from r2x_reeds.models.components import ReEDSRegion
 
     try:
@@ -287,6 +289,7 @@ def _lookup_region_by_field(context: ParserContext, row: Any, field: str) -> Res
 def _lookup_reserve_region_by_field(
     context: ParserContext, row: Any, field: str
 ) -> Result[ReEDSReserveRegion, Exception]:
+    """Fetch reserve regions by alternative field names."""
     from r2x_reeds.models.components import ReEDSReserveRegion
 
     try:

@@ -20,6 +20,8 @@ class EmissionType(str, Enum):
 
 
 class EmissionSource(str, Enum):
+    """Sources for emissions tracking, used by emission components."""
+
     COMBUSTION = "COMBUSTION"
     PRECOMBUSTION = "PRECOMBUSTION"
 

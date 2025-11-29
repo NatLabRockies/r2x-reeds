@@ -246,6 +246,7 @@ def _prepare_generator_dataset(
     }
 
     def _transform_optional(name: str, frame: pl.LazyFrame) -> pl.LazyFrame:
+        """Normalize optional data frames before joining."""
         if name == "storage_duration_out":
             return frame.select(
                 pl.col("technology"),
@@ -329,6 +330,7 @@ def _prepare_generator_dataset(
         return Err(ParserError("All generators were excluded"))
 
     def _categories_for_tech(tech: str) -> list[str]:
+        """Return category names for a technology, logging misses."""
         result = get_technology_categories(tech, technology_categories)
         if result.is_err():
             logger.debug("Technology %s has no category match: %s", tech, result.err())
@@ -595,6 +597,8 @@ def prepare_generator_inputs(
 
 
 def get_rules_by_target(rules: list[Rule] | list[str]) -> Result[dict[str, list[Rule]], ParserError]:
+    """Group parser rules by their target component types."""
+
     from collections import defaultdict
 
     rules_by_target: defaultdict[Any, list[Rule]] = defaultdict(list)

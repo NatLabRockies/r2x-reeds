@@ -671,6 +671,7 @@ class ReEDSParser(BaseParser):
     def _build_transmission_interfaces(
         self, trancap: pl.DataFrame
     ) -> Result[tuple[int, list[str]], ParserError]:
+        """Create interface components from deduplicated transmission rows."""
         if self._ctx is None:
             return Err(ParserError("Parser context is missing"))
 
@@ -732,6 +733,7 @@ class ReEDSParser(BaseParser):
         return Ok((interface_count, creation_errors))
 
     def _build_transmission_lines(self, trancap: pl.DataFrame) -> Result[tuple[int, list[str]], ParserError]:
+        """Instantiate transmission lines using the raw transmission capacity table."""
         if self._ctx is None:
             return Err(ParserError("Parser context is missing"))
 
@@ -996,6 +998,7 @@ class ReEDSParser(BaseParser):
             return emission_kwargs_result
 
         def _aggregated_identifier(name: str) -> str | None:
+            """Generate an aggregated generator identifier for emission lookups."""
             parts = name.split("_")
             if len(parts) < 3:
                 return None

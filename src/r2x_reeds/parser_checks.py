@@ -1,3 +1,5 @@
+"""Parser validation helpers used by the parser upgrade flow."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable

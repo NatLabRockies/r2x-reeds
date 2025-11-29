@@ -69,6 +69,7 @@ class MinMax(InfraSysBaseModel):
 
     @model_validator(mode="after")
     def check_min_less_than_max(self):
+        """Ensure the minimum does not exceed the maximum."""
         if self.min > self.max:
             raise ValueError("min must be <= max")
         return self
