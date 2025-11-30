@@ -78,7 +78,7 @@ def data_store(reeds_run_path: Path, reeds_config: ReEDSConfig) -> DataStore:
 @pytest.fixture
 def new_system(reeds_config: ReEDSConfig, data_store: DataStore) -> System:
     """Build system using new parser."""
-    parser = ReEDSParser(config=reeds_config, data_store=data_store, name="test_system")
+    parser = ReEDSParser(config=reeds_config, store=data_store, name="test_system")
     return parser.build_system()
 
 

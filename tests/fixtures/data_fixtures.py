@@ -65,4 +65,4 @@ def parser(reeds_config: "ReEDSConfig", data_store: "DataStore") -> "ReEDSParser
     """ReEDS parser instance."""
     from r2x_reeds import ReEDSParser
 
-    return ReEDSParser(config=reeds_config, data_store=data_store, name="test_system")
+    return ReEDSParser(config=reeds_config, store=data_store, name="test_system")

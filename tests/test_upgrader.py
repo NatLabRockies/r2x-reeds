@@ -12,7 +12,7 @@ def upgraded_system(reeds_run_upgrader, example_reeds_config, caplog):
     # DataStore.from_plugin_config doesn't accept upgrader argument
     store = DataStore.from_plugin_config(example_reeds_config, path=reeds_run_upgrader)
 
-    parser = ReEDSParser(example_reeds_config, data_store=store, system_name="Upgraded System")
+    parser = ReEDSParser(example_reeds_config, store=store, system_name="Upgraded System")
     return parser.build_system()
 
 

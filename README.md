@@ -45,7 +45,7 @@ data_store = DataStore.from_json(
 )
 
 # Parse
-parser = ReEDSParser(config, data_store)
+parser = ReEDSParser(config, store=data_store)
 system = parser.build_system()
 
 # Access components

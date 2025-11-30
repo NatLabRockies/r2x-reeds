@@ -60,7 +60,7 @@ data_store = DataStore.from_json(
 )
 
 # Parse
-parser = ReEDSParser(config, data_store=data_store, name="ReEDS_System")
+parser = ReEDSParser(config, store=data_store, name="ReEDS_System")
 system = parser.build_system()
 
 # Access components

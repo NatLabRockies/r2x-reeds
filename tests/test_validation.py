@@ -14,7 +14,7 @@ def test_invalid_solve_year_raises_error(reeds_run_path):
     )
 
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
-    parser = ReEDSParser(config, data_store=data_store)
+    parser = ReEDSParser(config, store=data_store)
 
     result = parser.validate_inputs()
     assert result.is_err()
@@ -35,7 +35,7 @@ def test_invalid_weather_year_raises_error(reeds_run_path):
     )
 
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
-    parser = ReEDSParser(config, data_store=data_store)
+    parser = ReEDSParser(config, store=data_store)
     result = parser.validate_inputs()
     assert result.is_err()
     assert isinstance(result.error, ValidationError)
@@ -55,7 +55,7 @@ def test_valid_years_pass_validation(reeds_run_path):
     )
 
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
-    parser = ReEDSParser(config, data_store=data_store, name="test_valid_years")
+    parser = ReEDSParser(config, store=data_store, name="test_valid_years")
 
     result = parser.validate_inputs()
     assert result

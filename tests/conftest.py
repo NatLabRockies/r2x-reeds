@@ -83,7 +83,7 @@ def example_parser(example_reeds_config: "ReEDSConfig", example_data_store: "Dat
     """Create ReEDS parser instance."""
     from r2x_reeds import ReEDSParser
 
-    return ReEDSParser(config=example_reeds_config, data_store=example_data_store, name="test_system")
+    return ReEDSParser(config=example_reeds_config, store=example_data_store, name="test_system")
 
 
 @pytest.fixture(scope="session")

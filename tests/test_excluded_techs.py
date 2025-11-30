@@ -11,7 +11,7 @@ def test_excluded_techs_empty_list_default(reeds_config, reeds_run_path):
     assert config_dicts["defaults"].get("excluded_techs") == ["can-imports", "electrolyzer"]
 
     data_store = DataStore.from_plugin_config(reeds_config, path=reeds_run_path)
-    parser = ReEDSParser(reeds_config, data_store=data_store)
+    parser = ReEDSParser(reeds_config, store=data_store)
     system = parser.build_system()
     generators = list(system.get_components(ReEDSGenerator))
 

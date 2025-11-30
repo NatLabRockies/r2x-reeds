@@ -142,7 +142,7 @@ class ReEDSParser(BaseParser):
     >>> mapping_path = ReEDSConfig.get_file_mapping_path()
     >>> data_folder = Path("tests/data/test_Pacific")
     >>> data_store = DataStore.from_json(mapping_path, path=data_folder)
-    >>> parser = ReEDSParser(config, data_store=data_store, name="ReEDS_System")
+    >>> parser = ReEDSParser(config, store=data_store, name="ReEDS_System")
     >>> system = parser.build_system()
 
     Notes
@@ -169,7 +169,7 @@ class ReEDSParser(BaseParser):
         ----------
         config : ReEDSConfig
             Configuration object specifying solve years, weather years, case name, and scenario
-        data_store : DataStore
+        store : DataStore
             Initialized DataStore with ReEDS file mappings and data access
         auto_add_composed_components : bool, optional
             Whether to automatically add composed components to the system, by default True
