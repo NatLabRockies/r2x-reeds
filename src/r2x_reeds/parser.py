@@ -699,11 +699,16 @@ class ReEDSParser(BaseParser):
                 .alias("region_b"),
             )
             .select(
+                pl.col("region_a"),
+                pl.col("region_b"),
+                pl.col("trtype"),
+            )
+            .unique(subset=["region_a", "region_b"])
+            .select(
                 pl.col("region_a").alias("from_region"),
                 pl.col("region_b").alias("to_region"),
                 pl.col("trtype"),
             )
-            .unique()
         )
         logger.trace("Derived {} unique transmission interface rows", interface_rows.height)
 
