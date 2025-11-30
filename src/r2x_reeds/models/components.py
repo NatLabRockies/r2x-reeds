@@ -121,7 +121,7 @@ class ReEDSGenerator(HasUnits, ReEDSComponent):
 
     region: Annotated[ReEDSRegion, Field(description="ReEDS region")]
     technology: Annotated[str, Field(description="ReEDS technology type")]
-    capacity: Annotated[PositiveFloat, Unit("MW"), Field(description="Installed capacity", gt=0)]
+    capacity: Annotated[PositiveFloat, Unit("MW"), Field(description="Installed capacity", ge=0)]
     heat_rate: Annotated[PositiveFloat | None, Unit("MMBtu/MWh"), Field(description="Heat rate")] = None
     fuel_type: Annotated[str | None, Field(description="Fuel type")] = None
     fuel_price: Annotated[PositiveFloat | None, Unit("$/MMBtu"), Field(description="Fuel price")] = None
