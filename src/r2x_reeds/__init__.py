@@ -39,6 +39,7 @@ from .models import (
 )
 from .parser import ReEDSParser
 from .plugin_config import ReEDSConfig
+from .upgrader import ReEDSUpgrader
 
 logger.disable("r2x_reeds")
 
@@ -67,6 +68,7 @@ __all__ = [
     "ReEDSStorage",
     "ReEDSThermalGenerator",
     "ReEDSTransmissionLine",
+    "ReEDSUpgrader",
     "ReEDSVariableGenerator",
     "ReserveDirection",
     "ReserveType",

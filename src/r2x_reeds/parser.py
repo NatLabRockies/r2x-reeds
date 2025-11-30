@@ -157,7 +157,7 @@ class ReEDSParser(BaseParser):
         /,
         config: ReEDSConfig,
         *,
-        data_store: DataStore,
+        store: DataStore,
         auto_add_composed_components: bool = True,
         skip_validation: bool = False,
         overrides: dict[str, Any] | None = None,
@@ -197,7 +197,7 @@ class ReEDSParser(BaseParser):
 
         super().__init__(
             config=config,
-            data_store=data_store,
+            data_store=store,
             auto_add_composed_components=auto_add_composed_components,
             skip_validation=skip_validation,
             **kwargs,

@@ -6,7 +6,7 @@
       "draft": false,
       "extra-files": [
         {
-          "jsonpath": "$.package[?(@.name=='r2x-reeds')].version",
+          "jsonpath": "$.package[?(@.name.value=='r2x-reeds')].version",
           "path": "uv.lock",
           "type": "toml"
         }

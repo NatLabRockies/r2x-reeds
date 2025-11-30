@@ -601,7 +601,7 @@
     "info": {
       "description": "test",
       "is_input": true,
-      "is_optional": false
+      "is_optional": true
     }
   },
   {
@@ -610,7 +610,7 @@
     "info": {
       "description": "test",
       "is_input": true,
-      "is_optional": false
+      "is_optional": true
     }
   },
   {
