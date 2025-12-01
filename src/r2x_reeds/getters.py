@@ -15,6 +15,7 @@ from .enum_mappings import (
 )
 from .models.base import FromTo_ToFrom
 from .models.enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
+from .parser_utils import tech_matches_category
 from .row_utils import get_row_field
 
 if TYPE_CHECKING:
@@ -218,17 +219,15 @@ def get_fuel_type(context: ParserContext, row: Any) -> Result[str, Exception]:
     """Resolve the fuel type from the joined ``fuel2tech`` mapping."""
     try:
         value = get_row_field(row, "fuel_type")
-        if value is None:
-            return Err(ValueError("Row missing required 'fuel_type' field"))
+        if value is not None:
+            return Ok(str(value).strip())
 
-        from r2x_reeds.models.enums import FuelType
+        technology = get_row_field(row, "technology")
+        tech_categories = getattr(context, "metadata", {}).get("tech_categories", {})
+        if technology and tech_matches_category(str(technology), "thermal", tech_categories):
+            return Ok("OTHER")
 
-        normalized = str(value).strip()
-        for fuel in FuelType:
-            if fuel.value.casefold() == normalized.casefold():
-                return Ok(fuel.value)
-
-        raise ValueError(f"Unknown fuel type: {value}")
+        return Err(ValueError("Row missing required 'fuel_type' field"))
     except Exception as e:
         return Err(e)
 

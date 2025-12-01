@@ -40,8 +40,9 @@ AGG_COLUMNS = [
 ]
 
 
-def _build_generator_field_map(row: dict[str, Any], system: System) -> dict[str, Any]:
-    """Resolve generator row fields, translating the region name into cached components."""
+def _build_generator_field_map(row: Mapping[str, Any], system: System) -> dict[str, Any]:
+    """Resolve generator fields by translating region names to components."""
+
     fields = dict(row)
     region_name = row.get("region")
 
@@ -78,17 +79,19 @@ def tech_matches_category(tech: str, category_name: str, tech_categories: dict[s
         return False
 
     category = tech_categories[category_name]
+    tech_value = str(tech).casefold()
 
     if isinstance(category, list):
-        return tech in category
+        normalized = [str(item).casefold() for item in category]
+        return tech_value in normalized
 
-    prefixes = category.get("prefixes", [])
-    exact = category.get("exact", [])
+    prefixes = [str(prefix).casefold() for prefix in category.get("prefixes", [])]
+    exact = [str(item).casefold() for item in category.get("exact", [])]
 
-    if tech in exact:
+    if tech_value in exact:
         return True
 
-    return any(tech.startswith(prefix) for prefix in prefixes)
+    return any(tech_value.startswith(prefix) for prefix in prefixes)
 
 
 def get_technology_category(
@@ -273,9 +276,11 @@ def _prepare_generator_dataset(
                     continue
 
                 join_key = "__technology_join"
-                df = df.with_columns(pl.col("technology").str.to_lowercase().alias(join_key))
+                df = df.with_columns(
+                    pl.col("technology").str.split("_").list.get(0).str.to_lowercase().alias(join_key)
+                )
                 mapping = next_df.with_columns(
-                    pl.col("technology").str.to_lowercase().alias(join_key)
+                    pl.col("technology").str.split("_").list.get(0).str.to_lowercase().alias(join_key)
                 ).select(pl.col(join_key), pl.col("fuel_type"))
                 df = df.join(mapping, how="left", on=join_key).drop(join_key)
             except Exception as e:
@@ -307,14 +312,46 @@ def _prepare_generator_dataset(
             return Err(ParserError(f"Failed to join {name} data: {e}"))
 
     df = df.collect()
+    df = df.with_columns(pl.col("technology").str.split("_").list.get(0).alias("technology_base"))
 
-    if "fuel_type" in df.columns:
-        df = df.with_columns(
-            pl.when(pl.col("fuel_type").is_null() & pl.col("technology").str.contains("gas"))
-            .then(pl.lit("naturalgas"))
-            .otherwise(pl.col("fuel_type"))
-            .alias("fuel_type")
+    if "fuel_type" not in df.columns:
+        return Err(ParserError("Generator fuel_type column is missing from the fuel2tech mapping"))
+
+    def _categories_for_tech(tech: str) -> list[str]:
+        """Return category names for a technology, logging misses."""
+        result = get_technology_categories(tech, technology_categories)
+        if result.is_err():
+            logger.debug("Technology %s has no category match: %s", tech, result.err())
+            return []
+        categories = result.ok()
+        return categories if categories is not None else []
+
+    df = df.with_columns(
+        pl.col("technology_base")
+        .map_elements(
+            _categories_for_tech,
+            return_dtype=pl.List(pl.Utf8),
         )
+        .alias("categories")
+    ).with_columns(pl.col("categories").list.first().alias("category"))
+
+    df = df.with_columns(
+        pl.col("technology")
+        .map_elements(
+            lambda tech: tech_matches_category(tech, "thermal", technology_categories),
+            return_dtype=pl.Boolean,
+        )
+        .alias("is_thermal")
+    )
+
+    df = df.drop("technology_base")
+
+    df = df.with_columns(
+        pl.when(pl.col("is_thermal") & pl.col("fuel_type").is_null())
+        .then(pl.lit("OTHER"))
+        .otherwise(pl.col("fuel_type"))
+        .alias("fuel_type")
+    ).drop("is_thermal")
 
     if df.is_empty():
         return Err(ParserError("Generator data is empty after joining"))
@@ -328,24 +365,6 @@ def _prepare_generator_dataset(
 
     if df.is_empty():
         return Err(ParserError("All generators were excluded"))
-
-    def _categories_for_tech(tech: str) -> list[str]:
-        """Return category names for a technology, logging misses."""
-        result = get_technology_categories(tech, technology_categories)
-        if result.is_err():
-            logger.debug("Technology %s has no category match: %s", tech, result.err())
-            return []
-        categories = result.ok()
-        return categories if categories is not None else []
-
-    df = df.with_columns(
-        pl.col("technology")
-        .map_elements(
-            _categories_for_tech,
-            return_dtype=pl.List(pl.Utf8),
-        )
-        .alias("categories")
-    ).with_columns(pl.col("categories").list.first().alias("category"))
 
     return Ok(df)
 

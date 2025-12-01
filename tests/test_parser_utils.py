@@ -164,6 +164,156 @@ def test_prepare_generator_dataset_with_optional_data() -> None:
     assert df.filter(pl.col("technology") == "coal").is_empty()
 
 
+def test_prepare_generator_dataset_returns_other_when_fuel_missing() -> None:
+    import polars as pl
+
+    from r2x_reeds import parser_utils
+
+    capacity = pl.DataFrame(
+        {
+            "technology": ["gas-cc_h2-cc", "gas-ct"],
+            "region": ["p1", "p2"],
+            "capacity": [10.0, 5.0],
+            "year": [2040, 2040],
+        }
+    ).lazy()
+
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["steam-turbine"], "fuel_type": ["coal"]}).lazy()
+    }
+
+    categories = {"thermal": {"prefixes": ["gas"]}}
+    result = parser_utils._prepare_generator_dataset(
+        capacity_data=capacity,
+        optional_data=optional_data,
+        excluded_technologies=[],
+        technology_categories=categories,
+    )
+
+    assert result.is_ok()
+    df = result.ok()
+    assert df["fuel_type"].to_list() == ["OTHER", "OTHER"]
+
+
+def test_prepare_generator_dataset_preserves_fuel_type_values() -> None:
+    import polars as pl
+
+    from r2x_reeds import parser_utils
+
+    capacity = pl.DataFrame(
+        {
+            "technology": ["gas-cc_h2-cc"],
+            "region": ["p1"],
+            "capacity": [10.0],
+            "year": [2040],
+        }
+    ).lazy()
+
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["gas-cc_h2-cc"], "fuel_type": ["h2fuel"]}).lazy()
+    }
+
+    categories = {"thermal": {"prefixes": ["gas"]}}
+    result = parser_utils._prepare_generator_dataset(
+        capacity_data=capacity,
+        optional_data=optional_data,
+        excluded_technologies=[],
+        technology_categories=categories,
+    )
+
+    assert result.is_ok()
+    df = result.ok()
+    assert df.select("fuel_type").item() == "h2fuel"
+
+
+def test_prepare_generator_dataset_allows_missing_fuel_for_variable_generators() -> None:
+    import polars as pl
+
+    from r2x_reeds import parser_utils
+
+    capacity = pl.DataFrame(
+        {
+            "technology": ["wind-ons"],
+            "region": ["p1"],
+            "capacity": [10.0],
+            "year": [2040],
+        }
+    ).lazy()
+
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["steam-turbine"], "fuel_type": ["coal"]}).lazy()
+    }
+
+    categories = {"wind": {"prefixes": ["wind"]}, "thermal": {"prefixes": ["steam-turbine"]}}
+
+    result = parser_utils._prepare_generator_dataset(
+        capacity_data=capacity,
+        optional_data=optional_data,
+        excluded_technologies=[],
+        technology_categories=categories,
+    )
+    assert result.is_ok()
+
+
+def test_prepare_generator_dataset_handles_suffixed_technology_names() -> None:
+    import polars as pl
+
+    from r2x_reeds import parser_utils
+
+    capacity = pl.DataFrame(
+        {
+            "technology": ["wind-ons_5"],
+            "region": ["p1"],
+            "capacity": [10.0],
+            "year": [2025],
+        }
+    ).lazy()
+
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["wind-ons"], "fuel_type": ["wind"]}).lazy()
+    }
+    result = parser_utils._prepare_generator_dataset(
+        capacity_data=capacity,
+        optional_data=optional_data,
+        excluded_technologies=[],
+        technology_categories={"wind": {"prefixes": ["wind-ons"]}},
+    )
+
+    assert result.is_ok()
+    df = result.ok()
+    assert df.select("category").item() == "wind"
+
+
+def test_prepare_generator_dataset_thermal_missing_fuel_type_defaults_to_other() -> None:
+    import polars as pl
+
+    from r2x_reeds import parser_utils
+
+    capacity = pl.DataFrame(
+        {
+            "technology": ["gas-ct"],
+            "region": ["p1"],
+            "capacity": [10.0],
+            "year": [2040],
+        }
+    ).lazy()
+
+    optional_data = {"fuel_tech_map": pl.DataFrame({"technology": ["coal"], "fuel_type": ["coal"]}).lazy()}
+
+    categories = {"thermal": {"prefixes": ["gas-ct"]}}
+
+    result = parser_utils._prepare_generator_dataset(
+        capacity_data=capacity,
+        optional_data=optional_data,
+        excluded_technologies=[],
+        technology_categories=categories,
+    )
+
+    assert result.is_ok()
+    df = result.ok()
+    assert df.select("fuel_type").item() == "OTHER"
+
+
 def test_prepare_generator_inputs_splits_variable_and_nonvariable() -> None:
     import polars as pl
 
@@ -183,7 +333,7 @@ def test_prepare_generator_inputs_splits_variable_and_nonvariable() -> None:
         "solar": {"prefixes": ["solar"]},
         "thermal": {"prefixes": ["thermal"]},
     }
-    optional_data = {}
+    optional_data = {"fuel_tech_map": pl.DataFrame({"technology": ["thermal"], "fuel_type": ["coal"]}).lazy()}
 
     result = parser_utils.prepare_generator_inputs(
         capacity_data=capacity,
@@ -312,10 +462,13 @@ def test_prepare_generator_dataset_empty_after_joins() -> None:
     ).lazy()
 
     categories = {"wind": {"prefixes": ["wind"]}, "solar": {"prefixes": ["solar"]}}
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["unknown_tech"], "fuel_type": ["coal"]}).lazy()
+    }
 
     result = parser_utils._prepare_generator_dataset(
         capacity_data=capacity,
-        optional_data={},
+        optional_data=optional_data,
         excluded_technologies=["unknown_tech"],
         technology_categories=categories,
     )
@@ -339,10 +492,13 @@ def test_prepare_generator_dataset_all_excluded() -> None:
     ).lazy()
 
     categories = {"coal": {"prefixes": ["coal"]}, "oil": {"prefixes": ["oil"]}}
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["coal", "oil"], "fuel_type": ["coal", "oil"]}).lazy()
+    }
 
     result = parser_utils._prepare_generator_dataset(
         capacity_data=capacity,
-        optional_data={},
+        optional_data=optional_data,
         excluded_technologies=["coal", "oil"],
         technology_categories=categories,
     )
@@ -371,8 +527,8 @@ def test_prepare_generator_dataset_fuel_tech_map_missing_column() -> None:
         excluded_technologies=[],
         technology_categories=categories,
     )
-    # Should succeed by skipping the fuel_tech_map
-    assert result.is_ok()
+    assert result.is_err()
+    assert "fuel_type column is missing" in str(result.unwrap_err())
 
 
 def test_prepare_generator_dataset_optional_data_join_exception() -> None:
@@ -422,10 +578,13 @@ def test_prepare_generator_dataset_category_mapping_failure() -> None:
 
     # Empty categories - no matches
     categories = {}
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame({"technology": ["unknown_type"], "fuel_type": ["coal"]}).lazy()
+    }
 
     result = parser_utils._prepare_generator_dataset(
         capacity_data=capacity,
-        optional_data={},
+        optional_data=optional_data,
         excluded_technologies=[],
         technology_categories=categories,
     )
@@ -618,10 +777,15 @@ def test_prepare_generator_dataset_with_valid_excludes() -> None:
             "year": [2025, 2025, 2025],
         }
     ).lazy()
+    optional_data = {
+        "fuel_tech_map": pl.DataFrame(
+            {"technology": ["wind", "solar", "nuclear"], "fuel_type": ["wind", "solar", "uranium"]}
+        ).lazy()
+    }
 
     result = parser_utils._prepare_generator_dataset(
         capacity_data=capacity,
-        optional_data={},
+        optional_data=optional_data,
         excluded_technologies=["nuclear"],
         technology_categories={},
     )

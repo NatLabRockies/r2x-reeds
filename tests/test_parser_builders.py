@@ -16,7 +16,8 @@ import pytest
 from rust_ok import Ok
 
 if TYPE_CHECKING:
-    from r2x_reeds import ReEDSParser
+    from r2x_core import DataStore
+    from r2x_reeds import ReEDSConfig, ReEDSParser
 
 
 class DummyRule:  # reuse within file for custom rules
@@ -117,6 +118,69 @@ def test_build_emissions_returns_result_type(initialized_parser: ReEDSParser) ->
     """Test _build_emissions returns a Result type."""
     result = initialized_parser._build_emissions()
     assert hasattr(result, "is_ok") and hasattr(result, "is_err")
+
+
+@pytest.mark.unit
+def test_build_emissions_only_attaches_to_created_generators(
+    example_reeds_config: ReEDSConfig,
+    example_data_store: DataStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ensure emissions are only attached to generators that were created."""
+    from r2x_reeds import ReEDSParser
+    from r2x_reeds.models.components import ReEDSRegion, ReEDSThermalGenerator
+
+    parser = ReEDSParser(config=example_reeds_config, store=example_data_store)
+    assert parser.prepare_data().is_ok()
+
+    region = ReEDSRegion(name="test-region")
+    parser.system.add_component(region)
+    parser._region_cache[region.name] = region
+
+    generator = ReEDSThermalGenerator(
+        name="test-tech_test-region",
+        region=region,
+        technology="test-tech",
+        capacity=10.0,
+        heat_rate=10.0,
+        fuel_type="naturalgas",
+    )
+    parser.system.add_component(generator)
+    parser._generator_cache.clear()
+    parser._generator_cache[generator.name] = generator
+
+    emission_data = pl.DataFrame(
+        {
+            "i": [generator.technology, "missing-tech"],
+            "r": [generator.region.name, "p999"],
+            "v": [generator.vintage, None],
+            "rate": [1.23, 4.56],
+            "emission_type": ["CO2E", "CO2E"],
+            "emission_source": ["COMBUSTION", "COMBUSTION"],
+        }
+    ).lazy()
+
+    original_read = parser.read_data_file
+
+    def fake_read(name: str):
+        if name == "emission_rates":
+            return emission_data
+        return original_read(name)
+
+    monkeypatch.setattr(parser, "read_data_file", fake_read)
+
+    attached: list[str] = []
+    original_add = parser.system.add_supplemental_attribute
+
+    def track_add(component, attribute):
+        attached.append(component.name)
+        return original_add(component, attribute)
+
+    monkeypatch.setattr(parser.system, "add_supplemental_attribute", track_add)
+
+    result = parser._build_emissions()
+    assert result.is_ok()
+    assert attached == [generator.name]
 
 
 @pytest.mark.unit

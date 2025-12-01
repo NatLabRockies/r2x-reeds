@@ -52,3 +52,5 @@ class FuelType(str, Enum):
     BIOMASS = "biomass"
     HYDROGEN_CT = "h2ct"
     URANIUM = "uranium"
+    OIL = "oil"
+    OTHER = "OTHER"
