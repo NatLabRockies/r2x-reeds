@@ -509,7 +509,7 @@ class ReEDSParser(BaseParser):
                 region = self.create_component(ReEDSRegion, **kwargs)
             except ComponentCreationError as exc:
                 creation_errors.append(f"{identifier}: {exc}")
-                logger.error("Failed to create region %s: %s", identifier, exc)
+                logger.error("Failed to create region {}: {}", identifier, exc)
                 continue
 
             self.add_component(region)
@@ -728,7 +728,7 @@ class ReEDSParser(BaseParser):
                 interface = self.create_component(ReEDSInterface, **kwargs)
             except ComponentCreationError as exc:
                 creation_errors.append(f"{identifier}: {exc}")
-                logger.error("Failed to create transmission interface %s: %s", identifier, exc)
+                logger.error("Failed to create transmission interface {}: {}", identifier, exc)
                 continue
 
             self.add_component(interface)
@@ -765,7 +765,7 @@ class ReEDSParser(BaseParser):
                 line = self.create_component(ReEDSTransmissionLine, **kwargs)
             except ComponentCreationError as exc:
                 creation_errors.append(f"{identifier}: {exc}")
-                logger.error("Failed to create transmission line %s: %s", identifier, exc)
+                logger.error("Failed to create transmission line {}: {}", identifier, exc)
                 continue
 
             self.add_component(line)
@@ -819,7 +819,7 @@ class ReEDSParser(BaseParser):
                 demand = self.create_component(ReEDSDemand, **kwargs)
             except ComponentCreationError as exc:
                 creation_errors.append(f"{identifier}: {exc}")
-                logger.error("Failed to create load %s: %s", identifier, exc)
+                logger.error("Failed to create load {}: {}", identifier, exc)
                 continue
 
             self.add_component(demand)
@@ -881,7 +881,7 @@ class ReEDSParser(BaseParser):
                 reserve_region = self.create_component(ReEDSReserveRegion, name=region_name)
             except ComponentCreationError as exc:
                 reserve_region_errors.append(f"{region_name}: {exc}")
-                logger.error("Failed to create reserve region %s: %s", region_name, exc)
+                logger.error("Failed to create reserve region {}: {}", region_name, exc)
                 continue
 
             self.add_component(reserve_region)
@@ -949,7 +949,7 @@ class ReEDSParser(BaseParser):
                 reserve = self.create_component(ReEDSReserve, **kwargs)
             except ComponentCreationError as exc:
                 creation_errors.append(f"{identifier}: {exc}")
-                logger.error("Failed to create reserve %s: %s", identifier, exc)
+                logger.error("Failed to create reserve {}: {}", identifier, exc)
                 continue
 
             self.add_component(reserve)
@@ -1019,7 +1019,7 @@ class ReEDSParser(BaseParser):
                 if fallback_identifier is not None:
                     generator = self._generator_cache.get(fallback_identifier)
                 if generator is None:
-                    logger.debug("Generator %s not found for emission, skipping", identifier)
+                    logger.debug("Generator {} not found for emission, skipping", identifier)
                     continue
                 logger.debug("Using aggregated generator {} for emission {}", fallback_identifier, identifier)
 
@@ -1027,7 +1027,7 @@ class ReEDSParser(BaseParser):
                 emission = self.create_component(ReEDSEmission, **kwargs)
             except ComponentCreationError as exc:
                 creation_errors.append(f"{identifier}: {exc}")
-                logger.error("Failed to create emission %s: %s", identifier, exc)
+                logger.error("Failed to create emission {}: {}", identifier, exc)
                 continue
 
             self.system.add_supplemental_attribute(generator, emission)
