@@ -1373,9 +1373,26 @@ class ReEDSParser(BaseParser):
                 ["year", "vintage"]
             ):
                 year = row[0]
-                hourly_budget = monthly_to_hourly_polars(year, month_budget_by_vintage["daily_energy_budget"])
+                monthly_profile = month_budget_by_vintage["daily_energy_budget"].to_list()
+                if len(monthly_profile) != 12 or any(value is None for value in monthly_profile):
+                    logger.warning(
+                        "Skipping hydro budget for {} in {} because monthly profile length {}",
+                        generator.name,
+                        year,
+                        len(monthly_profile),
+                    )
+                    continue
+                hourly_budget_result = monthly_to_hourly_polars(year, monthly_profile)
+                if hourly_budget_result.is_err():
+                    logger.warning(
+                        "Skipping hydro budget for {} in {}: {}",
+                        generator.name,
+                        year,
+                        hourly_budget_result.err(),
+                    )
+                    continue
                 ts = SingleTimeSeries.from_array(
-                    data=hourly_budget.unwrap(),
+                    data=hourly_budget_result.ok(),
                     name="hydro_budget",
                     initial_timestamp=self.initial_timestamp,
                     resolution=timedelta(hours=1),
