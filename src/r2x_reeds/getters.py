@@ -258,6 +258,19 @@ def resolve_emission_source(context: ParserContext, row: Any) -> Result[Emission
 
 
 @getter
+def resolve_emission_generator_identifier(context: ParserContext, row: Any) -> Result[str, Exception]:
+    """Identify the generator associated with an emission row."""
+
+    try:
+        identifier = get_row_field(row, "name")
+        if not identifier:
+            return Err(ValueError("Emission row missing generator identifier"))
+        return Ok(str(identifier))
+    except Exception as e:
+        return Err(e)
+
+
+@getter
 def lookup_from_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Exception]:
     """Lookup region using the 'from_region' key."""
 

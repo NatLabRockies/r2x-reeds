@@ -26,6 +26,7 @@ from .getters import (
     build_reserve_name,
     build_transmission_interface_name,
     build_transmission_line_name,
+    resolve_emission_generator_identifier,
 )
 from .models.components import (
     ReEDSDemand,
@@ -993,35 +994,65 @@ class ReEDSParser(BaseParser):
             return emission_rule_result
         emission_rule = emission_rule_result.ok()
 
+        generated = list(self._generator_cache.values())
+        if not generated:
+            logger.warning("No generators available for emission matching")
+            logger.info("Attached 0 emission components")
+            return Ok(None)
+
+        rename_map = {
+            "i": "technology",
+            "v": "vintage",
+            "r": "region",
+        }
+        emit_df = df.rename({k: v for k, v in rename_map.items() if k in df.columns}).with_columns(
+            pl.col("vintage").fill_null("__missing_vintage__").alias("vintage_key")
+        )
+
+        generator_lookup: dict[tuple[str | None, str | None, str], list[str]] = {}
+        for generated_name in generated:
+            vintage_key = generated_name.vintage or "__missing_vintage__"
+            key = (generated_name.technology, generated_name.region.name, vintage_key)
+            generator_lookup.setdefault(key, []).append(generated_name.name)
+
+        matched_rows: list[dict[str, Any]] = []
+        for row in emit_df.iter_rows(named=True):
+            key = (row.get("technology"), row.get("region"), row.get("vintage_key"))
+            generator_names = generator_lookup.get(key)
+            if not generator_names:
+                continue
+            row_data = dict(row)
+            row_data["name"] = generator_names[0]
+            matched_rows.append(row_data)
+
+        if not matched_rows:
+            logger.warning("No emission rows matched existing generators, skipping emissions")
+            logger.info("Attached 0 emission components")
+            return Ok(None)
+
+        emission_matches = pl.DataFrame(matched_rows).drop("vintage_key")
+
+        if emission_matches.is_empty():
+            logger.warning("No emission rows matched existing generators, skipping emissions")
+            logger.info("Attached 0 emission components")
+            return Ok(None)
+
         emission_kwargs_result = _collect_component_kwargs_from_rule(
-            data=df,
+            data=emission_matches,
             rule_provider=emission_rule,
             parser_context=self._ctx,
-            row_identifier_getter=partial(build_generator_name, self._ctx),
+            row_identifier_getter=lambda row: resolve_emission_generator_identifier(self._ctx, row),
         )
         if emission_kwargs_result.is_err():
             return emission_kwargs_result
-
-        def _aggregated_identifier(name: str) -> str | None:
-            """Generate an aggregated generator identifier for emission lookups."""
-            parts = name.split("_")
-            if len(parts) < 3:
-                return None
-            return f"{'_'.join(parts[:-2])}_{parts[-1]}"
 
         creation_errors: list[str] = []
         attached = 0
         for identifier, kwargs in emission_kwargs_result.ok() or []:
             generator = self._generator_cache.get(identifier)
-            fallback_identifier = None
             if generator is None:
-                fallback_identifier = _aggregated_identifier(identifier)
-                if fallback_identifier is not None:
-                    generator = self._generator_cache.get(fallback_identifier)
-                if generator is None:
-                    logger.debug("Generator {} not found for emission, skipping", identifier)
-                    continue
-                logger.debug("Using aggregated generator {} for emission {}", fallback_identifier, identifier)
+                logger.debug("Generator %s not found for emission, skipping", identifier)
+                continue
 
             try:
                 emission = self.create_component(ReEDSEmission, **kwargs)
