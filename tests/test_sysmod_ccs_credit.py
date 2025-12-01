@@ -190,3 +190,53 @@ def test_ccs_credit_scope_caught_exception(caplog, tmp_path: Path) -> None:
         emission_capture_rate_fpath=capture_path,
         upgrade_link_fpath=upgrade_path,
     )
+
+
+def test_cast_string_columns_handles_empty_frame():
+    result = ccs_credit._cast_string_columns(None, ("tech",))
+    assert result.is_empty()
+
+
+def test_add_ccs_credit_logs_load_failure(monkeypatch, caplog):
+    system, _ = _build_system()
+
+    def fail_load(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(ccs_credit.DataStore, "load_file", staticmethod(fail_load))
+    caplog.set_level("ERROR", logger="r2x_reeds.sysmod.ccs_credit")
+
+    ccs_credit.add_ccs_credit(
+        system,
+        co2_incentive_fpath="co2",
+        emission_capture_rate_fpath="capture",
+        upgrade_link_fpath="upgrade",
+    )
+
+    assert "CCS credit plugin failed" in caplog.text
+
+
+def test_apply_ccs_credit_logs_warning_on_incentive_item_error(caplog):
+    system, region = _build_system()
+    _add_generator(system, region, "Coal_CCS_1", "coal_ccs")
+
+    co2_incentive = pl.DataFrame(
+        {
+            "tech": ["coal_ccs", "coal_ccs"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "incentive": [60.0, 70.0],
+        }
+    )
+    emission_capture_rate = pl.DataFrame(
+        {"tech": ["coal_ccs"], "region": ["west"], "vintage": ["2020"], "capture_rate": [0.5]}
+    )
+    upgrade_link = pl.DataFrame(
+        {"from": ["coal_ccs"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]}
+    )
+
+    caplog.set_level("WARNING", logger="r2x_reeds.sysmod.ccs_credit")
+
+    ccs_credit._apply_ccs_credit(system, co2_incentive, emission_capture_rate, upgrade_link)
+
+    assert "Failed to apply CCS credit" in caplog.text

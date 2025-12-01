@@ -46,3 +46,12 @@ def test_reeds_component_optional_category_defaults_to_none():
     """Test that optional category field defaults to None."""
     component = ReEDSComponent(name="test")
     assert component.category is None
+
+
+def test_minmax_validation_enforces_min_less_than_max():
+    from pydantic import ValidationError
+
+    from r2x_reeds.models.base import MinMax
+
+    with pytest.raises(ValidationError):
+        MinMax(min=0.9, max=0.1)

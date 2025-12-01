@@ -29,3 +29,13 @@ def test_get_function_arguments():
     arguments = get_function_arguments(argument_input=argument_input, function=test_function)
 
     assert arguments == {"a": 2, "b": 3}
+
+
+def test_get_function_arguments_converts_strings_and_dict_entries():
+    def test_function(a, b, c=None):
+        pass
+
+    argument_input = {"a": "10", "b": {"b": 5, "unused": 6}, "c": "20"}
+    arguments = get_function_arguments(argument_input=argument_input, function=test_function)
+
+    assert arguments == {"a": 10, "b": 5, "c": 20}

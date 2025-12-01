@@ -194,8 +194,26 @@ def test_fuel_type_known_and_unknown():
     known = get_fuel_type(SimpleNamespace(), {"fuel_type": "NaturalGas"})
     unknown = get_fuel_type(SimpleNamespace(), {"fuel_type": "mystery"})
     assert known.is_ok()
-    assert known.ok() == "naturalgas"
-    assert unknown.is_err()
+    assert known.ok() == "NaturalGas"
+    assert unknown.is_ok()
+    assert unknown.ok() == "mystery"
+
+
+def test_get_fuel_type_thermal_defaults_to_other():
+    from r2x_reeds.getters import get_fuel_type
+
+    context = SimpleNamespace(metadata={"tech_categories": {"thermal": {"prefixes": ["gas"]}}})
+    result = get_fuel_type(context, {"technology": "gas-ct"})
+    assert result.is_ok()
+    assert result.ok() == "OTHER"
+
+
+def test_get_fuel_type_non_thermal_missing_fuel_errors():
+    from r2x_reeds.getters import get_fuel_type
+
+    context = SimpleNamespace(metadata={"tech_categories": {"thermal": {"prefixes": ["coal"]}}})
+    result = get_fuel_type(context, {"technology": "solar"})
+    assert result.is_err()
 
 
 def test_get_fuel_type_missing_field_errors():
