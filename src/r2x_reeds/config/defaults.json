@@ -117,7 +117,8 @@
       "prefixes": [
         "geothermal",
         "geohydro",
-        "egs"
+        "egs",
+        "rtes"
       ],
       "exact": []
     },
