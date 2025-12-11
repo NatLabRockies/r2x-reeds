@@ -134,7 +134,7 @@
     "info": {
       "description": "Initial DC transmission capacity between regions",
       "is_input": true,
-      "is_optional": false,
+      "is_optional": true,
       "units": "MW"
     },
     "proc_spec": {
