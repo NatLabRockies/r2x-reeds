@@ -3,6 +3,6 @@
 
 from .data_upgrader import ReEDSUpgrader, ReEDSVersionDetector
 from .helpers import COMMIT_HISTORY
-from .upgrade_steps import move_hmap_file
+from .upgrade_steps import move_hmap_file, move_transmission_cost
 
 __all__ = ["COMMIT_HISTORY", "ReEDSUpgrader", "ReEDSVersionDetector"]

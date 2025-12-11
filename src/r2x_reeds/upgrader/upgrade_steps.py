@@ -36,3 +36,27 @@ def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None)
     old_location.rename(new_location)
     logger.debug("Moved {} to {}", old_location.name, new_location)
     return
+
+
+@ReEDSUpgrader.register_step(target_version=LATEST_COMMIT, upgrade_type=UpgradeType.FILE, priority=30)
+def move_transmission_cost(folder: Path, upgrader_context: dict[str, Any] | None = None):
+    """Rename the legacy transmission distance/cost files to their new names."""
+    rename_map = [
+        ("inputs_case/transmission_distance_cost_500kVac.csv", "inputs_case/transmission_cost_ac.csv"),
+        ("inputs_case/transmission_distance_cost_500kVdc.csv", "inputs_case/transmission_distance.csv"),
+    ]
+
+    for old_rel, new_rel in rename_map:
+        old_path = folder / old_rel
+        new_path = folder / new_rel
+
+        if new_path.exists():
+            logger.debug("Target {} already exists; skipping move", new_path.name)
+            continue
+
+        if not old_path.exists():
+            logger.debug("Legacy file {} not found; skipping", old_path.name)
+            continue
+
+        old_path.rename(new_path)
+        logger.debug("Moved legacy transmission file {} to {}", old_path.name, new_path.name)

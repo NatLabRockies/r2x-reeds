@@ -168,37 +168,41 @@
   },
   {
     "name": "transmission_distance_cost_ac",
-    "fpath": "inputs_case/transmission_distance_cost_500kVac.csv",
+    "fpath": "inputs_case/transmission_cost_ac.csv",
     "info": {
-      "description": "AC transmission line distances and costs",
+      "description": "AC transmission line cost parameters (distances are inferred from a dedicated distance table)",
       "is_input": true,
       "is_optional": false,
       "units": "MW"
     },
     "proc_spec": {
       "column_mapping": {
-        "length_miles": "distance_mi",
         "r": "from_region",
         "rr": "to_region",
-        "USD2004perMW": "cost_usd_per_mw"
+        "length_miles": "distance_mi",
+        "USD2004perMW": "cost_usd_per_mw",
+        "USD2004perMW_forward": "cost_usd_per_mw_forward",
+        "USD2004perMW_reverse": "cost_usd_per_mw_reverse",
+        "tscbin": "cost_bin",
+        "binwidth_USD2004": "binwidth_usd2004"
       }
     }
   },
   {
     "name": "transmission_distance_cost_dc",
-    "fpath": "inputs_case/transmission_distance_cost_500kVdc.csv",
+    "fpath": "inputs_case/transmission_distance.csv",
     "info": {
-      "description": "DC transmission line distances and costs",
+      "description": "Transmission line distances shared across AC/DC configurations",
       "is_input": true,
       "is_optional": false,
-      "units": "MW"
+      "units": "miles"
     },
     "proc_spec": {
       "column_mapping": {
-        "length_miles": "distance_mi",
         "r": "from_region",
         "rr": "to_region",
-        "USD2004perMW": "cost_usd_per_mw"
+        "length_miles": "distance_mi",
+        "miles": "distance_mi"
       }
     }
   },
