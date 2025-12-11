@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/NREL/r2x-reeds/compare/v0.2.1...v0.3.0) (2025-12-11)
+
+
+### Features
+
+* Updating transmission cost and distance file and adding upgrader ([#26](https://github.com/NREL/r2x-reeds/issues/26)) ([f5b6278](https://github.com/NREL/r2x-reeds/commit/f5b6278dd166b6d33e558a8c57b32adaada4fd43))
+
+
+### Bug Fixes
+
+* add new rtes tech in reeds default .json file ([#21](https://github.com/NREL/r2x-reeds/issues/21)) ([ab63b0d](https://github.com/NREL/r2x-reeds/commit/ab63b0db44c7484fa19698acdc0b3abcf43bfe9f))
+
 ## [0.2.1](https://github.com/NREL/r2x-reeds/compare/v0.2.0...v0.2.1) (2025-12-01)
 
 
