@@ -37,15 +37,11 @@ config = ReEDSConfig(
     case_name="test_Pacific"
 )
 
-# Load data using the default file mapping
-file_mapping = ReEDSConfig.get_file_mapping_path()
-data_store = DataStore.from_json(
-    file_mapping,
-    path="path/to/reeds_folder/"
-)
+run_path = "path/to/reeds_folder/"
+data_store = DataStore.from_plugin_config(path=run_path, plugin_config=config)
 
 # Parse
-parser = ReEDSParser(config, store=data_store)
+parser = ReEDSParser(system_name="reeds_system", store=data_store, config=config)
 system = parser.build_system()
 
 # Access components
