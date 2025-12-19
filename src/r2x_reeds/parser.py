@@ -591,6 +591,11 @@ class ReEDSParser(BaseParser):
         creation_errors: list[str] = []
         built = 0
         for identifier, component_kwargs in kwargs_result.ok() or []:
+            # Check for duplicate generator by name
+            if identifier in self._generator_cache:
+                logger.warning("Duplicate generator '{}' detected, skipping.", identifier)
+                continue
+
             creation_result = self._instantiate_generator(identifier, component_kwargs)
             if creation_result.is_err():
                 creation_errors.append(f"{identifier}: {creation_result.err()}")
