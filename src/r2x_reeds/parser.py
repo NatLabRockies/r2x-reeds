@@ -204,9 +204,9 @@ class ReEDSParser(BaseParser):
             **kwargs,
         )
 
-    def _truncate_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
-        """Ensure a time series is at most 8760 values (non-leap year)."""
-        arr = np.asarray(arr)
+    def _truncate_and_cast_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
+        """Truncate a time series to 8760 and ensure dtype float64."""
+        arr = np.asarray(arr, dtype=np.float64)
         return arr[:8760] if arr.shape[0] > 8760 else arr
 
     def validate_inputs(self) -> Result[None, ParserError]:
@@ -1095,7 +1095,7 @@ class ReEDSParser(BaseParser):
         for demand in self.system.get_components(ReEDSDemand):
             region_name = demand.name.replace("_load", "")
             if region_name in load_profiles.columns:
-                data = self._truncate_time_series(load_profiles[region_name].to_numpy())
+                data = self._truncate_and_cast_time_series(load_profiles[region_name].to_numpy())
                 ts = SingleTimeSeries.from_array(
                     data=data,
                     name="max_active_power",
@@ -1168,7 +1168,7 @@ class ReEDSParser(BaseParser):
             if not matching_generators:
                 continue
 
-            data = self._truncate_time_series(renewable_profiles[col_name].to_numpy())
+            data = self._truncate_and_cast_time_series(renewable_profiles[col_name].to_numpy())
             ts = SingleTimeSeries.from_array(
                 data=data,
                 name="max_active_power",
@@ -1274,7 +1274,7 @@ class ReEDSParser(BaseParser):
                 logger.warning("No reserve requirement calculated for {}, skipping", reserve.name)
                 continue
 
-            data = self._truncate_time_series(requirement_profile)
+            data = self._truncate_and_cast_time_series(requirement_profile)
             ts = SingleTimeSeries.from_array(
                 data=data,
                 name="requirement",
@@ -1403,7 +1403,7 @@ class ReEDSParser(BaseParser):
                         hourly_budget_result.err(),
                     )
                     continue
-                hourly_budget = self._truncate_time_series(hourly_budget_result.ok())
+                hourly_budget = self._truncate_and_cast_time_series(hourly_budget_result.ok())
                 ts = SingleTimeSeries.from_array(
                     data=hourly_budget,
                     name="hydro_budget",

@@ -28,7 +28,7 @@ R2X ReEDS provides a comprehensive parser for NREL's [ReEDS](https://github.com/
 
 **Time Series Truncation:**
 ```{note}
-The ReEDS parser automatically truncates all time series data to 8760 values (hours in a standard year).  
+The ReEDS parser automatically truncates all time series data to 8760 values (hours in a standard year).
 This ensures consistent annual resolution for hydro generation, renewable dispatch, load profiles, and reserve requirements, regardless of the original input length.
 ```
 
