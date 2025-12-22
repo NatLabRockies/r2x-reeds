@@ -204,6 +204,11 @@ class ReEDSParser(BaseParser):
             **kwargs,
         )
 
+    def _truncate_and_cast_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
+        """Truncate a time series to 8760 and ensure dtype float64."""
+        arr = np.asarray(arr, dtype=np.float64)
+        return arr[:8760] if arr.shape[0] > 8760 else arr
+
     def validate_inputs(self) -> Result[None, ParserError]:
         """Validate input data and configuration before building the system.
 
@@ -586,6 +591,11 @@ class ReEDSParser(BaseParser):
         creation_errors: list[str] = []
         built = 0
         for identifier, component_kwargs in kwargs_result.ok() or []:
+            # Check for duplicate generator by name
+            if identifier in self._generator_cache:
+                logger.warning("Duplicate generator '{}' detected, skipping.", identifier)
+                continue
+
             creation_result = self._instantiate_generator(identifier, component_kwargs)
             if creation_result.is_err():
                 creation_errors.append(f"{identifier}: {creation_result.err()}")
@@ -1085,8 +1095,9 @@ class ReEDSParser(BaseParser):
         for demand in self.system.get_components(ReEDSDemand):
             region_name = demand.name.replace("_load", "")
             if region_name in load_profiles.columns:
+                data = self._truncate_and_cast_time_series(load_profiles[region_name].to_numpy())
                 ts = SingleTimeSeries.from_array(
-                    data=load_profiles[region_name].to_numpy(),
+                    data=data,
                     name="max_active_power",
                     initial_timestamp=self.initial_timestamp,
                     resolution=timedelta(hours=1),
@@ -1157,7 +1168,7 @@ class ReEDSParser(BaseParser):
             if not matching_generators:
                 continue
 
-            data = renewable_profiles[col_name].to_numpy()
+            data = self._truncate_and_cast_time_series(renewable_profiles[col_name].to_numpy())
             ts = SingleTimeSeries.from_array(
                 data=data,
                 name="max_active_power",
@@ -1263,8 +1274,9 @@ class ReEDSParser(BaseParser):
                 logger.warning("No reserve requirement calculated for {}, skipping", reserve.name)
                 continue
 
+            data = self._truncate_and_cast_time_series(requirement_profile)
             ts = SingleTimeSeries.from_array(
-                data=requirement_profile,
+                data=data,
                 name="requirement",
                 initial_timestamp=self.initial_timestamp,
                 resolution=timedelta(hours=1),
@@ -1391,8 +1403,9 @@ class ReEDSParser(BaseParser):
                         hourly_budget_result.err(),
                     )
                     continue
+                hourly_budget = self._truncate_and_cast_time_series(hourly_budget_result.ok())
                 ts = SingleTimeSeries.from_array(
-                    data=hourly_budget_result.ok(),
+                    data=hourly_budget,
                     name="hydro_budget",
                     initial_timestamp=self.initial_timestamp,
                     resolution=timedelta(hours=1),

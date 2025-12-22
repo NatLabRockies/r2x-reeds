@@ -26,6 +26,12 @@ R2X ReEDS provides a comprehensive parser for NREL's [ReEDS](https://github.com/
 - JSON-based configuration through defaults and file mapping specifications
 - Built-in validation against actual data files to ensure data integrity
 
+**Time Series Truncation:**
+```{note}
+The ReEDS parser automatically truncates all time series data to 8760 values (hours in a standard year).
+This ensures consistent annual resolution for hydro generation, renewable dispatch, load profiles, and reserve requirements, regardless of the original input length.
+```
+
 ### Supported Components
 
 - Solar generators including utility-scale photovoltaic, distributed photovoltaic, concentrating solar power, and photovoltaic with battery storage
