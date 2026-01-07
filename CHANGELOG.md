@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/NREL/r2x-reeds/compare/v0.3.0...v0.3.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* truncate time series to be equally for all ([#32](https://github.com/NREL/r2x-reeds/issues/32)) ([0824b21](https://github.com/NREL/r2x-reeds/commit/0824b21e1a1bc8916eb16d36b8d773cc9f6638b9))
+
 ## [0.3.0](https://github.com/NREL/r2x-reeds/compare/v0.2.1...v0.3.0) (2025-12-11)
 
 
