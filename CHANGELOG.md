@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/NREL/r2x-reeds/compare/v0.3.1...v0.3.2) (2026-01-12)
+
+
+### Bug Fixes
+
+* Adding correct function call for the plugin `break_gens` ([#35](https://github.com/NREL/r2x-reeds/issues/35)) ([ee06e88](https://github.com/NREL/r2x-reeds/commit/ee06e888a777cca784ab5ec3e62305d1ae682b5d))
+
 ## [0.3.1](https://github.com/NREL/r2x-reeds/compare/v0.3.0...v0.3.1) (2026-01-07)
 
 
