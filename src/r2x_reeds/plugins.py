@@ -16,7 +16,7 @@ manifest = PluginManifest(package="r2x-reeds")
 
 manifest.add(
     PluginSpec.parser(
-        name="r2x_reeds.parser",
+        name="r2x-reeds.parser",
         entry=ReEDSParser,
         config=ReEDSConfig,
         description="Parse ReEDS run directories into an infrasys.System.",
@@ -25,7 +25,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.upgrader(
-        name="r2x_reeds.upgrader",
+        name="r2x-reeds.upgrader",
         entry=ReEDSUpgrader,
         version_strategy=GitVersioningStrategy,
         version_reader=ReEDSVersionDetector,
@@ -36,7 +36,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.function(
-        name="r2x_reeds.add_pcm_defaults",
+        name="r2x-reeds.add-pcm-defaults",
         entry=add_pcm_defaults,
         description="Augment generators with PCM default attributes.",
     )
@@ -44,7 +44,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.function(
-        name="r2x_reeds.add_emission_cap",
+        name="r2x-reeds.add-emission-cap",
         entry=add_emission_cap,
         description="Add annual CO2 emission cap constraints.",
     )
@@ -52,7 +52,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.function(
-        name="r2x_reeds.add_electrolyzer_load",
+        name="r2x-reeds.add-electrolyzer-load",
         entry=add_electrolizer_load,
         description="Attach electrolyzer load and hydrogen price profiles.",
     )
@@ -60,7 +60,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.function(
-        name="r2x_reeds.add_ccs_credit",
+        name="r2x-reeds.add-ccs-credit",
         entry=add_ccs_credit,
         description="Apply CCS credit adjustments to generators.",
     )
@@ -68,7 +68,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.function(
-        name="r2x_reeds.break_gens",
+        name="r2x-reeds.break-gens",
         entry=break_generators,
         description="Split large generators into average-sized units.",
     )
@@ -76,7 +76,7 @@ manifest.add(
 
 manifest.add(
     PluginSpec.function(
-        name="r2x_reeds.add_imports",
+        name="r2x-reeds.add-imports",
         entry=add_imports,
         description="Create Canadian import time series for eligible regions.",
     )
