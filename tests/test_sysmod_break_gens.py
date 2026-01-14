@@ -14,7 +14,7 @@ from r2x_reeds.sysmod.break_gens import break_generators
 
 @pytest.fixture
 def system_with_region(sample_region):
-    system = System(name="Test")
+    system = System(name="Test", auto_add_composed_components=True)
     system.add_component(sample_region)
     return system, sample_region
 
@@ -47,9 +47,9 @@ def test_break_generator_warns_on_duplicate_reference(tmp_path: Path, caplog):
     reference_path.write_text(
         json.dumps(
             [
-                {"name": "battery", "avg_capacity_MW": 10},
-                {"name": "battery", "avg_capacity_MW": 12},
-                {"name": "wind", "avg_capacity_MW": 50},
+                {"name": "battery", "capacity_MW": 10},
+                {"name": "battery", "capacity_MW": 12},
+                {"name": "wind", "capacity_MW": 50},
             ]
         )
     )
@@ -80,7 +80,7 @@ def test_break_generators_splits_and_preserves_data(system_with_region) -> None:
         resolution=timedelta(hours=1),
     )
     system.add_time_series(ts, original)
-    reference = {"wind": {"avg_capacity_MW": 50}}
+    reference = {"wind": {"capacity_MW": 50}}
 
     break_generators(system, reference)
 
@@ -109,7 +109,7 @@ def test_break_generators_drops_small_remainder(system_with_region) -> None:
         category="wind",
     )
     system.add_component(generator)
-    reference = {"wind": {"avg_capacity_MW": 50}}
+    reference = {"wind": {"capacity_MW": 50}}
 
     break_generators(system, reference)
 
@@ -129,7 +129,7 @@ def test_break_generators_respects_non_break_list(system_with_region) -> None:
         category="wind",
     )
     system.add_component(original)
-    reference = {"wind": {"avg_capacity_MW": 50}}
+    reference = {"wind": {"capacity_MW": 50}}
 
     break_generators(system, reference, skip_categories=["wind"])
 
@@ -148,7 +148,7 @@ def test_break_gens_uses_reference_dict(system_with_region) -> None:
         category="solar",
     )
     system.add_component(generator)
-    reference = {"solar": {"avg_capacity_MW": 40}}
+    reference = {"solar": {"capacity_MW": 40}}
 
     break_generators(system, reference)
 
@@ -160,7 +160,7 @@ def test_break_gens_uses_reference_dict(system_with_region) -> None:
 def test_break_gens_reads_file(tmp_path: Path, system_with_region) -> None:
     """Test that break_generators can read reference data from file."""
     reference_path = tmp_path / "pcm_defaults.json"
-    reference_path.write_text(json.dumps([{"name": "wind", "avg_capacity_MW": 30}]))
+    reference_path.write_text(json.dumps([{"name": "wind", "capacity_MW": 30}]))
     system, region = system_with_region
     generator = ReEDSGenerator(
         name="gen",
@@ -188,7 +188,7 @@ def test_break_generators_skips_missing_category(system_with_region) -> None:
         category=None,
     )
     system.add_component(generator)
-    reference = {"wind": {"avg_capacity_MW": 50}}
+    reference = {"wind": {"capacity_MW": 50}}
 
     break_generators(system, reference)
 
@@ -206,7 +206,7 @@ def test_break_generators_missing_reference(system_with_region) -> None:
         category="wind",
     )
     system.add_component(generator)
-    reference = {"solar": {"avg_capacity_MW": 50}}
+    reference = {"solar": {"capacity_MW": 50}}
 
     break_generators(system, reference)
 
@@ -229,7 +229,7 @@ def test_break_generators_missing_avg_capacity(system_with_region, caplog) -> No
     break_generators(system, reference)
 
     assert list(system.get_components(ReEDSGenerator)) == [generator]
-    assert "avg_capacity_MW" not in caplog.text
+    assert "`capacity_MW` not found on reference_tech" in caplog.text
 
 
 def test_break_generators_small_capacity_not_split(system_with_region) -> None:
@@ -243,7 +243,7 @@ def test_break_generators_small_capacity_not_split(system_with_region) -> None:
         category="wind",
     )
     system.add_component(generator)
-    reference = {"wind": {"avg_capacity_MW": 50}}
+    reference = {"wind": {"capacity_MW": 50}}
 
     break_generators(system, reference)
 
@@ -262,7 +262,7 @@ def test_break_generators_respects_drop_threshold(system_with_region) -> None:
         category="wind",
     )
     system.add_component(generator)
-    reference = {"wind": {"avg_capacity_MW": 50}}
+    reference = {"wind": {"capacity_MW": 50}}
 
     break_generators(system, reference, drop_capacity_threshold=40)
 
@@ -287,7 +287,7 @@ def test_normalize_reference_data_missing_keys(caplog) -> None:
     from r2x_reeds.sysmod.break_gens import _normalize_reference_data
 
     caplog.set_level("WARNING")
-    data = [{"avg_capacity_MW": 50}, {"name": None}]
+    data = [{"capacity_MW": 50}, {"name": None}]
     result = _normalize_reference_data(data, "name", "<source>")
     assert result.is_err()
     assert "Skipping reference record missing key 'name'" in caplog.text
@@ -300,3 +300,21 @@ def test_normalize_reference_data_invalid_type() -> None:
     result = _normalize_reference_data("string", "name", "<source>")
     assert result.is_err()
     assert isinstance(result.unwrap_err(), TypeError)
+
+
+def test_break_generators_return_same_type(system_with_region: System, caplog) -> None:
+    from r2x_reeds.models import ReEDSThermalGenerator
+    from r2x_reeds.sysmod import break_generators
+
+    sys, _ = system_with_region
+
+    gen = ReEDSThermalGenerator.example()
+
+    sys.add_component(gen)
+
+    reference = {"thermal": {"capacity_MW": 50}}
+
+    break_generators(sys, reference, drop_capacity_threshold=40)
+
+    assert len(list(sys.get_components(ReEDSThermalGenerator))) == 2
+    assert next(sys.get_components(ReEDSThermalGenerator)).capacity == 50
