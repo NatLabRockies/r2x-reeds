@@ -46,6 +46,7 @@ class ReEDSRegion(ReEDSComponent):
 
     @classmethod
     def example(cls) -> ReEDSRegion:
+        """Example region."""
         return ReEDSRegion(name="p1", state="ca")
 
 
@@ -156,6 +157,7 @@ class ReEDSThermalGenerator(ReEDSGenerator):
 
     @classmethod
     def example(cls) -> ReEDSThermalGenerator:
+        """Example thermal generator."""
         return ReEDSThermalGenerator(
             name="simple-bus",
             category="thermal",
