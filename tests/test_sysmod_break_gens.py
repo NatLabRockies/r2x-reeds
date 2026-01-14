@@ -271,6 +271,14 @@ def test_break_generators_respects_drop_threshold(system_with_region) -> None:
     assert sorted(gen.capacity for gen in generators) == [50.0, 50.0]
 
 
+def test_load_reference_units(caplog):
+    from r2x_reeds.sysmod.break_gens import _load_reference_units
+
+    _load_reference_units(reference_units=None)
+
+    assert "No reference_units provided." in caplog.text
+
+
 def test_normalize_reference_data_skips_invalid_records(caplog) -> None:
     """Ensure invalid reference records are skipped with warnings."""
     from r2x_reeds.sysmod.break_gens import _normalize_reference_data
