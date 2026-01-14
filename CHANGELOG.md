@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/NREL/r2x-reeds/compare/v0.3.2...v0.3.3) (2026-01-14)
+
+
+### 🐛 Bug Fixes
+
+* `break_gens` plugin default technologies and logging ([#39](https://github.com/NREL/r2x-reeds/issues/39)) ([9dd0304](https://github.com/NREL/r2x-reeds/commit/9dd0304fa5aecfd3b12985bcddd7b9610d65d836))
+
 ## [0.3.2](https://github.com/NREL/r2x-reeds/compare/v0.3.1...v0.3.2) (2026-01-12)
 
 
