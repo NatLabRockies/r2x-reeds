@@ -44,6 +44,11 @@ class ReEDSRegion(ReEDSComponent):
     hurdle_region: Annotated[str | None, Field(description="Hurdle rate region")] = None
     cc_region: Annotated[str | None, Field(description="Climate change region")] = None
 
+    @classmethod
+    def example(cls) -> ReEDSRegion:
+        """Example region."""
+        return ReEDSRegion(name="p1", state="ca")
+
 
 class ReEDSReserveRegion(ReEDSComponent):
     """ReEDS reserve region component.
@@ -149,6 +154,20 @@ class ReEDSThermalGenerator(ReEDSGenerator):
     startup_cost: Annotated[PositiveFloat | None, Unit("$/MW"), Field(description="Startup cost")] = None
     min_up_time: Annotated[PositiveFloat | None, Unit("hours"), Field(description="Min up time")] = None
     min_down_time: Annotated[PositiveFloat | None, Unit("hours"), Field(description="Min down time")] = None
+
+    @classmethod
+    def example(cls) -> ReEDSThermalGenerator:
+        """Example thermal generator."""
+        return ReEDSThermalGenerator(
+            name="simple-bus",
+            category="thermal",
+            region=ReEDSRegion.example(),
+            technology="gas-cc",
+            capacity=100,
+            heat_rate=15,
+            fuel_type="ngas",
+            fuel_price=10,
+        )
 
 
 class ReEDSVariableGenerator(ReEDSGenerator):

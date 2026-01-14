@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from importlib.resources import files
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -20,54 +22,45 @@ if TYPE_CHECKING:
 
 def break_generators(
     system: System,
-    reference_technologies: Path | str | PathLike | dict[str, Any],
+    reference_units: Path | str | PathLike | dict[str, Any] | None = None,
     drop_capacity_threshold: int = 5,
     skip_categories: list[str] | None = None,
     break_category: str = "category",
-) -> None:
+) -> System:
     """Public API for breaking generators with fail-fast error handling."""
-    match _break_generators_result(
-        system=system,
-        reference_technologies=reference_technologies,
-        drop_capacity_threshold=drop_capacity_threshold,
-        skip_categories=skip_categories,
-        break_category=break_category,
-    ):
-        case Ok(_):
-            return None
-        case Err(error):
-            raise error
-
-
-def _break_generators_result(
-    system: System,
-    reference_technologies: Path | str | PathLike | dict[str, Any],
-    drop_capacity_threshold: int,
-    skip_categories: list[str] | None,
-    break_category: str,
-) -> Result[None, Exception]:
-    """Load references, run splitting logic, and propagate errors via Result."""
     if drop_capacity_threshold < 0:
         msg = "drop_capacity_threshold must be non-negative"
         return Err(ValueError(msg))
 
-    match _load_reference_generators(reference_technologies):
-        case Ok(reference_generators):
-            _break_generators(
-                system=system,
-                reference_generators=reference_generators,
-                capacity_threshold=drop_capacity_threshold,
-                skip_categories=skip_categories,
-                break_category=break_category,
-            )
-            return Ok(None)
+    reference_units = _load_reference_units(reference_units)
+
+    match reference_units:
+        case Ok(value):
+            reference_units = value
         case Err(error):
-            return Err(error)
+            raise error
+
+    system = _break_system_generators(
+        system=system,
+        reference_units=reference_units,
+        capacity_threshold=drop_capacity_threshold,
+        skip_categories=skip_categories,
+        break_category=break_category,
+    )
+
+    match system:
+        case Ok(system):
+            system = system
+        case Err(error):
+            logger.error("{}", error)
+            raise error
+
+    return system
 
 
-def _break_generators(
+def _break_system_generators(
     system: System,
-    reference_generators: dict[str, dict[str, Any]],
+    reference_units: dict[str, dict[str, Any]],
     capacity_threshold: float,
     skip_categories: list[str] | None = None,
     break_category: str = "category",
@@ -80,6 +73,7 @@ def _break_generators(
         ReEDSGenerator, filter_func=lambda comp: getattr(comp, break_category, None)
     ):
         tech_key = str(getattr(component, break_category))
+        logger.trace("Extracted technology key: {}", tech_key)
 
         if skip_set and tech_key in skip_set:
             logger.trace(
@@ -92,29 +86,32 @@ def _break_generators(
 
         logger.trace(f"Breaking {component.name}")
 
-        if not (reference_tech := reference_generators.get(tech_key)):
-            logger.trace(f"{tech_key} not found in reference_generators")
+        if not (reference_tech := reference_units.get(tech_key)):
+            logger.trace(f"{tech_key} not found in reference_units")
             continue
 
-        if not (avg_capacity := reference_tech.get("avg_capacity_MW", None)):
+        if not (capacity := reference_tech.get("capacity_MW", None)):
+            logger.warning("`capacity_MW` not found on reference_tech for {}.", tech_key)
             continue
 
-        # Use .capacity field directly (float in MW)
+        # Use `.capacity` field directly (float in MW)
         reference_base_power = component.capacity
-        no_splits = int(reference_base_power // avg_capacity)
-        remainder = reference_base_power % avg_capacity
+        no_splits = int(reference_base_power // capacity)
+        remainder = reference_base_power % capacity
 
         if no_splits <= 1:
+            logger.trace("Number of splits <= 1. Skipping.")
             continue
+
         split_no = 1
         logger.trace(
             f"Breaking generator {component.name} with capacity {reference_base_power} "
-            f"into {no_splits} generators of {avg_capacity} capacity"
+            f"into {no_splits} generators of {capacity} capacity"
         )
 
         for _ in range(no_splits):
             component_name = component.name + f"_{split_no:02}"
-            _create_split_generator(system, component, component_name, avg_capacity)
+            _create_split_generator(system, component, component_name, capacity)
             split_no += 1
 
         if remainder > capacity_threshold:
@@ -125,6 +122,8 @@ def _break_generators(
             logger.debug(f"Dropped {remainder} capacity for {component.name}")
 
         system.remove_component(component)
+    else:
+        logger.info("No generator found that match the category. Skipping plugin.")
 
     logger.debug(f"Total capacity dropped {capacity_dropped} MW")
     return system
@@ -151,7 +150,8 @@ def _create_split_generator(
     ReEDSGenerator
         The newly created split generator component.
     """
-    new_component = ReEDSGenerator(
+    logger.trace("Creating split generator {} with capacity {}", name, new_capacity)
+    component = type(original)(
         name=name,
         region=original.region,
         technology=original.technology,
@@ -165,31 +165,39 @@ def _create_split_generator(
         vom_cost=original.vom_cost,
         vintage=original.vintage,
     )
-
-    system.add_component(new_component)
+    logger.trace("Created new generator {} with capacity {}", component.label, new_capacity)
+    system.add_component(component)
 
     for attribute in system.get_supplemental_attributes_with_component(original):
         logger.trace("Component {} has supplemental attribute {}. Copying.", original.label, attribute.label)
-        system.add_supplemental_attribute(new_component, attribute)
+        system.add_supplemental_attribute(component, attribute)
 
     if system.has_time_series(original):
         logger.trace("Component {} has time series attached. Copying.", original.label)
         ts = system.get_time_series(original)
-        system.add_time_series(ts, new_component)
+        system.add_time_series(ts, component)
 
-    return new_component
+    return component
 
 
-def _load_reference_generators(
-    reference_technologies: Path | str | PathLike | dict[str, Any], *, dedup_key: str = "name"
+def _load_reference_units(
+    reference_units: Path | str | PathLike | dict[str, Any] | None, *, dedup_key: str = "name"
 ) -> Result[dict[str, dict[str, Any]], Exception]:
     """Load reference generator definitions and deduplicate them."""
-    if isinstance(reference_technologies, dict):
-        return _normalize_reference_data(
-            reference_technologies, dedup_key, "<in-memory reference technologies>"
-        )
+    if reference_units is None:
+        logger.info("No reference_units provided. Using package defaults from pcm_defaults.json")
+        fpath = files("r2x_reeds").joinpath("config/pcm_defaults.json")
 
-    match _coerce_path(reference_technologies):
+        try:
+            reference_units = json.loads(fpath.read_text())
+        except Exception as exc:
+            return Err(exc)
+        return _normalize_reference_data(reference_units, dedup_key, fpath)
+
+    if isinstance(reference_units, dict):
+        return _normalize_reference_data(reference_units, dedup_key, "<in-memory reference technologies>")
+
+    match _coerce_path(reference_units):
         case Ok(path_value):
             try:
                 reference_data = DataStore.load_file(path_value)
@@ -217,7 +225,7 @@ def _normalize_reference_data(
         reference_data = normalized_input
 
     if isinstance(reference_data, list):
-        reference_generators: dict[str, dict[str, Any]] = {}
+        reference_units: dict[str, dict[str, Any]] = {}
         for record in _deduplicate_records(reference_data, key=dedup_key):
             if not isinstance(record, dict):
                 logger.warning("Skipping non-dict reference record: {}", record)
@@ -230,10 +238,10 @@ def _normalize_reference_data(
                     source,
                 )
                 continue
-            reference_generators[str(key_value)] = record
+            reference_units[str(key_value)] = record
 
-        if reference_generators:
-            return Ok(reference_generators)
+        if reference_units:
+            return Ok(reference_units)
 
         msg = (
             f"No reference technologies with key '{dedup_key}' were found in {source}. "

@@ -61,7 +61,7 @@
     "field_map": {
       "technology": "technology",
       "capacity": "capacity",
-      "category": "category",
+      "category": "technology",
       "forced_outage_rate": "forced_outage_rate",
       "planned_outage_rate": "planned_outage_rate",
       "max_age": "max_age",
