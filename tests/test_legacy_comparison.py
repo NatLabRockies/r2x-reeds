@@ -23,6 +23,8 @@ from infrasys import Component, System
 from r2x_core import DataStore
 from r2x_reeds import ReEDSConfig, ReEDSParser
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture
 def legacy_system_path() -> Path:
@@ -78,8 +80,16 @@ def data_store(reeds_run_path: Path, reeds_config: ReEDSConfig) -> DataStore:
 @pytest.fixture
 def new_system(reeds_config: ReEDSConfig, data_store: DataStore) -> System:
     """Build system using new parser."""
-    parser = ReEDSParser(config=reeds_config, store=data_store, name="test_system")
-    return parser.build_system()
+    from typing import cast
+
+    from r2x_core import PluginContext
+
+    ctx = PluginContext(config=reeds_config, store=data_store)
+    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    result_ctx = parser.run()
+    system = result_ctx.system
+    assert system is not None
+    return system
 
 
 def test_legacy_system_has_components(legacy_component_count: int) -> None:

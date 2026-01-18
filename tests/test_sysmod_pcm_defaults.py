@@ -9,6 +9,8 @@ from infrasys import System
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import pcm_defaults
 
+pytestmark = [pytest.mark.integration]
+
 
 def _build_generator(name: str = "GEN1", category: str = "coal") -> tuple[System, ReEDSGenerator]:
     system = System(name="test_pcm_defaults")

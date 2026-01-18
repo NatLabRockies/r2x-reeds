@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = [pytest.mark.unit]
 
-@pytest.mark.unit
+
 def test_map_reserve_type_spinning() -> None:
     from r2x_reeds.enum_mappings import map_reserve_type
     from r2x_reeds.models.enums import ReserveType

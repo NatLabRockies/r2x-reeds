@@ -10,6 +10,8 @@ from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator, ReEDSRegi
 from r2x_reeds.models.enums import EmissionType
 from r2x_reeds.sysmod import emission_cap
 
+pytestmark = [pytest.mark.integration]
+
 
 def _build_system() -> tuple[System, ReEDSRegion]:
     system = System(name="test_emission_cap")

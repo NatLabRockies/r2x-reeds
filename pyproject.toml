@@ -44,7 +44,7 @@ classifiers = [
 ]
 
 [project.entry-points."r2x_plugin"]
-reeds = "r2x_reeds.plugins:manifest"
+reeds = "r2x_reeds:ReEDSParser"
 
 [dependency-groups]
 dev = [
@@ -84,8 +84,6 @@ testpaths = ["tests"]
 addopts = [
     "--cov=r2x_reeds",
     "--cov-report=term-missing:skip-covered",
-    "--cov-report=html",
-    "--cov-report=json",
     "--strict-markers",
     "-v",
 ]
@@ -93,6 +91,7 @@ markers = [
     "unit: Fast unit tests with no external dependencies",
     "integration: Integration tests requiring system setup",
     "slow: Slow tests (>1s)",
+    "smoke: Quick smoke tests for basic functionality",
 ]
 
 [tool.ruff]
@@ -162,3 +161,6 @@ fail_under = 90
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+[tool.uv.sources]
+r2x-core = { path = "../../r2x-core/fuzzy", editable = true }

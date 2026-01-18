@@ -9,6 +9,8 @@ from infrasys import System
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import ccs_credit
 
+pytestmark = [pytest.mark.integration]
+
 
 def _build_system() -> tuple[System, ReEDSRegion]:
     system = System(name="test_ccs_credit")

@@ -10,6 +10,8 @@ from infrasys import Component
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator
 from r2x_reeds.parser_utils import get_technology_category
 
+pytestmark = [pytest.mark.integration]
+
 
 def test_system_has_buses(example_system) -> None:
     """Test that built example_system contains buses."""

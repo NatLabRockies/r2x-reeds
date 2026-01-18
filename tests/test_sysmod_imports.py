@@ -3,10 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import polars as pl
+import pytest
 from infrasys import System
 
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import imports
+
+pytestmark = [pytest.mark.integration]
 
 
 def _build_generator() -> tuple[System, ReEDSGenerator]:

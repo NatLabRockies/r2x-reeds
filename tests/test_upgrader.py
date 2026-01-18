@@ -2,18 +2,24 @@ import pytest
 
 from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture
 def upgraded_system(reeds_run_upgrader, example_reeds_config, caplog):
-    from r2x_core import DataStore
+    from typing import cast
+
+    from r2x_core import DataStore, PluginContext
     from r2x_reeds.parser import ReEDSParser
 
-    # Create upgrader but don't pass it to DataStore
-    # DataStore.from_plugin_config doesn't accept upgrader argument
     store = DataStore.from_plugin_config(example_reeds_config, path=reeds_run_upgrader)
 
-    parser = ReEDSParser(example_reeds_config, store=store, system_name="Upgraded System")
-    return parser.build_system()
+    ctx = PluginContext(config=example_reeds_config, store=store)
+    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    result_ctx = parser.run()
+    system = result_ctx.system
+    assert system is not None
+    return system
 
 
 def test_reeds_upgrader(reeds_run_upgrader):

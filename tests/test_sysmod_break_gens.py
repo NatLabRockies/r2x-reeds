@@ -11,6 +11,8 @@ from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator
 from r2x_reeds.models.enums import EmissionType
 from r2x_reeds.sysmod.break_gens import break_generators
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture
 def system_with_region(sample_region):

@@ -2,6 +2,8 @@ import pytest
 
 from r2x_reeds.upgrader.helpers import get_function_arguments, validate_string
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.mark.parametrize(
     "value,expected",

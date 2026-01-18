@@ -1,9 +1,13 @@
 """Tests for input validation."""
 
+import pytest
+
+pytestmark = [pytest.mark.integration]
+
 
 def test_invalid_solve_year_raises_error(reeds_run_path):
-    """Test that an invalid solve year raises a ValueError."""
-    from r2x_core import DataStore, ValidationError
+    """Test that an invalid solve year returns validation error."""
+    from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
     config = ReEDSConfig(
@@ -13,18 +17,20 @@ def test_invalid_solve_year_raises_error(reeds_run_path):
         case_name="test",
     )
 
-    data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
-    parser = ReEDSParser(config, store=data_store)
+    from typing import cast
 
-    result = parser.validate_inputs()
+    data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
+    ctx = PluginContext(config=config, store=data_store)
+    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+
+    result = parser.on_validate()
     assert result.is_err()
-    assert isinstance(result.error, ValidationError)
-    assert "Solve year" in result.error.args[0]
+    assert "Solve year" in str(result.err())
 
 
 def test_invalid_weather_year_raises_error(reeds_run_path):
-    """Test that an invalid weather year raises a ValueError."""
-    from r2x_core import DataStore, ValidationError
+    """Test that an invalid weather year returns validation error."""
+    from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
     config = ReEDSConfig(
@@ -34,17 +40,20 @@ def test_invalid_weather_year_raises_error(reeds_run_path):
         case_name="test",
     )
 
+    from typing import cast
+
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
-    parser = ReEDSParser(config, store=data_store)
-    result = parser.validate_inputs()
+    ctx = PluginContext(config=config, store=data_store)
+    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+
+    result = parser.on_validate()
     assert result.is_err()
-    assert isinstance(result.error, ValidationError)
-    assert "Weather year" in result.error.args[0]
+    assert "Weather year" in str(result.err())
 
 
 def test_valid_years_pass_validation(reeds_run_path):
     """Test that valid years pass validation without errors."""
-    from r2x_core import DataStore
+    from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
     config = ReEDSConfig(
@@ -54,8 +63,11 @@ def test_valid_years_pass_validation(reeds_run_path):
         case_name="test",
     )
 
-    data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
-    parser = ReEDSParser(config, store=data_store, name="test_valid_years")
+    from typing import cast
 
-    result = parser.validate_inputs()
-    assert result
+    data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
+    ctx = PluginContext(config=config, store=data_store)
+    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+
+    result = parser.on_validate()
+    assert result.is_ok()

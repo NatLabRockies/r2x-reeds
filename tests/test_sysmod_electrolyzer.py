@@ -10,6 +10,8 @@ from infrasys.exceptions import ISNotStored
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import electrolyzer
 
+pytestmark = [pytest.mark.integration]
+
 
 def _build_regions() -> tuple[System, ReEDSRegion, ReEDSRegion]:
     system = System(name="test_electrolyzer")

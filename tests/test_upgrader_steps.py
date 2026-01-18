@@ -3,8 +3,12 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pytest
+
 from r2x_reeds.upgrader.data_upgrader import ReEDSVersionDetector
 from r2x_reeds.upgrader.upgrade_steps import move_hmap_file, move_transmission_cost
+
+pytestmark = [pytest.mark.integration]
 
 
 def test_version_detector_reads_meta(tmp_path: Path) -> None:
@@ -20,10 +24,10 @@ def test_version_detector_reads_meta(tmp_path: Path) -> None:
 
 
 def test_version_detector_missing_file(tmp_path: Path) -> None:
-    """Missing files return a FileNotFoundError instance."""
+    """Missing files raise FileNotFoundError."""
     detector = ReEDSVersionDetector()
-    result = detector.read_version(tmp_path)
-    assert isinstance(result, FileNotFoundError)
+    with pytest.raises(FileNotFoundError):
+        detector.read_version(tmp_path)
 
 
 def test_move_hmap_file_moves_and_skips(tmp_path: Path) -> None:

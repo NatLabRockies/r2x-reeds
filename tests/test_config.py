@@ -1,6 +1,10 @@
 """Tests for ReEDS configuration."""
 
+import pytest
+
 from r2x_reeds import ReEDSConfig
+
+pytestmark = [pytest.mark.unit]
 
 
 def test_reeds_config_creation_single_year():
