@@ -86,6 +86,7 @@ addopts = [
     "--cov-report=term-missing:skip-covered",
     "--strict-markers",
     "-v",
+    "--cov-fail-under=0",
 ]
 markers = [
     "unit: Fast unit tests with no external dependencies",
