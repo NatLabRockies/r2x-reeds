@@ -5,13 +5,13 @@ This document describes the testing setup and best practices for r2x-reeds.
 ## Quick Start
 
 ```bash
-# Run all tests with coverage
-just test
-
-# Run only unit tests (fast, ~5s)
+# Run unit tests only (~4s, no coverage - fastest feedback)
 just test-fast
 
-# Run unit + quick integration tests (~15s)
+# Run all tests with coverage (requires 90% coverage)
+just test
+
+# Run unit + quick integration tests (~27s with coverage)
 just test-quick
 
 # Run full suite with HTML coverage report (CI-style)
@@ -61,12 +61,12 @@ uv run pytest -m slow
 
 The `justfile` provides convenient test profiles:
 
-| Command | Purpose | Time | Coverage |
-|---------|---------|------|----------|
-| `just test` | Full suite with coverage | ~60s | Yes |
-| `just test-fast` | Unit tests only | ~5s | No |
-| `just test-quick` | Unit + fast integration | ~15s | Yes |
-| `just test-ci` | CI-style (HTML + JSON reports) | ~60s | Yes |
+| Command | Purpose | Time | Coverage | Threshold |
+|---------|---------|------|----------|-----------|
+| `just test-fast` | Unit tests only | ~4s | ❌ None | Fast feedback |
+| `just test` | Full suite | ~28s | ✅ Full | 90% required |
+| `just test-quick` | Unit + integration (no slow) | ~27s | ✅ Full | No threshold |
+| `just test-ci` | Full suite + HTML/JSON | ~28s | ✅ Full | 90% required |
 
 ## Fixture Organization
 

@@ -27,50 +27,17 @@ lint *ARGS:
 type:
     uv run mypy src/
 
+# Run fast unit tests only (~5s, no coverage). For quick feedback during development.
+test-fast *ARGS:
+    uv run pytest -m unit -q {{ARGS}}
+
 # Run tests (all tests with full coverage report). Must reach 90% coverage.
 test *ARGS:
     uv run pytest -q --cov=r2x_reeds --cov-fail-under=90 --cov-report=term-missing:skip-covered {{ARGS}}
 
-# Run fast unit tests only (~5s, with unit-relevant coverage). Shows coverage of unit code only.
-test-fast *ARGS:
-    uv run pytest -m unit -q \
-        --cov=r2x_reeds.getters \
-        --cov=r2x_reeds.models.base \
-        --cov=r2x_reeds.models.components \
-        --cov=r2x_reeds.models.enums \
-        --cov=r2x_reeds.parser_checks \
-        --cov=r2x_reeds.parser_utils \
-        --cov=r2x_reeds.plugin_config \
-        --cov=r2x_reeds.plugins \
-        --cov=r2x_reeds.row_utils \
-        --cov=r2x_reeds.rules_helper \
-        --cov-report=term-missing:skip-covered {{ARGS}}
-
-# Run unit + quick integration tests (~29s). Shows coverage of code exercised by these tests.
+# Run unit + quick integration tests (~29s, with coverage). Pre-commit check.
 test-quick *ARGS:
-    uv run pytest -m "not slow" -q \
-        --cov=r2x_reeds.getters \
-        --cov=r2x_reeds.parser \
-        --cov=r2x_reeds.parser_checks \
-        --cov=r2x_reeds.parser_utils \
-        --cov=r2x_reeds.plugins \
-        --cov=r2x_reeds.sysmod.break_gens \
-        --cov=r2x_reeds.sysmod.ccs_credit \
-        --cov=r2x_reeds.sysmod.electrolyzer \
-        --cov=r2x_reeds.sysmod.emission_cap \
-        --cov=r2x_reeds.sysmod.imports \
-        --cov=r2x_reeds.sysmod.pcm_defaults \
-        --cov=r2x_reeds.sysmod.utils \
-        --cov=r2x_reeds.upgrader.data_upgrader \
-        --cov=r2x_reeds.upgrader.helpers \
-        --cov=r2x_reeds.upgrader.upgrade_steps \
-        --cov=r2x_reeds.models.base \
-        --cov=r2x_reeds.models.components \
-        --cov=r2x_reeds.models.enums \
-        --cov=r2x_reeds.plugin_config \
-        --cov=r2x_reeds.row_utils \
-        --cov=r2x_reeds.rules_helper \
-        --cov-report=term-missing:skip-covered {{ARGS}}
+    uv run pytest -m "not slow" -q --cov=r2x_reeds --cov-report=term-missing:skip-covered {{ARGS}}
 
 # Run full test suite with HTML coverage report (CI-style). Must reach 90% coverage.
 test-ci *ARGS:

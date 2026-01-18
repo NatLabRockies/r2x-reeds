@@ -82,11 +82,8 @@ plugins = [
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = [
-    "--cov=r2x_reeds",
-    "--cov-report=term-missing:skip-covered",
     "--strict-markers",
     "-v",
-    "--cov-fail-under=0",
 ]
 markers = [
     "unit: Fast unit tests with no external dependencies",
