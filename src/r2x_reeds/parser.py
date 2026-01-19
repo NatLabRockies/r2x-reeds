@@ -833,13 +833,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         hierarchy_data = self.read_data_file("hierarchy")
         if hierarchy_data is None:
             logger.warning("No hierarchy data found, skipping reserves")
-            logger.info("Attached 0 reserve regions and 0 reserve components")
             return Ok(None)
 
         df = hierarchy_data.collect()
         if df.is_empty():
             logger.warning("Hierarchy data is empty, skipping reserves")
-            logger.info("Attached 0 reserve regions and 0 reserve components")
             return Ok(None)
 
         # Load defaults via classmethod to keep PluginConfig as a pure model
@@ -852,7 +850,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         if not reserve_types:
             logger.debug("No reserve types configured, skipping reserves")
-            logger.info("Attached 0 reserve regions and 0 reserve components")
             return Ok(None)
 
         if "transmission_region" in df.columns:
@@ -911,7 +908,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         if not rows:
             logger.debug("No reserve rows generated, skipping reserves")
-            logger.info("Attached {} reserve regions and 0 reserve components", reserve_region_count)
             return Ok(None)
         logger.trace("Generated {} reserve component rows", len(rows))
 
@@ -965,14 +961,12 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         emit_data = self.read_data_file("emission_rates")
         if emit_data is None:
             logger.warning("No emission rates data found, skipping emissions")
-            logger.info("Attached 0 emission components")
             return Ok(None)
 
         df = emit_data.collect()
         logger.trace("Emission dataset rows: {}", df.height)
         if df.is_empty():
             logger.warning("Emission rates data is empty, skipping emissions")
-            logger.info("Attached 0 emission components")
             return Ok(None)
 
         if self._ctx is None:
@@ -988,7 +982,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         generated = list(self._generator_cache.values())
         if not generated:
             logger.warning("No generators available for emission matching")
-            logger.info("Attached 0 emission components")
             return Ok(None)
 
         rename_map = {
@@ -1018,14 +1011,12 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         if not matched_rows:
             logger.warning("No emission rows matched existing generators, skipping emissions")
-            logger.info("Attached 0 emission components")
             return Ok(None)
 
         emission_matches = pl.DataFrame(matched_rows).drop("vintage_key")
 
         if emission_matches.is_empty():
             logger.warning("No emission rows matched existing generators, skipping emissions")
-            logger.info("Attached 0 emission components")
             return Ok(None)
 
         emission_kwargs_result = _collect_component_kwargs_from_rule(
@@ -1042,7 +1033,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         for identifier, kwargs in emission_kwargs_result.ok() or []:
             generator = self._generator_cache.get(identifier)
             if generator is None:
-                logger.debug("Generator %s not found for emission, skipping", identifier)
+                logger.trace("Generator {} not found for emission, skipping", identifier)
                 continue
 
             try:
@@ -1142,6 +1133,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             ]
 
             if not matching_generators:
+                logger.debug("No matching generators for renewable profile {}|{}", tech, region_name)
                 continue
 
             data = self._truncate_and_cast_time_series(renewable_profiles[col_name].to_numpy())
@@ -1175,7 +1167,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         reserves = list(system.get_components(ReEDSReserve))
         logger.trace("Attaching reserve requirements for {} reserve components", len(reserves))
         for reserve in reserves:
-            logger.trace("Calculating reserve requirement for {}", reserve.name)
+            logger.debug("Calculating reserve requirement for {}", reserve.name)
             reserve_type_name = reserve.reserve_type.value.upper()
             if reserve_type_name in ("FLEXIBILITY_UP", "FLEXIBILITY_DOWN"):
                 reserve_type_name = "FLEXIBILITY"
@@ -1317,12 +1309,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         if not hydro_generators:
             logger.warning("No hydro generators found, skipping hydro budgets")
-            logger.info("Attached 0 hydro budget profiles")
             return Ok(None)
 
         if self._hydro_cf_prepared is None:
             logger.warning("Hydro CF data not prepared, skipping hydro budgets")
-            logger.info("Attached 0 hydro budget profiles")
             return Ok(None)
         logger.trace("Hydro CF prepared rows: {}", self._hydro_cf_prepared.height)
 
@@ -1380,7 +1370,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 )
 
                 system.add_time_series(ts, generator, solve_year=year)
-                logger.debug("Adding hydro budget to {}", generator.label)
+                logger.trace("Adding hydro budget to {}", generator.label)
                 attached_budgets += 1
         logger.info("Attached {} hydro budget profiles", attached_budgets)
         return Ok(None)
@@ -1407,15 +1397,30 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             f"weather years: {self.config.weather_year}"
         )
 
+        # Count component types for summary
+        regions = len(list(system.get_components(ReEDSRegion)))
+        generators = len(list(system.get_components(ReEDSGenerator)))
+        demands = len(list(system.get_components(ReEDSDemand)))
+        reserves = len(list(system.get_components(ReEDSReserve)))
+        transmission_lines = len(list(system.get_components(ReEDSTransmissionLine)))
         total_components = len(list(system.get_components(Component)))
+
         logger.info("System name: {}", system.name)
-        logger.info("Total components: {}", total_components)
+        logger.info(
+            "System composition: {} regions, {} generators, {} demands, {} reserves, {} transmission lines ({} total components)",
+            regions,
+            generators,
+            demands,
+            reserves,
+            transmission_lines,
+            total_components,
+        )
         logger.info("Post-processing complete")
 
     def _ensure_config_assets(self) -> Result[None, str]:
         """Load and cache plugin config assets."""
         if self._config_assets is not None:
-            logger.debug("Config assets already loaded.")
+            logger.trace("Config assets already loaded.")
             return Ok(None)
 
         try:

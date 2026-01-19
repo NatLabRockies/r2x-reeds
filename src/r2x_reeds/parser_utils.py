@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import calendar
 import importlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -15,7 +15,7 @@ from rust_ok import Err, Ok, Result
 from r2x_core import PluginContext, System
 from r2x_core.exceptions import ValidationError
 from r2x_core.utils._rules import build_component_kwargs
-from r2x_reeds.models.components import ReEDSRegion
+from r2x_reeds.models.components import ReEDSDemand, ReEDSRegion
 
 if TYPE_CHECKING:
     from r2x_core.rules import Rule
@@ -643,3 +643,154 @@ def get_rule_for_target(
                 return Ok(rule)
 
     return Ok(candidates[0])
+
+
+def filter_generators_by_transmission_region(
+    generators: Iterable[ReEDSGenerator],
+    *,
+    region_name: str,
+    category_filter: str | None = None,
+    tech_categories: dict[str, Any] | None = None,
+) -> list[ReEDSGenerator]:
+    """Filter generators to those in a transmission region."""
+    result = []
+    for gen in generators:
+        if not gen.region:
+            continue
+        if gen.region.transmission_region != region_name:
+            continue
+        if category_filter is not None:
+            if tech_categories is None:
+                continue
+            if not tech_matches_category(gen.technology, category_filter, tech_categories):
+                continue
+        result.append(gen)
+    return result
+
+
+def filter_loads_by_transmission_region(
+    loads: Iterable[ReEDSDemand],
+    *,
+    region_name: str,
+) -> list[ReEDSDemand]:
+    """Filter demand components to those in a transmission region."""
+    return [load for load in loads if load.region and load.region.transmission_region == region_name]
+
+
+def filter_generators_by_category(
+    generators: Iterable[ReEDSGenerator],
+    *,
+    category: str,
+    tech_categories: dict[str, Any],
+) -> list[ReEDSGenerator]:
+    """Filter generators matching a technology category."""
+    return [gen for gen in generators if tech_matches_category(gen.technology, category, tech_categories)]
+
+
+def build_generator_emission_lookup(
+    generators: Iterable[ReEDSGenerator],
+) -> dict[tuple[str | None, str, str], list[str]]:
+    """Create lookup from (technology, region, vintage) to generator names."""
+    lookup: dict[tuple[str | None, str, str], list[str]] = {}
+    for gen in generators:
+        vintage_key = gen.vintage or "__missing_vintage__"
+        key = (gen.technology, gen.region.name, vintage_key)
+        lookup.setdefault(key, []).append(gen.name)
+    return lookup
+
+
+def match_emission_rows_to_generators(
+    emission_df: pl.DataFrame,
+    *,
+    generator_lookup: dict[tuple[str | None, str, str], list[str]],
+) -> pl.DataFrame:
+    """Match emission rows to generators using the lookup."""
+    emission_df = emission_df.with_columns(
+        pl.col("vintage").fill_null("__missing_vintage__").alias("vintage_key")
+    )
+
+    matched_rows: list[dict[str, Any]] = []
+    for row in emission_df.iter_rows(named=True):
+        key = (row.get("technology"), row.get("region"), row.get("vintage_key"))
+        generator_names = generator_lookup.get(key)
+        if not generator_names:
+            continue
+        row_data = dict(row)
+        row_data["name"] = generator_names[0]
+        matched_rows.append(row_data)
+
+    if not matched_rows:
+        return pl.DataFrame()
+
+    return pl.DataFrame(matched_rows).drop("vintage_key")
+
+
+def build_year_month_calendar_df(years: list[int]) -> pl.DataFrame:
+    """Build DataFrame with calendar info for year-month combinations."""
+    if not years:
+        return pl.DataFrame(
+            schema={
+                "year": pl.Int64,
+                "month_num": pl.Int64,
+                "days_in_month": pl.Int64,
+                "hours_in_month": pl.Int64,
+            }
+        )
+
+    return pl.DataFrame(
+        {
+            "year": [y for y in years for _ in range(1, 13)],
+            "month_num": [m for _ in years for m in range(1, 13)],
+            "days_in_month": [calendar.monthrange(y, m)[1] for y in years for m in range(1, 13)],
+            "hours_in_month": [calendar.monthrange(y, m)[1] * 24 for y in years for m in range(1, 13)],
+        }
+    )
+
+
+def calculate_hydro_budgets_for_generator(
+    generator: ReEDSGenerator,
+    *,
+    hydro_data: pl.DataFrame,
+    solve_years: list[int],
+) -> list:
+    """Calculate hydro budget time series for a generator across solve years."""
+    from r2x_reeds.parser_types import HydroBudgetResult
+
+    results: list[HydroBudgetResult] = []
+
+    tech_region_filter = (pl.col("technology") == generator.technology) & (
+        pl.col("region") == generator.region.name
+    )
+    if generator.vintage:
+        tech_region_filter = tech_region_filter & (pl.col("vintage") == generator.vintage)
+
+    filtered_data = hydro_data.filter(tech_region_filter)
+    if filtered_data.is_empty():
+        return results
+
+    for year in solve_years:
+        year_data = filtered_data.filter(pl.col("year") == year)
+        if year_data.height != 12:
+            continue
+
+        year_data = year_data.sort("month_num")
+        monthly_profile = year_data["hydro_cf"].to_list()
+        days_in_month = year_data["days_in_month"].to_list()
+        hours_in_month = year_data["hours_in_month"].to_list()
+
+        if any(v is None for v in monthly_profile):
+            continue
+
+        daily_budgets = [
+            generator.capacity * cf * hours / days
+            for cf, hours, days in zip(monthly_profile, hours_in_month, days_in_month, strict=True)
+        ]
+
+        hourly_result = monthly_to_hourly_polars(year, daily_budgets)
+        if hourly_result.is_err():
+            continue
+
+        budget_array = np.asarray(hourly_result.ok(), dtype=np.float64)
+        results.append(HydroBudgetResult(year=year, budget_array=budget_array))
+
+    return results
