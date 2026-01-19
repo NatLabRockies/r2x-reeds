@@ -30,6 +30,14 @@ def test_reeds_upgrader(reeds_run_upgrader):
     assert isinstance(upgrader.steps, list)
 
 
+def test_reeds_upgrader_runs(reeds_run_upgrader):
+    upgrader = ReEDSUpgrader(reeds_run_upgrader)
+
+    result = upgrader.upgrade()
+    assert result.is_ok()
+    assert result.unwrap() == reeds_run_upgrader
+
+
 def test_upgraded_system(upgraded_system):
     from r2x_core import System
 

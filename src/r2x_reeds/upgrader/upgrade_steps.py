@@ -5,14 +5,11 @@ from typing import Any
 
 from loguru import logger
 
-from r2x_core.upgrader_utils import UpgradeType
+from r2x_core import UpgradeStep, UpgradeType
 from r2x_reeds.upgrader.helpers import LATEST_COMMIT
 
-from .data_upgrader import ReEDSUpgrader
 
-
-@ReEDSUpgrader.register_step(target_version=LATEST_COMMIT, upgrade_type=UpgradeType.FILE, priority=30)
-def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None):
+def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
     """Move hmap to new folder.
 
     This upgrade step is idempotent - it safely handles being called multiple times
@@ -24,7 +21,7 @@ def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None)
     # Check if the file has already been moved to the new location
     if new_location.exists():
         logger.debug("File {} already exists at target location, skipping move", new_location.name)
-        return
+        return folder
 
     # Check if the file exists at the old location
     if not old_location.exists():
@@ -35,11 +32,10 @@ def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None)
     # Move the file to its new location
     old_location.rename(new_location)
     logger.debug("Moved {} to {}", old_location.name, new_location)
-    return
+    return folder
 
 
-@ReEDSUpgrader.register_step(target_version=LATEST_COMMIT, upgrade_type=UpgradeType.FILE, priority=30)
-def move_transmission_cost(folder: Path, upgrader_context: dict[str, Any] | None = None):
+def move_transmission_cost(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
     """Rename the legacy transmission distance/cost files to their new names."""
     rename_map = [
         ("inputs_case/transmission_distance_cost_500kVac.csv", "inputs_case/transmission_cost_ac.csv"),
@@ -60,3 +56,23 @@ def move_transmission_cost(folder: Path, upgrader_context: dict[str, Any] | None
 
         old_path.rename(new_path)
         logger.debug("Moved legacy transmission file {} to {}", old_path.name, new_path.name)
+    return folder
+
+
+# Create UpgradeStep instances for each upgrade function
+UPGRADE_STEPS = [
+    UpgradeStep(
+        name="move_hmap_file",
+        func=move_hmap_file,
+        target_version=LATEST_COMMIT,
+        upgrade_type=UpgradeType.FILE,
+        priority=30,
+    ),
+    UpgradeStep(
+        name="move_transmission_cost",
+        func=move_transmission_cost,
+        target_version=LATEST_COMMIT,
+        upgrade_type=UpgradeType.FILE,
+        priority=30,
+    ),
+]

@@ -41,6 +41,12 @@ def _write_csv(path: Path, data: dict[str, list]) -> str:
     return str(path)
 
 
+def _run_electrolyzer(system: System, **kwargs) -> System:
+    result = electrolyzer.add_electrolizer_load(system, electrolyzer.ElectrolyzerConfig(**kwargs))
+    assert result.is_ok()
+    return result.unwrap()
+
+
 def test_electrolyzer_scope_full_flow(tmp_path: Path) -> None:
     """Integration test that adds both load and hydrogen price profiles."""
     system, west, east = _build_regions()
@@ -72,7 +78,7 @@ def test_electrolyzer_scope_full_flow(tmp_path: Path) -> None:
         },
     )
 
-    electrolyzer.add_electrolizer_load(
+    _run_electrolyzer(
         system,
         weather_year=2024,
         hour_map_fpath=hour_map_path,
@@ -96,7 +102,7 @@ def test_electrolyzer_scope_weather_missing(tmp_path: Path, caplog) -> None:
         {"hour": [1], "time_index": ["2024-01-01T00:00:00"], "season": ["winter"]},
     )
 
-    electrolyzer.add_electrolizer_load(system, weather_year=None, hour_map_fpath=hour_map_path)
+    _run_electrolyzer(system, weather_year=None, hour_map_fpath=hour_map_path)
 
     assert "Weather year not specified" in caplog.text
     assert not list(system.get_components(ReEDSDemand))
@@ -112,7 +118,7 @@ def test_electrolyzer_scope_missing_hour_map(tmp_path: Path, caplog) -> None:
         tmp_path / "h2_price.csv", {"region": ["west"], "month": ["m1"], "h2_price": [2.0]}
     )
 
-    electrolyzer.add_electrolizer_load(
+    _run_electrolyzer(
         system,
         weather_year=2024,
         hour_map_fpath=None,

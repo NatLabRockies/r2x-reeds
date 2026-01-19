@@ -2,34 +2,34 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from r2x_core import Err, Ok, Result
+from r2x_core import Err, Ok, PluginContext, Result
 from r2x_core.getters import getter
-
-from .enum_mappings import (
+from r2x_reeds.enum_mappings import (
     map_emission_source,
     map_emission_type,
     map_reserve_direction,
     map_reserve_type,
 )
-from .models.base import FromTo_ToFrom
-from .models.enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
-from .parser_utils import tech_matches_category
-from .row_utils import get_row_field
-
-if TYPE_CHECKING:
-    from r2x_core.context import ParserContext
-    from r2x_reeds.models.components import ReEDSInterface, ReEDSRegion, ReEDSReserveRegion
+from r2x_reeds.models.base import FromTo_ToFrom
+from r2x_reeds.models.components import ReEDSInterface, ReEDSRegion, ReEDSReserveRegion
+from r2x_reeds.models.enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
+from r2x_reeds.parser_utils import tech_matches_category
+from r2x_reeds.row_utils import get_row_field
 
 
-@getter
-def lookup_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Exception]:
+def _reeds_getter(func):
+    return getter(func)
+
+
+@_reeds_getter
+def lookup_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Exception]:
     """Look up region component by name from the system.
 
     Parameters
     ----------
-    context : ParserContext
+    context : PluginContext
         Parser context containing the system and config
     row : Any
         Data row (dict or SimpleNamespace) with 'region' field
@@ -46,14 +46,16 @@ def lookup_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Excep
         if region_name is None:
             return Err(ValueError("Row missing required 'region' field"))
 
+        if context.system is None:
+            return Err(ValueError("System not available in context"))
         region = context.system.get_component(ReEDSRegion, str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)
 
 
-@getter
-def build_region_description(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_region_description(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Return a consistent description for a region row."""
 
     try:
@@ -66,8 +68,8 @@ def build_region_description(context: ParserContext, row: Any) -> Result[str, Ex
         return Err(e)
 
 
-@getter
-def build_region_name(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_region_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build a canonical region name for parser records."""
 
     def _lookup(field: str) -> Any:
@@ -83,13 +85,13 @@ def build_region_name(context: ParserContext, row: Any) -> Result[str, Exception
         return Err(e)
 
 
-@getter
-def compute_is_dispatchable(context: ParserContext, row: Any) -> Result[bool, Exception]:
+@_reeds_getter
+def compute_is_dispatchable(row: Any, *, context: PluginContext) -> Result[bool, Exception]:
     """Determine if hydro generator is dispatchable from technology category.
 
     Parameters
     ----------
-    context : ParserContext
+    context : PluginContext
         Parser context with metadata containing tech_categories
     row : Any
         Data row (dict or SimpleNamespace) with 'technology' field
@@ -113,13 +115,13 @@ def compute_is_dispatchable(context: ParserContext, row: Any) -> Result[bool, Ex
         return Err(e)
 
 
-@getter
-def build_generator_name(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_generator_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build generator name from technology, vintage, and region.
 
     Parameters
     ----------
-    context : ParserContext
+    context : PluginContext
         Parser context (unused but required by getter signature)
     row : Any
         Data row (dict or SimpleNamespace) with 'technology', 'vintage', and 'region' fields
@@ -141,8 +143,8 @@ def build_generator_name(context: ParserContext, row: Any) -> Result[str, Except
         return Err(e)
 
 
-@getter
-def build_load_name(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_load_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build canonical load name from region."""
 
     try:
@@ -154,8 +156,8 @@ def build_load_name(context: ParserContext, row: Any) -> Result[str, Exception]:
         return Err(e)
 
 
-@getter
-def build_reserve_name(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_reserve_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build reserve component name from region and type."""
 
     try:
@@ -168,8 +170,8 @@ def build_reserve_name(context: ParserContext, row: Any) -> Result[str, Exceptio
         return Err(e)
 
 
-@getter
-def resolve_reserve_type(context: ParserContext, row: Any) -> Result[ReserveType, Exception]:
+@_reeds_getter
+def resolve_reserve_type(row: Any, *, context: PluginContext) -> Result[ReserveType, Exception]:
     """Map reserve_type string to ReserveType enum."""
 
     try:
@@ -181,8 +183,8 @@ def resolve_reserve_type(context: ParserContext, row: Any) -> Result[ReserveType
         return Err(e)
 
 
-@getter
-def resolve_reserve_direction(context: ParserContext, row: Any) -> Result[ReserveDirection, Exception]:
+@_reeds_getter
+def resolve_reserve_direction(row: Any, *, context: PluginContext) -> Result[ReserveDirection, Exception]:
     """Map direction string to ReserveDirection enum."""
 
     try:
@@ -194,8 +196,8 @@ def resolve_reserve_direction(context: ParserContext, row: Any) -> Result[Reserv
         return Err(e)
 
 
-@getter
-def get_storage_duration(context: ParserContext, row: Any) -> Result[float, Exception]:
+@_reeds_getter
+def get_storage_duration(row: Any, *, context: PluginContext) -> Result[float, Exception]:
     """Return storage duration, defaulting to 1.0 if missing."""
     try:
         value = get_row_field(row, "storage_duration")
@@ -204,8 +206,8 @@ def get_storage_duration(context: ParserContext, row: Any) -> Result[float, Exce
         return Err(e)
 
 
-@getter
-def get_round_trip_efficiency(context: ParserContext, row: Any) -> Result[float, Exception]:
+@_reeds_getter
+def get_round_trip_efficiency(row: Any, *, context: PluginContext) -> Result[float, Exception]:
     """Return round-trip efficiency, defaulting to 1.0 if missing."""
     try:
         value = get_row_field(row, "round_trip_efficiency")
@@ -214,8 +216,8 @@ def get_round_trip_efficiency(context: ParserContext, row: Any) -> Result[float,
         return Err(e)
 
 
-@getter
-def get_fuel_type(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def get_fuel_type(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Resolve the fuel type from the joined ``fuel2tech`` mapping."""
     try:
         value = get_row_field(row, "fuel_type")
@@ -232,8 +234,8 @@ def get_fuel_type(context: ParserContext, row: Any) -> Result[str, Exception]:
         return Err(e)
 
 
-@getter
-def resolve_emission_type(context: ParserContext, row: Any) -> Result[EmissionType, Exception]:
+@_reeds_getter
+def resolve_emission_type(row: Any, *, context: PluginContext) -> Result[EmissionType, Exception]:
     """Normalize emission type strings to the EmissionType enum."""
 
     try:
@@ -245,8 +247,8 @@ def resolve_emission_type(context: ParserContext, row: Any) -> Result[EmissionTy
         return Err(e)
 
 
-@getter
-def resolve_emission_source(context: ParserContext, row: Any) -> Result[EmissionSource, Exception]:
+@_reeds_getter
+def resolve_emission_source(row: Any, *, context: PluginContext) -> Result[EmissionSource, Exception]:
     """Map emission_source text to the EmissionSource enum."""
 
     try:
@@ -256,8 +258,8 @@ def resolve_emission_source(context: ParserContext, row: Any) -> Result[Emission
         return Err(e)
 
 
-@getter
-def resolve_emission_generator_identifier(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def resolve_emission_generator_identifier(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Identify the generator associated with an emission row."""
 
     try:
@@ -269,21 +271,23 @@ def resolve_emission_generator_identifier(context: ParserContext, row: Any) -> R
         return Err(e)
 
 
-@getter
-def lookup_from_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Exception]:
+@_reeds_getter
+def lookup_from_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Exception]:
     """Lookup region using the 'from_region' key."""
 
-    return _lookup_region_by_field(context, row, "from_region")
+    return _lookup_region_by_field(row, field="from_region", context=context)
 
 
-@getter
-def lookup_to_region(context: ParserContext, row: Any) -> Result[ReEDSRegion, Exception]:
+@_reeds_getter
+def lookup_to_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Exception]:
     """Lookup region using the 'to_region' key."""
 
-    return _lookup_region_by_field(context, row, "to_region")
+    return _lookup_region_by_field(row, field="to_region", context=context)
 
 
-def _lookup_region_by_field(context: ParserContext, row: Any, field: str) -> Result[ReEDSRegion, Exception]:
+def _lookup_region_by_field(
+    row: Any, field: str, *, context: PluginContext
+) -> Result[ReEDSRegion, Exception]:
     """Shared helper to look up regions by a configurable field."""
     from r2x_reeds.models.components import ReEDSRegion
 
@@ -292,6 +296,8 @@ def _lookup_region_by_field(context: ParserContext, row: Any, field: str) -> Res
         if region_name is None:
             return Err(ValueError(f"Row missing required '{field}' field"))
 
+        if context.system is None:
+            return Err(ValueError("System not available in context"))
         region = context.system.get_component(ReEDSRegion, str(region_name))
         return Ok(region)
     except Exception as e:
@@ -299,7 +305,7 @@ def _lookup_region_by_field(context: ParserContext, row: Any, field: str) -> Res
 
 
 def _lookup_reserve_region_by_field(
-    context: ParserContext, row: Any, field: str
+    row: Any, field: str, *, context: PluginContext
 ) -> Result[ReEDSReserveRegion, Exception]:
     """Fetch reserve regions by alternative field names."""
     from r2x_reeds.models.components import ReEDSReserveRegion
@@ -309,21 +315,23 @@ def _lookup_reserve_region_by_field(
         if region_name is None:
             return Err(ValueError(f"Row missing required '{field}' field"))
 
+        if context.system is None:
+            return Err(ValueError("System not available in context"))
         region = context.system.get_component(ReEDSReserveRegion, str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)
 
 
-@getter
-def lookup_reserve_region(context: ParserContext, row: Any) -> Result[ReEDSReserveRegion, Exception]:
+@_reeds_getter
+def lookup_reserve_region(row: Any, *, context: PluginContext) -> Result[ReEDSReserveRegion, Exception]:
     """Lookup reserve region component using the 'region' key."""
 
-    return _lookup_reserve_region_by_field(context, row, "region")
+    return _lookup_reserve_region_by_field(row, field="region", context=context)
 
 
-@getter
-def build_transmission_interface_name(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_transmission_interface_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Create a canonical interface name by sorting region names."""
 
     try:
@@ -339,8 +347,8 @@ def build_transmission_interface_name(context: ParserContext, row: Any) -> Resul
         return Err(e)
 
 
-@getter
-def build_transmission_line_name(context: ParserContext, row: Any) -> Result[str, Exception]:
+@_reeds_getter
+def build_transmission_line_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build a line name from from/to regions and line type."""
 
     try:
@@ -356,25 +364,31 @@ def build_transmission_line_name(context: ParserContext, row: Any) -> Result[str
         return Err(e)
 
 
-@getter
-def lookup_transmission_interface(context: ParserContext, row: Any) -> Result[ReEDSInterface, Exception]:
+@_reeds_getter
+def lookup_transmission_interface(row: Any, *, context: PluginContext) -> Result[ReEDSInterface, Exception]:
     """Fetch transmission interface component by canonical name."""
+
+    if context.system is None:
+        return Err(ValueError("System not available in context"))
 
     from r2x_reeds.models.components import ReEDSInterface
 
-    name_result = build_transmission_interface_name(context, row)
+    name_result = build_transmission_interface_name(row, context=context)
     if name_result.is_err():
         return Err(name_result.err())
 
     try:
-        interface = context.system.get_component(ReEDSInterface, name_result.ok())
+        interface_name = name_result.ok()
+        if interface_name is None:
+            return Err(ValueError("Transmission interface name not available"))
+        interface = context.system.get_component(ReEDSInterface, interface_name)
         return Ok(interface)
     except Exception as e:
         return Err(e)
 
 
-@getter
-def build_transmission_flow(context: ParserContext, row: Any) -> Result[FromTo_ToFrom, Exception]:
+@_reeds_getter
+def build_transmission_flow(row: Any, *, context: PluginContext) -> Result[FromTo_ToFrom, Exception]:
     """Build symmetric FromTo_ToFrom object from the 'value' field."""
 
     try:

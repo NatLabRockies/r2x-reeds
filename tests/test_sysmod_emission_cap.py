@@ -49,6 +49,12 @@ def _write_csv(path: Path, data: dict[str, list]) -> str:
     return str(path)
 
 
+def _run_emission_cap(system: System, **kwargs) -> System:
+    result = emission_cap.add_emission_cap(system, emission_cap.EmissionCapConfig(**kwargs))
+    assert result.is_ok()
+    return result.unwrap()
+
+
 @pytest.mark.parametrize("with_ext", [False, True])
 def test_emission_cap_scope(tmp_path: Path, with_ext: bool) -> None:
     """Integrates add_emission_cap end-to-end using real CSV inputs."""
@@ -80,7 +86,7 @@ def test_emission_cap_scope(tmp_path: Path, with_ext: bool) -> None:
         },
     )
 
-    emission_cap.add_emission_cap(
+    _run_emission_cap(
         system,
         emission_cap=None,
         switches_fpath=switches_path,
@@ -102,7 +108,7 @@ def test_emission_cap_scope_missing_emissions(caplog) -> None:
     system, region = _build_system()
     _add_generator(system, region, "coal_2010_west")
 
-    emission_cap.add_emission_cap(system, emission_cap=500.0)
+    _run_emission_cap(system, emission_cap=500.0)
 
     assert "Did not find any emission type" in caplog.text
     assert not hasattr(system, "_emission_constraints")

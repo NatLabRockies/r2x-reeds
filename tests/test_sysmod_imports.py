@@ -32,6 +32,12 @@ def _write_csv(path: Path, data: dict[str, list]) -> str:
     return str(path)
 
 
+def _run_imports(system: System, **kwargs) -> System:
+    result = imports.add_imports(system, imports.ImportsConfig(**kwargs))
+    assert result.is_ok()
+    return result.unwrap()
+
+
 def test_imports_scope_full_flow(tmp_path: Path) -> None:
     """Canadian imports plugin attaches hydro budget time series."""
     system, generator = _build_generator()
@@ -56,7 +62,7 @@ def test_imports_scope_full_flow(tmp_path: Path) -> None:
         {"r": ["west"], "value": [2000.0]},
     )
 
-    imports.add_imports(
+    _run_imports(
         system,
         weather_year=2024,
         canada_imports_fpath=imports_path,
@@ -74,7 +80,7 @@ def test_imports_scope_missing_weather_year(caplog) -> None:
     """Weather year is required to build imports time series."""
     system, _ = _build_generator()
 
-    imports.add_imports(system, weather_year=None)
+    _run_imports(system, weather_year=None)
 
     assert "Weather year not specified" in caplog.text
 
@@ -83,7 +89,7 @@ def test_imports_scope_missing_files(caplog) -> None:
     """All file paths must be provided."""
     system, _ = _build_generator()
 
-    imports.add_imports(system, weather_year=2024, canada_imports_fpath=None)
+    _run_imports(system, weather_year=2024, canada_imports_fpath=None)
 
     assert "Missing required file paths for imports plugin" in caplog.text
 
@@ -99,7 +105,7 @@ def test_imports_scope_missing_region(tmp_path: Path, caplog) -> None:
     szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", {"season": ["winter"], "value": [1.0]})
     imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["other"], "value": [1000.0]})
 
-    imports.add_imports(
+    _run_imports(
         system,
         weather_year=2024,
         canada_imports_fpath=imports_path,
@@ -123,7 +129,7 @@ def test_imports_scope_empty_join(tmp_path: Path, caplog) -> None:
     imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "value": [1000.0]})
 
     caplog.set_level("WARNING", logger="r2x_reeds.sysmod.imports")
-    imports.add_imports(
+    _run_imports(
         system,
         weather_year=2024,
         canada_imports_fpath=imports_path,
@@ -151,12 +157,15 @@ def test_imports_scope_exception_logs(tmp_path: Path, caplog) -> None:
     imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "value": [1000.0]})
 
     caplog.set_level("ERROR", logger="r2x_reeds.sysmod.imports")
-    imports.add_imports(
+    result = imports.add_imports(
         system,
-        weather_year=2024,
-        canada_imports_fpath=imports_path,
-        canada_szn_frac_fpath=szn_frac_path,
-        hour_map_fpath=hour_map_path,
+        imports.ImportsConfig(
+            weather_year=2024,
+            canada_imports_fpath=imports_path,
+            canada_szn_frac_fpath=szn_frac_path,
+            hour_map_fpath=hour_map_path,
+        ),
     )
 
+    assert result.is_err()
     assert "error in imports plugin" in caplog.text.lower()

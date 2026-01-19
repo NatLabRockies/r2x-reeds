@@ -1,38 +1,52 @@
 """Augment results from CEM with PCM defaults."""
 
 from pathlib import Path
+from typing import Any
 
 from infrasys import System
 from loguru import logger
+from pydantic import Field
+from rust_ok import Err, Ok, Result
 
+from r2x_core import PluginConfig, expose_plugin
 from r2x_core.datafile import DataFile
 from r2x_core.store import DataStore
 from r2x_reeds.models.components import ReEDSGenerator
 
 
+class PCMDefaultsConfig(PluginConfig):
+    pcm_defaults_fpath: Path | str | None = Field(
+        default=None,
+        description="Path for JSON file containing PCM defaults.",
+    )
+    pcm_defaults_dict: dict[str, dict[str, Any]] | None = Field(
+        default=None,
+        description="Dictionary of PCM defaults to apply.",
+    )
+    pcm_defaults_override: bool = Field(
+        default=False,
+        description="Flag to override existing PCM fields with JSON values.",
+    )
+
+
+@expose_plugin
 def add_pcm_defaults(
     system: System,
-    pcm_defaults_fpath: str | None = None,
-    pcm_defaults_dict: dict | None = None,
-    pcm_defaults_override: bool = False,
-) -> System:
+    config: PCMDefaultsConfig,
+) -> Result[System, str]:
     """Augment data model using PCM defaults dictionary.
 
     Parameters
     ----------
     system : System
         InfraSys system to modify.
-    pcm_defaults_fpath : str, optional
-        Path for json file containing the PCM defaults.
-    pcm_defaults_dict : dict, optional
-        Dictionary of PCM defaults. If provided, takes precedence over pcm_defaults_fpath.
-    pcm_defaults_override : bool, default False
-        Flag to override all the PCM related fields with the JSON values.
+    config : PCMDefaultsConfig
+        Configuration for PCM defaults input and override behavior.
 
     Returns
     -------
-    System
-        The updated system object.
+    Result[System, str]
+        The updated system object or an error message.
 
     Notes
     -----
@@ -41,25 +55,27 @@ def add_pcm_defaults(
     logger.info("Augmenting generators attributes with PCM defaults.")
 
     # Use pcm_defaults_dict if provided, otherwise load from file
-    if pcm_defaults_dict is not None:
+    if config.pcm_defaults_dict is not None:
         logger.debug("Using provided pcm_defaults_dict")
-        pcm_defaults: dict = pcm_defaults_dict
+        pcm_defaults: dict[str, dict[str, Any]] = config.pcm_defaults_dict
     else:
-        if not pcm_defaults_fpath:
+        if not config.pcm_defaults_fpath:
             logger.warning("No PCM defaults file path or dict provided. Skipping plugin.")
-            return system
+            return Ok(system)
 
-        logger.debug("Using PCM defaults from: {}", pcm_defaults_fpath)
+        logger.debug("Using PCM defaults from: {}", config.pcm_defaults_fpath)
 
         # Read PCM defaults using DataStore
-        pcm_path = Path(pcm_defaults_fpath)
-        pcm_data_file = DataFile(
-            name="pcm_defaults", fpath=pcm_path, description="PCM defaults for generator augmentation"
-        )
-        data_store = DataStore(path=pcm_path.parent)
-        data_store.add_data(pcm_data_file)
+        try:
+            pcm_path = Path(config.pcm_defaults_fpath)
+            pcm_data_file = DataFile(name="pcm_defaults", fpath=pcm_path)
+            data_store = DataStore(path=pcm_path.parent)
+            data_store.add_data([pcm_data_file])
 
-        pcm_defaults = data_store.read_data(name="pcm_defaults")
+            pcm_defaults = data_store.read_data(name="pcm_defaults")
+        except Exception as exc:
+            logger.error("Failed to load PCM defaults: {}", exc)
+            return Err(str(exc))
 
     # Fields that need to be multiplied by generator capacity
     needs_multiplication = {"start_cost_per_MW", "ramp_limits"}
@@ -87,7 +103,7 @@ def add_pcm_defaults(
         msg = "Applying PCM defaults to {}"
         logger.debug(msg, component.name)
 
-        if not pcm_defaults_override:
+        if not config.pcm_defaults_override:
             fields_to_replace = [
                 key for key in pcm_values if _check_if_null(_get_component_attribute(component, key))
             ]
@@ -117,7 +133,7 @@ def add_pcm_defaults(
                 logger.warning("Failed to set {} for {}: {}", field, component.name, e)
 
     logger.info("Finished augmenting generators with PCM defaults")
-    return system
+    return Ok(system)
 
 
 def _multiply_value(base: float, val):

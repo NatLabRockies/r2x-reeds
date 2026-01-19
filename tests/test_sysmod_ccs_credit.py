@@ -43,6 +43,12 @@ def _write_csv(path: Path, data: dict[str, list]) -> str:
     return str(path)
 
 
+def _run_ccs(system: System, **kwargs) -> System:
+    result = ccs_credit.add_ccs_credit(system, ccs_credit.CCSCreditConfig(**kwargs))
+    assert result.is_ok()
+    return result.unwrap()
+
+
 def test_ccs_credit_scope_direct_match(tmp_path: Path) -> None:
     """Direct technology matches apply incentive times capture rate."""
     system, region = _build_system()
@@ -61,7 +67,7 @@ def test_ccs_credit_scope_direct_match(tmp_path: Path) -> None:
         {"from": ["coal_pre"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]},
     )
 
-    ccs_credit.add_ccs_credit(
+    _run_ccs(
         system,
         co2_incentive_fpath=co2_path,
         emission_capture_rate_fpath=capture_path,
@@ -89,7 +95,7 @@ def test_ccs_credit_scope_upgrade_path(tmp_path: Path) -> None:
         {"from": ["coal_pre"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]},
     )
 
-    ccs_credit.add_ccs_credit(
+    _run_ccs(
         system,
         co2_incentive_fpath=co2_path,
         emission_capture_rate_fpath=capture_path,
@@ -117,7 +123,7 @@ def test_ccs_credit_scope_missing_production_rate(tmp_path: Path, caplog) -> Non
         {"from": ["coal_pre"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]},
     )
 
-    ccs_credit.add_ccs_credit(
+    _run_ccs(
         system,
         co2_incentive_fpath=co2_path,
         emission_capture_rate_fpath=capture_path,
@@ -132,9 +138,7 @@ def test_ccs_credit_scope_missing_paths(caplog) -> None:
     """If any file path is missing the plugin exits early."""
     system, _ = _build_system()
 
-    ccs_credit.add_ccs_credit(
-        system, co2_incentive_fpath=None, emission_capture_rate_fpath=None, upgrade_link_fpath=None
-    )
+    _run_ccs(system)
 
     assert "Missing required data file paths for ccs_credit" in caplog.text
 
@@ -158,7 +162,7 @@ def test_ccs_credit_scope_no_incentive(caplog, tmp_path: Path) -> None:
     )
 
     caplog.set_level("DEBUG", logger="r2x_reeds.sysmod.ccs_credit")
-    ccs_credit.add_ccs_credit(
+    _run_ccs(
         system,
         co2_incentive_fpath=co2_path,
         emission_capture_rate_fpath=capture_path,
@@ -186,7 +190,7 @@ def test_ccs_credit_scope_caught_exception(caplog, tmp_path: Path) -> None:
         {"from": ["coal_ccs"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]},
     )
 
-    ccs_credit.add_ccs_credit(
+    _run_ccs(
         system,
         co2_incentive_fpath=co2_path,
         emission_capture_rate_fpath=capture_path,
@@ -208,13 +212,16 @@ def test_add_ccs_credit_logs_load_failure(monkeypatch, caplog):
     monkeypatch.setattr(ccs_credit.DataStore, "load_file", staticmethod(fail_load))
     caplog.set_level("ERROR", logger="r2x_reeds.sysmod.ccs_credit")
 
-    ccs_credit.add_ccs_credit(
+    result = ccs_credit.add_ccs_credit(
         system,
-        co2_incentive_fpath="co2",
-        emission_capture_rate_fpath="capture",
-        upgrade_link_fpath="upgrade",
+        ccs_credit.CCSCreditConfig(
+            co2_incentive_fpath="co2",
+            emission_capture_rate_fpath="capture",
+            upgrade_link_fpath="upgrade",
+        ),
     )
 
+    assert result.is_err()
     assert "CCS credit plugin failed" in caplog.text
 
 
