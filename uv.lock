@@ -1253,8 +1253,8 @@ wheels = [
 
 [[package]]
 name = "r2x-core"
-version = "0.3.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.3.1"
+source = { editable = "../../r2x-core/fuzzy" }
 dependencies = [
     { name = "h5py" },
     { name = "infrasys" },
@@ -1264,9 +1264,39 @@ dependencies = [
     { name = "pydantic" },
     { name = "rust-ok" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/d4/b556489e3fac22175e2dadc40c21b4c2ff04867a3f7b502249d35250e22c/r2x_core-0.3.0.tar.gz", hash = "sha256:8b4552b6ebde7d58d450a656b645d9b94eff8bca1c66895666d5d713bfc48f05", size = 69778, upload-time = "2025-12-13T21:41:37.878Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/d5/161711fe3aff9d85964fcbade3f47d4d7744dc9fdd21d6a65b6b2a97938f/r2x_core-0.3.0-py3-none-any.whl", hash = "sha256:d848262dcc40fe3f70508cd7dcc9c0c10149111d21ba87985bc8a654fe919e73", size = 85524, upload-time = "2025-12-13T21:41:36.217Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "h5py", specifier = ">=3.13.0,<4.0.0" },
+    { name = "infrasys", specifier = ">=1.0.0,<2.0.0" },
+    { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
+    { name = "packaging", specifier = ">=24.0,<26.0" },
+    { name = "polars", specifier = ">=1.33.1,<2.0.0" },
+    { name = "pydantic", specifier = ">=2.11.9,<3.0.0" },
+    { name = "rust-ok", specifier = ">=0.2.2,<1.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "h5py-stubs", specifier = ">=0.1.2,<1.0.0" },
+    { name = "mypy", specifier = ">=1.18.2,<2.0.0" },
+    { name = "prek", specifier = ">=0.2.29,<0.3.0" },
+    { name = "pytest", specifier = ">=8.4.2,<10.0.0" },
+    { name = "pytest-coverage", specifier = ">=0.0,<1.0.0" },
+    { name = "ruff", specifier = ">=0.13.2,<0.15.0" },
+    { name = "ty", specifier = ">=0.0.12,<1.0.0" },
+]
+docs = [
+    { name = "autodoc-pydantic", specifier = ">=2.0.0,<3.0.0" },
+    { name = "docstr-coverage", specifier = ">=2.3.2,<3.0.0" },
+    { name = "furo", specifier = ">=2025.9.25,<2026.0.0" },
+    { name = "ghp-import", specifier = ">=2.1.0,<3.0.0" },
+    { name = "myst-parser", specifier = ">=3.0.0,<5.0.0" },
+    { name = "sphinx", specifier = ">=7.2.0,<8.0.0" },
+    { name = "sphinx-copybutton", specifier = ">=0.5.2,<1.0.0" },
+    { name = "sphinx-reports", specifier = ">=0.1.0,<1.0.0" },
+    { name = "sphinx-tabs", specifier = ">=3.4.5,<4.0.0" },
+    { name = "sphinxcontrib-mermaid", specifier = ">=2.0.0,<3.0.0" },
 ]
 
 [[package]]
@@ -1299,7 +1329,7 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "r2x-core", specifier = ">=0.2.3,<1.0.0" }]
+requires-dist = [{ name = "r2x-core", editable = "../../r2x-core/fuzzy" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1437,11 +1467,11 @@ wheels = [
 
 [[package]]
 name = "rust-ok"
-version = "0.1.0"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/97/e4/d4ba4f6371bb3d2aa43e755bbba1c826e04250dbe21d0bbc31118762171c/rust_ok-0.1.0.tar.gz", hash = "sha256:65061f2720da9668ac773d41c1bbb26c136ac44ae64825fcc30ded7da906304c", size = 4592, upload-time = "2025-11-24T17:09:29.531Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/d8/1316ea15a56650f6dd971b1e385175e500dcca09b36149d2c53f6d4f1bb7/rust_ok-0.2.2.tar.gz", hash = "sha256:420a3b55151f8506bdef14db4036e1c9747786fabf3f0d2d8c0f0e4cd0348474", size = 5208, upload-time = "2026-01-17T00:20:31.528Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/2d/0d77828ee2d53d3d7255027243d6544dc79611564383ac372bf61ed5132d/rust_ok-0.1.0-py3-none-any.whl", hash = "sha256:1d5798151644a26a1ae1140dece1494f632f017b9eff8fb1c43feb9a7b9c1223", size = 6879, upload-time = "2025-11-24T17:09:24.892Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/55/29444a8895d9bf7bccf2ac9929cc13402facfd16869ee260cefb511703cb/rust_ok-0.2.2-py3-none-any.whl", hash = "sha256:93fa556ce8f44b8c2bc8a3964bcdf8b7231773c50b51e221286b83d29ee3b9d7", size = 7212, upload-time = "2026-01-17T00:20:29.932Z" },
 ]
 
 [[package]]

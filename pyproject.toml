@@ -46,6 +46,14 @@ classifiers = [
 [project.entry-points."r2x_plugin"]
 reeds = "r2x_reeds:ReEDSParser"
 
+[project.entry-points."r2x.transforms"]
+add-pcm-defaults = "r2x_reeds.sysmod.pcm_defaults:add_pcm_defaults"
+add-emission-cap = "r2x_reeds.sysmod.emission_cap:add_emission_cap"
+add-electrolyzer-load = "r2x_reeds.sysmod.electrolyzer:add_electrolizer_load"
+add-ccs-credit = "r2x_reeds.sysmod.ccs_credit:add_ccs_credit"
+break-gens = "r2x_reeds.sysmod.break_gens:break_generators"
+add-imports = "r2x_reeds.sysmod.imports:add_imports"
+
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
