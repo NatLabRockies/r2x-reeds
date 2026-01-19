@@ -1398,22 +1398,20 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
 
         # Count component types for summary
-        regions = len(list(system.get_components(ReEDSRegion)))
-        generators = len(list(system.get_components(ReEDSGenerator)))
-        demands = len(list(system.get_components(ReEDSDemand)))
-        reserves = len(list(system.get_components(ReEDSReserve)))
-        transmission_lines = len(list(system.get_components(ReEDSTransmissionLine)))
-        total_components = len(list(system.get_components(Component)))
+        component_counts = {
+            comp_type.__name__: sum(1 for _ in system.get_components(comp_type))
+            for comp_type in system.get_component_types()
+        }
 
         logger.info("System name: {}", system.name)
         logger.info(
             "System composition: {} regions, {} generators, {} demands, {} reserves, {} transmission lines ({} total components)",
-            regions,
-            generators,
-            demands,
-            reserves,
-            transmission_lines,
-            total_components,
+            component_counts.get("ReEDSRegion", 0),
+            component_counts.get("ReEDSGenerator", 0),
+            component_counts.get("ReEDSDemand", 0),
+            component_counts.get("ReEDSReserve", 0),
+            component_counts.get("ReEDSTransmissionLine", 0),
+            sum(component_counts.values()),
         )
         logger.info("Post-processing complete")
 
