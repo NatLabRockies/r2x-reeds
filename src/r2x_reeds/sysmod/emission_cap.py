@@ -4,6 +4,7 @@ This plugin is only applicable for ReEDS, but could work with similarly arranged
 """
 
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 from infrasys import System
@@ -17,6 +18,8 @@ from r2x_reeds.models.enums import EmissionType
 
 
 class EmissionCapConfig(PluginConfig):
+    """Configuration for applying annual carbon emission cap constraints."""
+
     emission_cap: float | None = Field(
         default=None,
         description="Emission cap value. If omitted, attempts to load from co2_cap_fpath.",
@@ -149,12 +152,13 @@ def _add_precombustion_if_enabled(system: System, switches: pl.DataFrame, emit_r
         # Check for precombustion flag
         if switches_dict.get("gsw_precombustion") or switches_dict.get("gsw_annualcapco2e"):
             # Process emission rates for precombustion
-            if not emit_rates.is_empty():
-                emit_rates_processed = emit_rates.with_columns(
-                    pl.concat_str(
-                        [pl.col("tech"), pl.col("tech_vintage"), pl.col("region")], separator="_"
-                    ).alias("generator_name")
-                )
+            if emit_rates.is_empty():
+                return
+            emit_rates_processed = emit_rates.with_columns(
+                pl.concat_str(
+                    [pl.col("tech"), pl.col("tech_vintage"), pl.col("region")], separator="_"
+                ).alias("generator_name")
+            )
 
             # Filter for precombustion emissions
             any_precombustion = emit_rates_processed["emission_source"].str.contains("precombustion")
@@ -259,17 +263,20 @@ def set_emission_constraint(
         logger.warning("Could not set emission cap value. Skipping plugin.")
         return system
 
-    if not hasattr(system, "ext"):
-        system._emission_constraints = {}
-        constraint_storage = system._emission_constraints
+    # Store constraints in system.ext if available, otherwise use private attribute
+    if hasattr(system, "ext"):
+        ext: dict[str, Any] = system.ext  # type: ignore[assignment]
+        if "emission_constraints" not in ext:
+            ext["emission_constraints"] = {}
+        constraint_storage: dict[str, Any] = ext["emission_constraints"]
     else:
-        if "emission_constraints" not in system.ext:
-            system.ext["emission_constraints"] = {}
-        constraint_storage = system.ext["emission_constraints"]
+        if not hasattr(system, "_emission_constraints"):
+            system._emission_constraints = {}  # type: ignore[attr-defined]
+        constraint_storage = system._emission_constraints  # type: ignore[attr-defined]
 
     constraint_name = f"Annual_{emission_object}_cap"
 
-    constraint_properties = {
+    constraint_properties: dict[str, Any] = {
         "sense": "<=",
         "rhs_value": emission_cap,
         "units": default_unit,

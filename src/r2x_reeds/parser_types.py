@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -12,11 +12,7 @@ class ComponentBuildResult:
     """Result of building a batch of components."""
 
     created_count: int
-    errors: list[str] = None
-
-    def __post_init__(self) -> None:
-        if self.errors is None:
-            self.errors = []
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass

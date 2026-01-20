@@ -5,7 +5,7 @@ from __future__ import annotations
 import calendar
 import importlib
 from collections.abc import Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import polars as pl
@@ -156,7 +156,7 @@ def merge_lazy_frames(
     right: pl.LazyFrame,
     *,
     on: list[str],
-    how: str = "left",
+    how: Literal["left", "right", "inner", "full", "semi", "anti", "cross"] = "left",
     suffix: str = "_right",
 ) -> Result[pl.LazyFrame, ValidationError]:
     """Safe wrapper around LazyFrame.join with consistent error reporting."""
@@ -170,7 +170,7 @@ def merge_lazy_frames(
 def get_generator_class(
     tech: str,
     technology_categories: dict[str, Any],
-    category_class_mapping: dict[str, str],
+    category_class_mapping: dict[str, str] | dict[str, type],
     models_path: Literal["r2x_reeds.models"] = "r2x_reeds.models",
 ) -> Result[type[ReEDSGenerator], TypeError]:
     """Determine the appropriate generator class based on technology category using config mapping.
@@ -199,8 +199,15 @@ def get_generator_class(
     categories = categories_result.unwrap()
 
     for category in categories:
-        class_name = category_class_mapping.get(category)
-        if class_name and (model := getattr(module, class_name, None)):
+        class_or_name = category_class_mapping.get(category)
+        if class_or_name is None:
+            continue
+        # If it's already a type, return it directly
+        if isinstance(class_or_name, type):
+            return Ok(cast("type[ReEDSGenerator]", class_or_name))
+        # Otherwise it's a string class name, look it up in the module
+        class_name: str = class_or_name
+        if model := getattr(module, class_name, None):
             return Ok(model)
 
     logger.error("Technology model not found for {} on {} (categories: {})", tech, models_path, categories)
@@ -512,6 +519,10 @@ def _collect_component_kwargs_from_rule(
             logger.error("Failed to resolve rule for %s: %s", identifier_value, rule_error)
             continue
         selected_rule = rule_result.ok()
+        if selected_rule is None:
+            errors.append(f"{identifier_value}: Rule resolution returned None")
+            logger.error("Failed to resolve rule for %s: returned None", identifier_value)
+            continue
 
         result = build_component_kwargs(row, rule=selected_rule, context=parser_context)
         if result.is_err():
@@ -585,7 +596,7 @@ def prepare_generator_inputs(
         technology_categories=technology_categories,
     )
     if base_result.is_err():
-        return base_result
+        return Err(base_result.err() or ValidationError("Unknown error preparing generator data"))
 
     df = base_result.ok()
     if df is None:
@@ -614,7 +625,7 @@ def prepare_generator_inputs(
     return Ok((aggregated_variable_df, non_variable_df))
 
 
-def get_rules_by_target(rules: list[Rule] | list[str]) -> Result[dict[str, list[Rule]], ValidationError]:
+def get_rules_by_target(rules: list[Rule]) -> Result[dict[str, list[Rule]], ValidationError]:
     """Group parser rules by their target component types."""
 
     from collections import defaultdict
@@ -711,7 +722,12 @@ def match_emission_rows_to_generators(
 
     matched_rows: list[dict[str, Any]] = []
     for row in emission_df.iter_rows(named=True):
-        key = (row.get("technology"), row.get("region"), row.get("vintage_key"))
+        technology = row.get("technology")
+        region = row.get("region")
+        vintage_key = row.get("vintage_key")
+        if region is None or vintage_key is None:
+            continue
+        key: tuple[str | None, str, str] = (technology, str(region), str(vintage_key))
         generator_names = generator_lookup.get(key)
         if not generator_names:
             continue

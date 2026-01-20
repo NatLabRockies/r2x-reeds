@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
+
 from r2x_core import PluginContext, System
 from r2x_reeds import ReEDSConfig
 

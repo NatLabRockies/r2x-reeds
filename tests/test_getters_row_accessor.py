@@ -23,7 +23,6 @@ pytestmark = [pytest.mark.unit]
 def test_system():
     """Create a test system with sample regions."""
     from r2x_core import System
-
     from r2x_reeds.models import ReEDSRegion, ReEDSReserveRegion
 
     system = System(name="test_system")

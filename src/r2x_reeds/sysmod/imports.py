@@ -21,6 +21,8 @@ from r2x_reeds.models.components import ReEDSGenerator
 
 
 class ImportsConfig(PluginConfig):
+    """Configuration for adding Canadian imports time series."""
+
     weather_year: int | None = Field(
         default=None,
         description="Weather year for time series alignment.",

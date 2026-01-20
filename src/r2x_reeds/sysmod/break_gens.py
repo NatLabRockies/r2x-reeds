@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
 
 class BreakGensConfig(PluginConfig):
+    """Configuration for breaking oversized generators into reference-sized units."""
+
     reference_units: Path | str | PathLike | dict[str, Any] | None = Field(
         default=None,
         description="Reference unit definitions as a path or mapping.",

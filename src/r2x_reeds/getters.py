@@ -20,6 +20,7 @@ from r2x_reeds.row_utils import get_row_field
 
 
 def _reeds_getter(func):
+    """Decorator to register a function as a ReEDS-specific getter."""
     return getter(func)
 
 

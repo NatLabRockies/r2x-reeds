@@ -28,6 +28,8 @@ def _cast_string_columns(frame: pl.DataFrame | None, string_columns: tuple[str, 
 
 
 class CCSCreditConfig(PluginConfig):
+    """Configuration for applying CCS incentives to eligible technologies."""
+
     co2_incentive_fpath: Path | str | None = Field(
         default=None,
         description="Path to CSV file containing CO2 incentive data.",

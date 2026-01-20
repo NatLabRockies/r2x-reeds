@@ -257,7 +257,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         component = result.ok()
         if component is None:
             raise ComponentCreationError("Component creation returned None")
-        return cast(Component, component)
+        return component
 
     def on_validate(self) -> Result[None, str]:
         """Validate input data after upgrades, before building the system.
@@ -464,7 +464,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         region_rules = region_rule_result.ok()
         if region_rules is None:
             return Err("Region rules missing")
-        region_rules = cast(Rule, region_rules)
 
         region_kwargs_result = _collect_component_kwargs_from_rule(
             data=hierarchy_data,
@@ -580,7 +579,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             if generator is None:
                 creation_errors.append(f"{identifier}: generator creation returned None")
                 continue
-            generator = cast(ReEDSGenerator, generator)
             system.add_component(generator)
             self._generator_cache[generator.name] = generator
             built += 1
@@ -611,12 +609,14 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             return Err(f"Generator {identifier} class lookup failed: {class_result.err()}")
 
         generator_class = class_result.ok()
+        if generator_class is None:
+            return Err(f"Generator {identifier} class lookup returned None")
 
         try:
             generator = self.create_component(generator_class, **kwargs)
         except ComponentCreationError as exc:
             return Err(f"Generator {identifier} creation failed: {exc}")
-        return Ok(generator)
+        return Ok(cast(ReEDSGenerator, generator))
 
     def _build_transmission(self, system: System) -> Result[None, str]:
         """Build transmission interface and line components with bi-directional ratings."""
@@ -641,13 +641,19 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         interfaces_result = self._build_transmission_interfaces(system, trancap)
         if interfaces_result.is_err():
-            return interfaces_result
-        interface_count, creation_errors = interfaces_result.ok()
+            return Err(str(interfaces_result.err()))
+        interfaces_data = interfaces_result.ok()
+        if interfaces_data is None:
+            return Err("Transmission interfaces result was unexpectedly None")
+        interface_count, creation_errors = interfaces_data
 
         line_result = self._build_transmission_lines(system, trancap)
         if line_result.is_err():
-            return line_result
-        line_count, line_errors = line_result.ok()
+            return Err(str(line_result.err()))
+        line_data = line_result.ok()
+        if line_data is None:
+            return Err("Transmission lines result was unexpectedly None")
+        line_count, line_errors = line_data
         creation_errors.extend(line_errors)
 
         logger.info("Attached {} transmission interfaces and {} lines", interface_count, line_count)
@@ -671,6 +677,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if interface_rule_result.is_err():
             return Err(str(interface_rule_result.err()))
         interface_rule = interface_rule_result.ok()
+        if interface_rule is None:
+            return Err("Transmission interface rule is missing")
 
         interface_rows = (
             trancap.select(
@@ -722,7 +730,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 continue
 
             system.add_component(interface)
-            self._interface_cache[identifier] = interface
+            self._interface_cache[identifier] = cast(ReEDSInterface, interface)
             interface_count += 1
 
         return Ok((interface_count, creation_errors))
@@ -740,6 +748,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if line_rule_result.is_err():
             return Err(str(line_rule_result.err()))
         line_rule = line_rule_result.ok()
+        if line_rule is None:
+            return Err("Transmission line rule is missing")
 
         line_kwargs_result = _collect_component_kwargs_from_rule(
             data=trancap,
@@ -794,6 +804,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if load_rule_result.is_err():
             return Err(str(load_rule_result.err()))
         load_rule = load_rule_result.ok()
+        if load_rule is None:
+            return Err("Load rule is missing")
 
         load_kwargs_result = _collect_component_kwargs_from_rule(
             data=loads_df,
@@ -874,7 +886,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 continue
 
             system.add_component(reserve_region)
-            self._reserve_region_cache[region_name] = reserve_region
+            self._reserve_region_cache[region_name] = cast(ReEDSReserveRegion, reserve_region)
             reserve_region_count += 1
 
         if reserve_region_errors:
@@ -921,6 +933,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if reserve_rule_result.is_err():
             return Err(str(reserve_rule_result.err()))
         reserve_rule = reserve_rule_result.ok()
+        if reserve_rule is None:
+            return Err("Reserve rule is missing")
 
         reserve_kwargs_result = _collect_component_kwargs_from_rule(
             data=rows_df,
@@ -978,6 +992,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if emission_rule_result.is_err():
             return Err(str(emission_rule_result.err()))
         emission_rule = emission_rule_result.ok()
+        if emission_rule is None:
+            return Err("Emission rule is missing")
 
         generated = list(self._generator_cache.values())
         if not generated:
@@ -1037,8 +1053,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 continue
 
             try:
-                emission = self.create_component(ReEDSEmission, **kwargs)
-            except ComponentCreationError as exc:
+                emission = ReEDSEmission(**kwargs)
+            except Exception as exc:
                 creation_errors.append(f"{identifier}: {exc}")
                 logger.error("Failed to create emission {}: {}", identifier, exc)
                 continue
@@ -1361,7 +1377,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                         hourly_budget_result.err(),
                     )
                     continue
-                hourly_budget = self._truncate_and_cast_time_series(hourly_budget_result.ok())
+                hourly_budget_arr = hourly_budget_result.ok()
+                if hourly_budget_arr is None:
+                    logger.warning("Skipping hydro budget for {} in {}: empty result", generator.name, year)
+                    continue
+                hourly_budget = self._truncate_and_cast_time_series(hourly_budget_arr)
                 ts = SingleTimeSeries.from_array(
                     data=hourly_budget,
                     name="hydro_budget",
@@ -1489,9 +1509,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         merge_result = merge_lazy_frames(biofuel_prepped, fuel_map, on=["fuel_type"], how="inner")
         if merge_result.is_err():
             return Err(str(merge_result.err()))
-        biofuel_mapped = merge_result.ok().select(pl.exclude("fuel_type"))
-        if not biofuel_mapped.collect().is_empty():
-            fuel_price = pl.concat([fuel_price, biofuel_mapped], how="diagonal")
+        biofuel_merged = merge_result.ok()
+        if biofuel_merged is not None:
+            biofuel_mapped = biofuel_merged.select(pl.exclude("fuel_type"))
+            if not biofuel_mapped.collect().is_empty():
+                fuel_price = pl.concat([fuel_price, biofuel_mapped], how="diagonal")
 
         generator_data_result = prepare_generator_inputs(
             capacity_data=capacity_data,
@@ -1513,7 +1535,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
         if generator_data_result.is_err():
             return Err(str(generator_data_result.err()))
-        self._variable_generator_df, self._non_variable_generator_df = generator_data_result.ok()
+        generator_data = generator_data_result.ok()
+        if generator_data is None:
+            return Err("Generator data result was unexpectedly None")
+        self._variable_generator_df, self._non_variable_generator_df = generator_data
         logger.trace(
             "Prepared generator datasets - variable rows: {}, non-variable rows: {}",
             self._variable_generator_df.height,
@@ -1538,10 +1563,9 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             .sort(["year", "technology", "region", "month_num"])
             .collect()
         )
-        self._hydro_cf_prepared = hydro_cf.join(
-            self.year_month_day_hours, on=["year", "month_num"], how="left"
-        )
-        logger.trace("Hydro CF prepared rows: {}", self._hydro_cf_prepared.height)
+        hydro_cf_joined = hydro_cf.join(self.year_month_day_hours, on=["year", "month_num"], how="left")
+        self._hydro_cf_prepared = hydro_cf_joined
+        logger.trace("Hydro CF prepared rows: {}", hydro_cf_joined.height)
         return Ok(None)
 
     def _prepare_reserve_datasets(self) -> Result[None, str]:
@@ -1610,7 +1634,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if rules_result.is_err():
             return Err(str(rules_result.err()))
 
-        self._rules_by_target = rules_result.ok()
+        rules_by_target = rules_result.ok()
+        if rules_by_target is None:
+            return Err("Rules by target result was unexpectedly None")
+        self._rules_by_target = rules_by_target
         logger.trace("Rule(s) by target type set.")
         return Ok(None)
 

@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING, cast
 
 import polars as pl
 import pytest
-from r2x_core import System
-from rust_ok import Err, Ok, Result
+from rust_ok import Ok, Result
 
+from r2x_core import System
 from r2x_reeds import ReEDSConfig, ReEDSParser
 
 pytestmark = [pytest.mark.integration]
@@ -46,11 +46,11 @@ def initialized_parser(
 
 
 @pytest.fixture
-def built_system() -> "System":
+def built_system() -> System:
     return System(name="test_builder")
 
 
-def _builder_calls(parser: ReEDSParser, system: "System") -> list[tuple[str, "Result[None, str]"]]:
+def _builder_calls(parser: ReEDSParser, system: System) -> list[tuple[str, Result[None, str]]]:
     return [
         ("_build_regions", parser._build_regions(system)),
         ("_build_generators", parser._build_generators(system)),
@@ -62,37 +62,35 @@ def _builder_calls(parser: ReEDSParser, system: "System") -> list[tuple[str, "Re
 
 
 @pytest.mark.unit
-def test_build_regions_with_valid_data(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_regions_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_regions succeeds with valid hierarchy data."""
     result = initialized_parser._build_regions(built_system)
     assert result.is_ok() or result.is_err()
 
 
 @pytest.mark.unit
-def test_build_regions_returns_ok_type(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_regions_returns_ok_type(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_regions returns a Result type."""
     result = initialized_parser._build_regions(built_system)
     assert hasattr(result, "is_ok") and hasattr(result, "is_err")
 
 
 @pytest.mark.unit
-def test_build_generators_with_valid_data(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_generators_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_generators succeeds with valid generator data."""
     result = initialized_parser._build_generators(built_system)
     assert result.is_ok() or result.is_err()
 
 
 @pytest.mark.unit
-def test_build_generators_returns_result_type(
-    initialized_parser: ReEDSParser, built_system: "System"
-) -> None:
+def test_build_generators_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_generators returns a Result type."""
     result = initialized_parser._build_generators(built_system)
     assert hasattr(result, "is_ok") and hasattr(result, "is_err")
 
 
 @pytest.mark.unit
-def test_build_transmission_with_valid_data(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_transmission_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_transmission succeeds with valid transmission data."""
     result = initialized_parser._build_transmission(built_system)
     assert result.is_ok() or result.is_err()
@@ -100,7 +98,7 @@ def test_build_transmission_with_valid_data(initialized_parser: ReEDSParser, bui
 
 @pytest.mark.unit
 def test_build_transmission_returns_result_type(
-    initialized_parser: ReEDSParser, built_system: "System"
+    initialized_parser: ReEDSParser, built_system: System
 ) -> None:
     """Test _build_transmission returns a Result type."""
     result = initialized_parser._build_transmission(built_system)
@@ -108,28 +106,28 @@ def test_build_transmission_returns_result_type(
 
 
 @pytest.mark.unit
-def test_build_loads_with_valid_data(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_loads_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_loads succeeds with valid load data."""
     result = initialized_parser._build_loads(built_system)
     assert result.is_ok() or result.is_err()
 
 
 @pytest.mark.unit
-def test_build_loads_returns_result_type(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_loads_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_loads returns a Result type."""
     result = initialized_parser._build_loads(built_system)
     assert hasattr(result, "is_ok") and hasattr(result, "is_err")
 
 
 @pytest.mark.unit
-def test_build_reserves_returns_result_type(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_reserves_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_reserves returns a Result type."""
     result = initialized_parser._build_reserves(built_system)
     assert hasattr(result, "is_ok") and hasattr(result, "is_err")
 
 
 @pytest.mark.unit
-def test_build_emissions_returns_result_type(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_build_emissions_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test _build_emissions returns a Result type."""
     result = initialized_parser._build_emissions(built_system)
     assert hasattr(result, "is_ok") and hasattr(result, "is_err")
@@ -206,7 +204,7 @@ def test_build_emissions_only_attaches_to_created_generators(
 
 @pytest.mark.unit
 def test_builder_methods_return_result_from_built_system(
-    initialized_parser: ReEDSParser, built_system: "System"
+    initialized_parser: ReEDSParser, built_system: System
 ) -> None:
     """Test builder methods return Result types."""
     for _, result in _builder_calls(initialized_parser, built_system):
@@ -243,7 +241,7 @@ def test_build_transmission_interfaces_handles_component_creation_errors(
 
 
 @pytest.mark.unit
-def test_builder_methods_return_result(initialized_parser: ReEDSParser, built_system: "System") -> None:
+def test_builder_methods_return_result(initialized_parser: ReEDSParser, built_system: System) -> None:
     """Test builder methods return Result types."""
     for _, result in _builder_calls(initialized_parser, built_system):
         assert hasattr(result, "is_ok") and hasattr(result, "is_err")

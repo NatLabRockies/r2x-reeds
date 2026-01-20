@@ -39,6 +39,7 @@ repos:
       - id: trailing-whitespace
       - id: check-added-large-files
       - id: end-of-file-fixer
+        exclude: docstr_coverage_badge\.svg$
       - id: check-case-conflict
       - id: fix-byte-order-marker
       - id: check-json

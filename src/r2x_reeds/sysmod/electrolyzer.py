@@ -20,6 +20,8 @@ from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
 
 
 class ElectrolyzerConfig(PluginConfig):
+    """Configuration for adding electrolyzer load and hydrogen fuel prices."""
+
     weather_year: int | None = Field(
         default=None,
         description="Weather year for time series alignment.",

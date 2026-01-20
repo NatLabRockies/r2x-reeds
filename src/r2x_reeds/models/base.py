@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from typing import Annotated
+from typing import Annotated as AnnotatedTyping
 
 from infrasys import Component
 from infrasys.models import InfraSysBaseModel
-from pydantic import Field, PositiveFloat, confloat, model_validator
+from pydantic import Field, PositiveFloat, model_validator
+
+# Type alias for float constrained between 0 and 1 (inclusive)
+UnitFloat = AnnotatedTyping[float, Field(ge=0, le=1)]
 
 
 class ReEDSComponent(Component):
@@ -64,8 +68,8 @@ class MinMax(InfraSysBaseModel):
     like capacity factors, flow rates, etc.
     """
 
-    min: confloat(ge=0, le=1)
-    max: confloat(ge=0, le=1)
+    min: UnitFloat
+    max: UnitFloat
 
     @model_validator(mode="after")
     def check_min_less_than_max(self):

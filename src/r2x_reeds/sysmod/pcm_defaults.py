@@ -15,6 +15,8 @@ from r2x_reeds.models.components import ReEDSGenerator
 
 
 class PCMDefaultsConfig(PluginConfig):
+    """Configuration for augmenting CEM results with PCM default values."""
+
     pcm_defaults_fpath: Path | str | None = Field(
         default=None,
         description="Path for JSON file containing PCM defaults.",
@@ -88,11 +90,9 @@ def add_pcm_defaults(
     # and finally if we did not find a match the broader category
     for component in system.get_components(ReEDSGenerator):
         # Try multiple matching strategies
-        pcm_values = (
-            pcm_defaults.get(component.name)
-            or pcm_defaults.get(component.technology)
-            or pcm_defaults.get(component.category)
-        )
+        pcm_values = pcm_defaults.get(component.name) or pcm_defaults.get(component.technology)
+        if pcm_values is None and component.category is not None:
+            pcm_values = pcm_defaults.get(component.category)
 
         if not pcm_values:
             msg = "Could not find a matching category for {}. "
