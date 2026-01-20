@@ -1254,7 +1254,7 @@ wheels = [
 [[package]]
 name = "r2x-core"
 version = "0.3.1"
-source = { editable = "../../r2x-core/fuzzy" }
+source = { git = "https://github.com/NREL/r2x-core?branch=pesap%2Frefactor#04f440bf0493fb1215397e02a14dacd4bde49714" }
 dependencies = [
     { name = "h5py" },
     { name = "infrasys" },
@@ -1263,40 +1263,6 @@ dependencies = [
     { name = "polars" },
     { name = "pydantic" },
     { name = "rust-ok" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "h5py", specifier = ">=3.13.0,<4.0.0" },
-    { name = "infrasys", specifier = ">=1.0.0,<2.0.0" },
-    { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
-    { name = "packaging", specifier = ">=24.0,<26.0" },
-    { name = "polars", specifier = ">=1.33.1,<2.0.0" },
-    { name = "pydantic", specifier = ">=2.11.9,<3.0.0" },
-    { name = "rust-ok", specifier = ">=0.2.2,<1.0.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "h5py-stubs", specifier = ">=0.1.2,<1.0.0" },
-    { name = "mypy", specifier = ">=1.18.2,<2.0.0" },
-    { name = "prek", specifier = ">=0.2.29,<0.3.0" },
-    { name = "pytest", specifier = ">=8.4.2,<10.0.0" },
-    { name = "pytest-coverage", specifier = ">=0.0,<1.0.0" },
-    { name = "ruff", specifier = ">=0.13.2,<0.15.0" },
-    { name = "ty", specifier = ">=0.0.12,<1.0.0" },
-]
-docs = [
-    { name = "autodoc-pydantic", specifier = ">=2.0.0,<3.0.0" },
-    { name = "docstr-coverage", specifier = ">=2.3.2,<3.0.0" },
-    { name = "furo", specifier = ">=2025.9.25,<2026.0.0" },
-    { name = "ghp-import", specifier = ">=2.1.0,<3.0.0" },
-    { name = "myst-parser", specifier = ">=3.0.0,<5.0.0" },
-    { name = "sphinx", specifier = ">=7.2.0,<8.0.0" },
-    { name = "sphinx-copybutton", specifier = ">=0.5.2,<1.0.0" },
-    { name = "sphinx-reports", specifier = ">=0.1.0,<1.0.0" },
-    { name = "sphinx-tabs", specifier = ">=3.4.5,<4.0.0" },
-    { name = "sphinxcontrib-mermaid", specifier = ">=2.0.0,<3.0.0" },
 ]
 
 [[package]]
@@ -1329,7 +1295,7 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "r2x-core", editable = "../../r2x-core/fuzzy" }]
+requires-dist = [{ name = "r2x-core", git = "https://github.com/NREL/r2x-core?branch=pesap%2Frefactor" }]
 
 [package.metadata.requires-dev]
 dev = [

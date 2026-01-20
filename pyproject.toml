@@ -169,4 +169,4 @@ fail_under = 90
 directory = "htmlcov"
 
 [tool.uv.sources]
-r2x-core = { path = "../../r2x-core/fuzzy", editable = true }
+r2x-core = { git = "https://github.com/NREL/r2x-core", branch = "pesap/refactor" }
