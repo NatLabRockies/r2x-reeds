@@ -44,7 +44,7 @@ classifiers = [
 ]
 
 [project.entry-points."r2x_plugin"]
-reeds = "r2x_reeds:ReEDSParser"
+reeds-parser = "r2x_reeds:ReEDSParser"
 
 [project.entry-points."r2x.transforms"]
 add-pcm-defaults = "r2x_reeds.sysmod.pcm_defaults:add_pcm_defaults"
