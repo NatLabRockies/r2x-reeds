@@ -221,6 +221,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
     def on_upgrade(self) -> Result[System | None, str]:
         """Run ReEDS file upgrades before input validation."""
+        logger.debug("Determining if upgrade is needed.")
         result = run_reeds_upgrades(store=self.store, ctx=self.ctx)
         if result.is_err():
             return Err(str(result.err()))
