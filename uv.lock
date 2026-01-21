@@ -1253,8 +1253,8 @@ wheels = [
 
 [[package]]
 name = "r2x-core"
-version = "0.3.1"
-source = { git = "https://github.com/NREL/r2x-core?branch=pesap%2Frefactor#04f440bf0493fb1215397e02a14dacd4bde49714" }
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
     { name = "infrasys" },
@@ -1263,6 +1263,10 @@ dependencies = [
     { name = "polars" },
     { name = "pydantic" },
     { name = "rust-ok" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/71/09/646b778e7e30bdb5ea2c160be42081a3abf7d3edc36652df35f8a3f18edc/r2x_core-0.4.0.tar.gz", hash = "sha256:714cc02821cb0d8674c904dcbfccf1a6f1d54cf9c7a190b5f9ef3bd0ca6080a3", size = 63290, upload-time = "2026-01-21T00:27:37.499Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a1/60/ac4bcfaaced162da9a6e225f146b01caaf0581c8ce21e5d9a183e3746dc5/r2x_core-0.4.0-py3-none-any.whl", hash = "sha256:93681917abe3cf8324c9e4f1c506a788f0b83c0fb6e6e293cb50da3262db82a5", size = 78191, upload-time = "2026-01-21T00:27:35.922Z" },
 ]
 
 [[package]]
@@ -1295,7 +1299,7 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "r2x-core", git = "https://github.com/NREL/r2x-core?branch=pesap%2Frefactor" }]
+requires-dist = [{ name = "r2x-core", specifier = ">=0.4.0,<1.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [

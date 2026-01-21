@@ -167,6 +167,3 @@ fail_under = 90
 
 [tool.coverage.html]
 directory = "htmlcov"
-
-[tool.uv.sources]
-r2x-core = { git = "https://github.com/NREL/r2x-core", branch = "pesap/refactor" }
