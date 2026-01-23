@@ -1,6 +1,10 @@
 """Tests for ReEDS model enumerations."""
 
+import pytest
+
 from r2x_reeds.models.enums import EmissionType, ReserveDirection, ReserveType
+
+pytestmark = [pytest.mark.unit]
 
 
 def test_emission_type_co2_exists():

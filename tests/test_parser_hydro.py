@@ -1,6 +1,10 @@
 """Tests for hydro budget and rating profile methods."""
 
+import pytest
+
 from r2x_reeds.models.components import ReEDSGenerator
+
+pytestmark = [pytest.mark.integration]
 
 
 def test_hydro_time_series(example_system):

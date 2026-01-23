@@ -5,6 +5,8 @@ from typing import Any
 
 import pytest
 
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.mark.unit
 def test_deduplicate_records_warns_and_keeps_first() -> None:

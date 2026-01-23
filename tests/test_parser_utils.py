@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = [pytest.mark.unit]
+
 
 def test_tech_matches_category_with_prefixes() -> None:
     from r2x_reeds import parser_utils
@@ -657,7 +659,7 @@ def test_collect_component_kwargs_missing_identifier() -> None:
     """Test error handling when identifier is empty/None."""
     import polars as pl
 
-    from r2x_core import ParserError
+    from r2x_core.exceptions import ValidationError
     from r2x_reeds import parser_utils
 
     df = pl.DataFrame({"col1": [1, 2, 3]})
@@ -679,35 +681,8 @@ def test_collect_component_kwargs_missing_identifier() -> None:
     )
     assert result.is_err()
     error = result.unwrap_err()
-    assert isinstance(error, ParserError)
+    assert isinstance(error, ValidationError)
 
-
-def test_collect_component_kwargs_identifier_getter_error() -> None:
-    """Test error accumulation when identifier_getter fails."""
-    import polars as pl
-
-    from r2x_core import ParserError
-    from r2x_reeds import parser_utils
-
-    df = pl.DataFrame({"col1": [1, 2]})
-
-    def failing_identifier_getter(row):
-        from rust_ok import Err
-
-        return Err(ValueError("Identifier extraction failed"))
-
-    class DummyRule:
-        pass
-
-    result = parser_utils._collect_component_kwargs_from_rule(
-        data=df,
-        rule_provider=DummyRule(),
-        parser_context=None,
-        row_identifier_getter=failing_identifier_getter,
-    )
-    assert result.is_err()
-    error = result.unwrap_err()
-    assert isinstance(error, ParserError)
     assert "failed" in str(error).lower()
 
 

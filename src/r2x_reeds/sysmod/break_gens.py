@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore
+from r2x_core import DataStore, PluginConfig, expose_plugin
 from r2x_reeds.models import ReEDSGenerator
 
 from .utils import _coerce_path, _deduplicate_records
@@ -20,42 +21,47 @@ if TYPE_CHECKING:
     from r2x_core import System
 
 
+class BreakGensConfig(PluginConfig):
+    """Configuration for breaking oversized generators into reference-sized units."""
+
+    reference_units: Path | str | PathLike | dict[str, Any] | None = Field(
+        default=None,
+        description="Reference unit definitions as a path or mapping.",
+    )
+    drop_capacity_threshold: int = Field(
+        default=5, ge=0, description="Threshold of capacity in MW to drop of remainder exist."
+    )
+    skip_categories: list[str] | None = Field(
+        default=None,
+        description="Generator categories to skip when breaking units.",
+    )
+    break_category: str = Field(
+        default="category",
+        description="Field name used to look up reference units.",
+    )
+
+
+@expose_plugin
 def break_generators(
     system: System,
-    reference_units: Path | str | PathLike | dict[str, Any] | None = None,
-    drop_capacity_threshold: int = 5,
-    skip_categories: list[str] | None = None,
-    break_category: str = "category",
-) -> System:
-    """Public API for breaking generators with fail-fast error handling."""
-    if drop_capacity_threshold < 0:
-        msg = "drop_capacity_threshold must be non-negative"
-        return Err(ValueError(msg))
-
-    reference_units = _load_reference_units(reference_units)
-
-    match reference_units:
-        case Ok(value):
-            reference_units = value
-        case Err(error):
-            raise error
+    config: BreakGensConfig,
+) -> Result[System, str]:
+    """Split oversized generators into multiple reference-sized units."""
+    reference_result = _load_reference_units(config.reference_units)
+    if reference_result.is_err():
+        error = reference_result.unwrap_err()
+        logger.error("Failed to load reference units: {}", error)
+        return Err(str(error) if error else "Failed to load reference units")
 
     system = _break_system_generators(
         system=system,
-        reference_units=reference_units,
-        capacity_threshold=drop_capacity_threshold,
-        skip_categories=skip_categories,
-        break_category=break_category,
+        reference_units=reference_result.unwrap(),
+        capacity_threshold=config.drop_capacity_threshold,
+        skip_categories=config.skip_categories,
+        break_category=config.break_category,
     )
 
-    match system:
-        case Ok(system):
-            system = system
-        case Err(error):
-            logger.error("{}", error)
-            raise error
-
-    return system
+    return Ok(system)
 
 
 def _break_system_generators(
@@ -92,6 +98,7 @@ def _break_system_generators(
 
         if not (capacity := reference_tech.get("capacity_MW", None)):
             logger.warning("`capacity_MW` not found on reference_tech for {}.", tech_key)
+            logger.info("`capacity_MW` not found on reference_tech")
             continue
 
         # Use `.capacity` field directly (float in MW)
@@ -186,7 +193,7 @@ def _load_reference_units(
     """Load reference generator definitions and deduplicate them."""
     if reference_units is None:
         logger.info("No reference_units provided. Using package defaults from pcm_defaults.json")
-        fpath = files("r2x_reeds").joinpath("config/pcm_defaults.json")
+        fpath = Path(str(files("r2x_reeds").joinpath("config/pcm_defaults.json")))
 
         try:
             reference_units = json.loads(fpath.read_text())
@@ -197,14 +204,26 @@ def _load_reference_units(
     if isinstance(reference_units, dict):
         return _normalize_reference_data(reference_units, dedup_key, "<in-memory reference technologies>")
 
+    reference_data: Any = None
+    path_value: Path | None = None
+
     match _coerce_path(reference_units):
-        case Ok(path_value):
+        case Ok(path_value_result):
+            path_value = path_value_result
             try:
                 reference_data = DataStore.load_file(path_value)
             except Exception as exc:  # pragma: no cover - propagate load failures
                 return Err(exc)
         case Err(error):
+            if error is None:
+                return Err(RuntimeError("Failed to load reference units"))
             return Err(error)
+
+    if path_value is None:
+        return Err(RuntimeError("Failed to load reference units"))
+
+    if not isinstance(reference_data, (list, dict)):
+        return Err(TypeError("reference_technologies must be a dict or JSON array of dicts"))
 
     return _normalize_reference_data(reference_data, dedup_key, path_value)
 

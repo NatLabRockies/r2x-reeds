@@ -9,7 +9,9 @@ from infrasys import SingleTimeSeries, System
 
 from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator
 from r2x_reeds.models.enums import EmissionType
-from r2x_reeds.sysmod.break_gens import break_generators
+from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
+
+pytestmark = [pytest.mark.integration]
 
 
 @pytest.fixture
@@ -19,19 +21,27 @@ def system_with_region(sample_region):
     return system, sample_region
 
 
+def _run_break(system: System, **kwargs) -> System:
+    result = break_generators(system, BreakGensConfig(**kwargs))
+    assert result.is_ok()
+    return result.unwrap()
+
+
 def test_break_generator_fails_with_wrong_reference_type():
     sys = System(name="Test")
 
-    with pytest.raises(TypeError):
-        break_generators(sys, 10)
+    result = break_generators(sys, BreakGensConfig(reference_units={"wind": "invalid"}))
+    assert result.is_err()
+    assert "No reference technologies" in result.unwrap_err()
 
 
 def test_break_generator_fails_with_missing_file(tmp_path: Path):
     sys = System(name="Test")
     missing = tmp_path / "missing.json"
 
-    with pytest.raises(FileNotFoundError):
-        break_generators(sys, missing)
+    result = break_generators(sys, BreakGensConfig(reference_units=missing))
+    assert result.is_err()
+    assert "Reference technologies file not found" in result.unwrap_err()
 
 
 def test_break_generator_warns_on_duplicate_reference(tmp_path: Path, caplog):
@@ -54,7 +64,8 @@ def test_break_generator_warns_on_duplicate_reference(tmp_path: Path, caplog):
         )
     )
 
-    break_generators(sys, reference_path)
+    result = break_generators(sys, BreakGensConfig(reference_units=reference_path))
+    assert result.is_ok()
 
     assert "Duplicate entries found for key 'name'" in caplog.text
 
@@ -82,7 +93,7 @@ def test_break_generators_splits_and_preserves_data(system_with_region) -> None:
     system.add_time_series(ts, original)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     generators = list(system.get_components(ReEDSGenerator))
     assert {gen.name for gen in generators} == {"gen_01", "gen_02", "gen_03"}
@@ -111,7 +122,7 @@ def test_break_generators_drops_small_remainder(system_with_region) -> None:
     system.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     generators = list(system.get_components(ReEDSGenerator))
     assert {gen.name for gen in generators} == {"gen_01", "gen_02"}
@@ -131,7 +142,7 @@ def test_break_generators_respects_non_break_list(system_with_region) -> None:
     system.add_component(original)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(system, reference, skip_categories=["wind"])
+    _run_break(system, reference_units=reference, skip_categories=["wind"])
 
     generators = list(system.get_components(ReEDSGenerator))
     assert generators == [original]
@@ -150,7 +161,7 @@ def test_break_gens_uses_reference_dict(system_with_region) -> None:
     system.add_component(generator)
     reference = {"solar": {"capacity_MW": 40}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     generators = list(system.get_components(ReEDSGenerator))
     assert {gen.name for gen in generators} == {"gen_01", "gen_02", "gen_03"}
@@ -171,7 +182,7 @@ def test_break_gens_reads_file(tmp_path: Path, system_with_region) -> None:
     )
     system.add_component(generator)
 
-    break_generators(system, reference_path)
+    _run_break(system, reference_units=reference_path)
 
     generators = list(system.get_components(ReEDSGenerator))
     assert sorted(gen.capacity for gen in generators) == [10.0, 30.0, 30.0]
@@ -190,7 +201,7 @@ def test_break_generators_skips_missing_category(system_with_region) -> None:
     system.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     assert list(system.get_components(ReEDSGenerator)) == [generator]
 
@@ -208,7 +219,7 @@ def test_break_generators_missing_reference(system_with_region) -> None:
     system.add_component(generator)
     reference = {"solar": {"capacity_MW": 50}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     assert list(system.get_components(ReEDSGenerator)) == [generator]
 
@@ -226,7 +237,7 @@ def test_break_generators_missing_avg_capacity(system_with_region, caplog) -> No
     system.add_component(generator)
     reference = {"wind": {}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     assert list(system.get_components(ReEDSGenerator)) == [generator]
     assert "`capacity_MW` not found on reference_tech" in caplog.text
@@ -245,7 +256,7 @@ def test_break_generators_small_capacity_not_split(system_with_region) -> None:
     system.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(system, reference)
+    _run_break(system, reference_units=reference)
 
     assert list(system.get_components(ReEDSGenerator)) == [generator]
 
@@ -264,7 +275,7 @@ def test_break_generators_respects_drop_threshold(system_with_region) -> None:
     system.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(system, reference, drop_capacity_threshold=40)
+    _run_break(system, reference_units=reference, drop_capacity_threshold=40)
 
     generators = list(system.get_components(ReEDSGenerator))
     assert len(generators) == 2
@@ -312,7 +323,6 @@ def test_normalize_reference_data_invalid_type() -> None:
 
 def test_break_generators_return_same_type(system_with_region: System, caplog) -> None:
     from r2x_reeds.models import ReEDSThermalGenerator
-    from r2x_reeds.sysmod import break_generators
 
     sys, _ = system_with_region
 
@@ -322,7 +332,7 @@ def test_break_generators_return_same_type(system_with_region: System, caplog) -
 
     reference = {"thermal": {"capacity_MW": 50}}
 
-    break_generators(sys, reference, drop_capacity_threshold=40)
+    _run_break(sys, reference_units=reference, drop_capacity_threshold=40)
 
     assert len(list(sys.get_components(ReEDSThermalGenerator))) == 2
     assert next(sys.get_components(ReEDSThermalGenerator)).capacity == 50
@@ -330,8 +340,6 @@ def test_break_generators_return_same_type(system_with_region: System, caplog) -
 
 def test_break_generators_with_default_reference_units(system_with_region) -> None:
     """Test that break_generators uses default reference units when none provided."""
-    from r2x_reeds.sysmod import break_generators
-
     sys, region = system_with_region
     # Use a tech from the default pcm_defaults.json (if it exists)
     # We'll test the code path without specifying reference_units
@@ -345,7 +353,7 @@ def test_break_generators_with_default_reference_units(system_with_region) -> No
     sys.add_component(generator)
 
     # Should not crash, just skip the generator
-    break_generators(sys, reference_units=None)
+    _run_break(sys, reference_units=None)
     assert list(sys.get_components(ReEDSGenerator)) == [generator]
 
 
@@ -461,7 +469,7 @@ def test_break_generators_capacity_exactly_matches_reference(system_with_region)
     sys.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(sys, reference)
+    _run_break(sys, reference_units=reference)
 
     generators = list(sys.get_components(ReEDSGenerator))
     assert generators == [generator]
@@ -480,7 +488,7 @@ def test_break_generators_with_remainder_above_threshold(system_with_region) -> 
     sys.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(sys, reference, drop_capacity_threshold=5)
+    _run_break(sys, reference_units=reference, drop_capacity_threshold=5)
 
     generators = list(sys.get_components(ReEDSGenerator))
     # 156 / 50 = 3 splits with 6 MW remainder, remainder > 5 so it's included
@@ -510,7 +518,7 @@ def test_break_generators_multiple_generators_in_system(system_with_region) -> N
 
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(sys, reference)
+    _run_break(sys, reference_units=reference)
 
     generators = list(sys.get_components(ReEDSGenerator))
     names = {gen.name for gen in generators}
@@ -535,7 +543,7 @@ def test_break_generators_with_custom_break_category(system_with_region) -> None
     # Use technology as the break category
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(sys, reference, break_category="technology")
+    _run_break(sys, reference_units=reference, break_category="technology")
 
     generators = list(sys.get_components(ReEDSGenerator))
     assert {gen.name for gen in generators} == {"gen_01", "gen_02", "gen_03"}
@@ -613,7 +621,7 @@ def test_break_generators_preserves_other_attributes(system_with_region) -> None
 
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(sys, reference)
+    _run_break(sys, reference_units=reference)
 
     generators = list(sys.get_components(ReEDSGenerator))
     for gen in generators:
@@ -656,7 +664,7 @@ def test_break_generators_very_large_capacity(system_with_region) -> None:
     sys.add_component(generator)
     reference = {"wind": {"capacity_MW": 100}}
 
-    break_generators(sys, reference)
+    _run_break(sys, reference_units=reference)
 
     generators = list(sys.get_components(ReEDSGenerator))
     assert len(generators) == 10
@@ -676,7 +684,7 @@ def test_break_generators_fractional_splits(system_with_region) -> None:
     sys.add_component(generator)
     reference = {"wind": {"capacity_MW": 50}}
 
-    break_generators(sys, reference, drop_capacity_threshold=5)
+    _run_break(sys, reference_units=reference, drop_capacity_threshold=5)
 
     generators = list(sys.get_components(ReEDSGenerator))
     capacities = sorted(gen.capacity for gen in generators)
@@ -734,7 +742,7 @@ def test_break_generators_with_path_string_reference(tmp_path: Path, system_with
     ref_data = {"wind": {"capacity_MW": 50}}
     ref_file.write_text(json.dumps(ref_data))
 
-    break_generators(sys, str(ref_file))
+    _run_break(sys, reference_units=str(ref_file))
 
     generators = list(sys.get_components(ReEDSGenerator))
     assert {gen.name for gen in generators} == {"gen_01", "gen_02", "gen_03"}

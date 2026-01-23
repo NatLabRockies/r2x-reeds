@@ -3,11 +3,15 @@
 This plugin is only applicable for ReEDS, but could work with similarly arranged data
 """
 
+from pathlib import Path
+
 import polars as pl
 from infrasys import System
 from loguru import logger
+from pydantic import Field
+from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore
+from r2x_core import DataStore, PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSGenerator
 
 
@@ -23,13 +27,25 @@ def _cast_string_columns(frame: pl.DataFrame | None, string_columns: tuple[str, 
     return frame
 
 
-def add_ccs_credit(
-    system: System,
-    co2_incentive_fpath: str | None = None,
-    emission_capture_rate_fpath: str | None = None,
-    upgrade_link_fpath: str | None = None,
-    **kwargs,
-) -> System:
+class CCSCreditConfig(PluginConfig):
+    """Configuration for applying CCS incentives to eligible technologies."""
+
+    co2_incentive_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing CO2 incentive data.",
+    )
+    emission_capture_rate_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing emission capture rate data.",
+    )
+    upgrade_link_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing technology upgrade links.",
+    )
+
+
+@expose_plugin
+def add_ccs_credit(system: System, config: CCSCreditConfig) -> Result[System, str]:
     """Apply CCS incentive to CCS eligible technologies.
 
     The incentive is calculated with the capture incentive ($/ton) and capture rate
@@ -40,22 +56,13 @@ def add_ccs_credit(
     ----------
     system : System
         The system object to be updated (from stdin).
-    co2_incentive_fpath : str, optional
-        Path to CSV file containing CO2 incentive data with columns:
-        tech, region, vintage, incentive.
-    emission_capture_rate_fpath : str, optional
-        Path to CSV file containing emission capture rate data with columns:
-        tech, region, vintage, capture_rate.
-    upgrade_link_fpath : str, optional
-        Path to CSV file containing technology upgrade links with columns:
-        from, to, region, vintage.
-    **kwargs
-        Additional keyword arguments (ignored).
+    config : CCSCreditConfig
+        Configuration for required input file paths.
 
     Returns
     -------
-    System
-        The updated system object.
+    Result[System, str]
+        The updated system object or an error message.
 
     Notes
     -----
@@ -63,16 +70,22 @@ def add_ccs_credit(
     (co2_incentive, emission_capture_rate, and upgrade_link) must be provided
     for the plugin to function.
     """
-    if co2_incentive_fpath is None or emission_capture_rate_fpath is None or upgrade_link_fpath is None:
+    if (
+        config.co2_incentive_fpath is None
+        or config.emission_capture_rate_fpath is None
+        or config.upgrade_link_fpath is None
+    ):
         msg = "Missing required data file paths for ccs_credit "
         msg += "(co2_incentive_fpath, emission_capture_rate_fpath, upgrade_link_fpath). Skipping plugin."
         logger.debug(msg)
-        return system
+        return Ok(system)
 
     try:
-        co2_incentive = DataStore.load_file(co2_incentive_fpath, name="co2_incentive")
-        emission_capture_rate = DataStore.load_file(emission_capture_rate_fpath, name="emission_capture_rate")
-        upgrade_link = DataStore.load_file(upgrade_link_fpath, name="upgrade_link")
+        co2_incentive = DataStore.load_file(config.co2_incentive_fpath, name="co2_incentive")
+        emission_capture_rate = DataStore.load_file(
+            config.emission_capture_rate_fpath, name="emission_capture_rate"
+        )
+        upgrade_link = DataStore.load_file(config.upgrade_link_fpath, name="upgrade_link")
 
         if isinstance(co2_incentive, pl.LazyFrame):
             co2_incentive = co2_incentive.collect()
@@ -87,11 +100,11 @@ def add_ccs_credit(
 
         # Apply CCS incentives using loaded data
         system = _apply_ccs_credit(system, co2_incentive, emission_capture_rate, upgrade_link)
-    except Exception as e:
-        logger.error(f"CCS credit plugin failed: {e}")
-        return system
+    except Exception as exc:
+        logger.error("CCS credit plugin failed: {}", exc)
+        return Err(str(exc))
 
-    return system
+    return Ok(system)
 
 
 def _apply_ccs_credit(

@@ -3,24 +3,47 @@
 This plugin is only applicable for ReEDS, but could work with similarly arranged data
 """
 
+from pathlib import Path
+from typing import Any
+
 import polars as pl
 from infrasys import System
 from loguru import logger
+from pydantic import Field
+from rust_ok import Ok, Result
 
-from r2x_core import DataStore
+from r2x_core import DataStore, PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator
 from r2x_reeds.models.enums import EmissionType
 
 
+class EmissionCapConfig(PluginConfig):
+    """Configuration for applying annual carbon emission cap constraints."""
+
+    emission_cap: float | None = Field(
+        default=None,
+        description="Emission cap value. If omitted, attempts to load from co2_cap_fpath.",
+    )
+    switches_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing switches/configuration data.",
+    )
+    emission_rates_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing emission rate data.",
+    )
+    co2_cap_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing CO2 cap value.",
+    )
+    default_unit: str = Field(default="tonne", description="Units for emission cap value.")
+
+
+@expose_plugin
 def add_emission_cap(
     system: System,
-    emission_cap: float | None = None,
-    switches_fpath: str | None = None,
-    emission_rates_fpath: str | None = None,
-    co2_cap_fpath: str | None = None,
-    default_unit: str = "tonne",
-    **kwargs,
-) -> System:
+    config: EmissionCapConfig,
+) -> Result[System, str]:
     """Apply an emission cap constraint for the system.
 
     This function adds to the system a constraint object that is used to set the maximum
@@ -30,26 +53,13 @@ def add_emission_cap(
     ----------
     system : System
         The system object to be updated (from stdin).
-    emission_cap : float, optional
-        The emission cap value. If None, will attempt to load from co2_cap file.
-        Default is None.
-    switches_fpath : str, optional
-        Path to CSV file containing switches/configuration data with columns:
-        switch_name, value.
-    emission_rates_fpath : str, optional
-        Path to CSV file containing emission rates with columns:
-        tech, tech_vintage, region, emission_source, emission_type, rate.
-    co2_cap_fpath : str, optional
-        Path to CSV file containing CO2 cap value with columns: value.
-    default_unit : str, optional
-        The default unit for measurement. Default is 'tonne'.
-    **kwargs
-        Additional keyword arguments (ignored).
+    config : EmissionCapConfig
+        Configuration for emission cap inputs and units.
 
     Returns
     -------
-    System
-        The updated system object.
+    Result[System, str]
+        The updated system object or an error message.
 
     Notes
     -----
@@ -71,12 +81,13 @@ def add_emission_cap(
         component.type == emission_object for component in system.get_supplemental_attributes(ReEDSEmission)
     ):
         logger.warning("Did not find any emission type to apply emission_cap")
-        return system
+        return Ok(system)
 
     # If emission_cap not provided, try to load from file
-    if emission_cap is None and co2_cap_fpath is not None:
+    emission_cap = config.emission_cap
+    if emission_cap is None and config.co2_cap_fpath is not None:
         try:
-            co2_cap_data = DataStore.load_file(co2_cap_fpath, name="co2_cap")
+            co2_cap_data = DataStore.load_file(config.co2_cap_fpath, name="co2_cap")
             if co2_cap_data is not None:
                 co2_cap_data = co2_cap_data.collect()
             if co2_cap_data is not None and not co2_cap_data.is_empty():
@@ -86,10 +97,10 @@ def add_emission_cap(
             logger.warning(f"Failed to extract emission cap value: {e}")
 
     # Check for precombustion emissions if data files provided
-    if switches_fpath is not None and emission_rates_fpath is not None:
+    if config.switches_fpath is not None and config.emission_rates_fpath is not None:
         try:
-            switches = DataStore.load_file(switches_fpath, name="switches")
-            emit_rates = DataStore.load_file(emission_rates_fpath, name="emission_rates")
+            switches = DataStore.load_file(config.switches_fpath, name="switches")
+            emit_rates = DataStore.load_file(config.emission_rates_fpath, name="emission_rates")
             if switches is not None:
                 switches = switches.collect()
             if emit_rates is not None:
@@ -99,7 +110,8 @@ def add_emission_cap(
         except Exception as e:
             logger.debug(f"Could not process precombustion emissions: {e}")
 
-    return set_emission_constraint(system, emission_cap, default_unit, emission_object)
+    system = set_emission_constraint(system, emission_cap, config.default_unit, emission_object)
+    return Ok(system)
 
 
 def _add_precombustion_if_enabled(system: System, switches: pl.DataFrame, emit_rates: pl.DataFrame) -> None:
@@ -140,12 +152,13 @@ def _add_precombustion_if_enabled(system: System, switches: pl.DataFrame, emit_r
         # Check for precombustion flag
         if switches_dict.get("gsw_precombustion") or switches_dict.get("gsw_annualcapco2e"):
             # Process emission rates for precombustion
-            if not emit_rates.is_empty():
-                emit_rates_processed = emit_rates.with_columns(
-                    pl.concat_str(
-                        [pl.col("tech"), pl.col("tech_vintage"), pl.col("region")], separator="_"
-                    ).alias("generator_name")
-                )
+            if emit_rates.is_empty():
+                return
+            emit_rates_processed = emit_rates.with_columns(
+                pl.concat_str(
+                    [pl.col("tech"), pl.col("tech_vintage"), pl.col("region")], separator="_"
+                ).alias("generator_name")
+            )
 
             # Filter for precombustion emissions
             any_precombustion = emit_rates_processed["emission_source"].str.contains("precombustion")
@@ -250,17 +263,20 @@ def set_emission_constraint(
         logger.warning("Could not set emission cap value. Skipping plugin.")
         return system
 
-    if not hasattr(system, "ext"):
-        system._emission_constraints = {}
-        constraint_storage = system._emission_constraints
+    # Store constraints in system.ext if available, otherwise use private attribute
+    if hasattr(system, "ext"):
+        ext: dict[str, Any] = system.ext  # type: ignore[assignment]
+        if "emission_constraints" not in ext:
+            ext["emission_constraints"] = {}
+        constraint_storage: dict[str, Any] = ext["emission_constraints"]
     else:
-        if "emission_constraints" not in system.ext:
-            system.ext["emission_constraints"] = {}
-        constraint_storage = system.ext["emission_constraints"]
+        if not hasattr(system, "_emission_constraints"):
+            system._emission_constraints = {}  # type: ignore[attr-defined]
+        constraint_storage = system._emission_constraints  # type: ignore[attr-defined]
 
     constraint_name = f"Annual_{emission_object}_cap"
 
-    constraint_properties = {
+    constraint_properties: dict[str, Any] = {
         "sense": "<=",
         "rhs_value": emission_cap,
         "units": default_unit,

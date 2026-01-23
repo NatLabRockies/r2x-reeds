@@ -1,8 +1,11 @@
-"""Plugin manifest for the r2x-reeds package."""
+"""Plugin exports for r2x-reeds package.
+
+This module exports the main parser plugin and callable transforms.
+Discovery for r2x-core relies on entry points defined in pyproject.toml.
+"""
 
 from __future__ import annotations
 
-from r2x_core import GitVersioningStrategy, PluginManifest, PluginSpec
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.sysmod.break_gens import break_generators
 from r2x_reeds.sysmod.ccs_credit import add_ccs_credit
@@ -12,73 +15,26 @@ from r2x_reeds.sysmod.imports import add_imports
 from r2x_reeds.sysmod.pcm_defaults import add_pcm_defaults
 from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader, ReEDSVersionDetector
 
-manifest = PluginManifest(package="r2x-reeds")
+# Main parser plugin
+parser = ReEDSParser
+config = ReEDSConfig
 
-manifest.add(
-    PluginSpec.parser(
-        name="r2x-reeds.parser",
-        entry=ReEDSParser,
-        config=ReEDSConfig,
-        description="Parse ReEDS run directories into an infrasys.System.",
-    )
-)
+# System modifier functions (signature: system, config -> Result[System, str])
+system_modifiers = {
+    "add-pcm-defaults": add_pcm_defaults,
+    "add-emission-cap": add_emission_cap,
+    "add-electrolyzer-load": add_electrolizer_load,
+    "add-ccs-credit": add_ccs_credit,
+    "break-gens": break_generators,
+    "add-imports": add_imports,
+}
 
-manifest.add(
-    PluginSpec.upgrader(
-        name="r2x-reeds.upgrader",
-        entry=ReEDSUpgrader,
-        version_strategy=GitVersioningStrategy,
-        version_reader=ReEDSVersionDetector,
-        steps=ReEDSUpgrader.steps,
-        description="Apply file-level upgrades to ReEDS run folders.",
-    )
-)
-
-manifest.add(
-    PluginSpec.function(
-        name="r2x-reeds.add-pcm-defaults",
-        entry=add_pcm_defaults,
-        description="Augment generators with PCM default attributes.",
-    )
-)
-
-manifest.add(
-    PluginSpec.function(
-        name="r2x-reeds.add-emission-cap",
-        entry=add_emission_cap,
-        description="Add annual CO2 emission cap constraints.",
-    )
-)
-
-manifest.add(
-    PluginSpec.function(
-        name="r2x-reeds.add-electrolyzer-load",
-        entry=add_electrolizer_load,
-        description="Attach electrolyzer load and hydrogen price profiles.",
-    )
-)
-
-manifest.add(
-    PluginSpec.function(
-        name="r2x-reeds.add-ccs-credit",
-        entry=add_ccs_credit,
-        description="Apply CCS credit adjustments to generators.",
-    )
-)
-
-manifest.add(
-    PluginSpec.function(
-        name="r2x-reeds.break-gens",
-        entry=break_generators,
-        description="Split large generators into average-sized units.",
-    )
-)
-
-manifest.add(
-    PluginSpec.function(
-        name="r2x-reeds.add-imports",
-        entry=add_imports,
-        description="Create Canadian import time series for eligible regions.",
-    )
-)
-__all__ = ["manifest"]
+__all__ = [
+    "ReEDSConfig",
+    "ReEDSParser",
+    "ReEDSUpgrader",
+    "ReEDSVersionDetector",
+    "config",
+    "parser",
+    "system_modifiers",
+]

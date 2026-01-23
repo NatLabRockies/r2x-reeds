@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from pydantic import Field
 
-from r2x_core.plugin_config import PluginConfig
+from r2x_core import PluginConfig
 
 
 class ReEDSConfig(PluginConfig):
@@ -14,14 +14,14 @@ class ReEDSConfig(PluginConfig):
 
     This configuration class defines all parameters needed to parse
     ReEDS model data, including year information and model-specific settings.
-    Model-specific defaults and constants should be loaded using the
-    `load_defaults()` class method and used in parser logic.
+    Model-specific defaults and constants are loaded from configuration files
+    in the `config/` directory relative to this module.
 
     Parameters
     ----------
-    solve_years : int | list[int]
+    solve_year : int | list[int]
         Model solve year(s) (e.g., 2030, [2030, 2040, 2050])
-    weather_years : int | list[int]
+    weather_year : int | list[int]
         Weather data year(s) used for time series profiles (e.g., 2012, [2007, 2012])
     case_name : str, optional
         Name of the ReEDS case
@@ -33,41 +33,36 @@ class ReEDSConfig(PluginConfig):
     Single year:
 
     >>> config = ReEDSConfig(
-    ...     solve_years=2030,
-    ...     weather_years=2012,
+    ...     solve_year=2030,
+    ...     weather_year=2012,
     ...     case_name="High_Renewable",
     ... )
 
     Multiple years:
 
     >>> config = ReEDSConfig(
-    ...     solve_years=[2030, 2040, 2050],
-    ...     weather_years=[2007, 2012],
+    ...     solve_year=[2030, 2040, 2050],
+    ...     weather_year=[2007, 2012],
     ...     case_name="Multi_Year_Analysis",
     ... )
 
     Load model defaults separately for use in parser:
 
     >>> # Load defaults using the class method
-    >>> defaults = ReEDSConfig.load_defaults()
-    >>> excluded_techs = defaults.get("excluded_techs", [])
+    >>> defaults = ReEDSConfig.load_config()
+    >>> excluded_techs = defaults.get("defaults", {}).get("excluded_techs", [])
     >>>
-    >>> # Create config (no defaults field)
+    >>> # Create config
     >>> config = ReEDSConfig(
-    ...     solve_years=2030,
-    ...     weather_years=2012,
+    ...     solve_year=2030,
+    ...     weather_year=2012,
     ... )
 
     See Also
     --------
-    r2x_core.plugin_config.PluginConfig : Base configuration class
+    r2x_core.PluginConfig : Base configuration class
     r2x_reeds.parser.ReEDSParser : Parser that uses this configuration
-    load_defaults : Class method to load default constants from JSON
     """
-
-    # Class variables to customize file locations (can override defaults from PluginConfig)
-    FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
-    DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
 
     solve_year: Annotated[
         int | list[int],

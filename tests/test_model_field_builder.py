@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
 from r2x_reeds import parser_utils
 from r2x_reeds.models.components import ReEDSRegion
+
+pytestmark = [pytest.mark.integration]
 
 
 def test_generator_field_builder_resolves_region(example_system):

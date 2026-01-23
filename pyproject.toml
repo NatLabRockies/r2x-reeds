@@ -16,7 +16,7 @@ maintainers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "r2x-core>=0.2.3,<1.0.0",
+    "r2x-core>=0.4.0,<1.0.0",
 ]
 keywords=["ReEDS"]
 classifiers = [
@@ -44,7 +44,15 @@ classifiers = [
 ]
 
 [project.entry-points."r2x_plugin"]
-reeds = "r2x_reeds.plugins:manifest"
+reeds-parser = "r2x_reeds:ReEDSParser"
+
+[project.entry-points."r2x.transforms"]
+add-pcm-defaults = "r2x_reeds.sysmod.pcm_defaults:add_pcm_defaults"
+add-emission-cap = "r2x_reeds.sysmod.emission_cap:add_emission_cap"
+add-electrolyzer-load = "r2x_reeds.sysmod.electrolyzer:add_electrolizer_load"
+add-ccs-credit = "r2x_reeds.sysmod.ccs_credit:add_ccs_credit"
+break-gens = "r2x_reeds.sysmod.break_gens:break_generators"
+add-imports = "r2x_reeds.sysmod.imports:add_imports"
 
 [dependency-groups]
 dev = [
@@ -82,10 +90,6 @@ plugins = [
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = [
-    "--cov=r2x_reeds",
-    "--cov-report=term-missing:skip-covered",
-    "--cov-report=html",
-    "--cov-report=json",
     "--strict-markers",
     "-v",
 ]
@@ -93,6 +97,7 @@ markers = [
     "unit: Fast unit tests with no external dependencies",
     "integration: Integration tests requiring system setup",
     "slow: Slow tests (>1s)",
+    "smoke: Quick smoke tests for basic functionality",
 ]
 
 [tool.ruff]

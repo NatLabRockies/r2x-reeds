@@ -4,21 +4,20 @@ from __future__ import annotations
 
 import calendar
 import importlib
-from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from collections.abc import Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import polars as pl
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
-from r2x_core import ParserError
-from r2x_core.rules_utils import build_component_kwargs
-from r2x_reeds.models.components import ReEDSRegion
+from r2x_core import PluginContext, System
+from r2x_core.exceptions import ValidationError
+from r2x_core.utils._rules import build_component_kwargs
+from r2x_reeds.models.components import ReEDSDemand, ReEDSRegion
 
 if TYPE_CHECKING:
-    from r2x_core import System
-    from r2x_core.context import ParserContext
     from r2x_core.rules import Rule
     from r2x_reeds.models import ReEDSGenerator
 
@@ -157,21 +156,21 @@ def merge_lazy_frames(
     right: pl.LazyFrame,
     *,
     on: list[str],
-    how: str = "left",
+    how: Literal["left", "right", "inner", "full", "semi", "anti", "cross"] = "left",
     suffix: str = "_right",
-) -> Result[pl.LazyFrame, ParserError]:
+) -> Result[pl.LazyFrame, ValidationError]:
     """Safe wrapper around LazyFrame.join with consistent error reporting."""
     try:
         merged = left.join(right, on=on, how=how, suffix=suffix)
         return Ok(merged)
     except Exception as exc:  # pragma: no cover - defensive
-        return Err(ParserError(f"Failed to merge frames on {on}: {exc}"))
+        return Err(ValidationError(f"Failed to merge frames on {on}: {exc}"))
 
 
 def get_generator_class(
     tech: str,
     technology_categories: dict[str, Any],
-    category_class_mapping: dict[str, str],
+    category_class_mapping: dict[str, str] | dict[str, type],
     models_path: Literal["r2x_reeds.models"] = "r2x_reeds.models",
 ) -> Result[type[ReEDSGenerator], TypeError]:
     """Determine the appropriate generator class based on technology category using config mapping.
@@ -200,8 +199,15 @@ def get_generator_class(
     categories = categories_result.unwrap()
 
     for category in categories:
-        class_name = category_class_mapping.get(category)
-        if class_name and (model := getattr(module, class_name, None)):
+        class_or_name = category_class_mapping.get(category)
+        if class_or_name is None:
+            continue
+        # If it's already a type, return it directly
+        if isinstance(class_or_name, type):
+            return Ok(cast("type[ReEDSGenerator]", class_or_name))
+        # Otherwise it's a string class name, look it up in the module
+        class_name: str = class_or_name
+        if model := getattr(module, class_name, None):
             return Ok(model)
 
     logger.error("Technology model not found for {} on {} (categories: {})", tech, models_path, categories)
@@ -213,7 +219,7 @@ def _prepare_generator_dataset(
     optional_data: dict[str, pl.LazyFrame | None],
     excluded_technologies: list[str],
     technology_categories: dict[str, Any],
-) -> Result[pl.DataFrame, ParserError]:
+) -> Result[pl.DataFrame, ValidationError]:
     """Join all generator data sources and add technology categories.
 
     Parameters
@@ -229,7 +235,7 @@ def _prepare_generator_dataset(
 
     Returns
     -------
-    Result[pl.DataFrame, ParserError]
+    Result[pl.DataFrame, ValidationError]
         Ok(prepared_data) collected DataFrame with categories added, or Err on failure
 
     Notes
@@ -239,7 +245,7 @@ def _prepare_generator_dataset(
     - Returns collected DataFrame for fail-fast error detection
     """
     if capacity_data is None:
-        return Err(ParserError("No capacity data found"))
+        return Err(ValidationError("No capacity data found"))
 
     df = capacity_data
 
@@ -284,7 +290,7 @@ def _prepare_generator_dataset(
                 ).select(pl.col(join_key), pl.col("fuel_type"))
                 df = df.join(mapping, how="left", on=join_key).drop(join_key)
             except Exception as e:
-                return Err(ParserError(f"Failed to join {name} data: {e}"))
+                return Err(ValidationError(f"Failed to join {name} data: {e}"))
             continue
 
         try:
@@ -309,13 +315,13 @@ def _prepare_generator_dataset(
                         .alias("storage_duration")
                     ).drop("storage_duration_out_value")
         except Exception as e:
-            return Err(ParserError(f"Failed to join {name} data: {e}"))
+            return Err(ValidationError(f"Failed to join {name} data: {e}"))
 
     df = df.collect()
     df = df.with_columns(pl.col("technology").str.split("_").list.get(0).alias("technology_base"))
 
     if "fuel_type" not in df.columns:
-        return Err(ParserError("Generator fuel_type column is missing from the fuel2tech mapping"))
+        return Err(ValidationError("Generator fuel_type column is missing from the fuel2tech mapping"))
 
     def _categories_for_tech(tech: str) -> list[str]:
         """Return category names for a technology, logging misses."""
@@ -354,7 +360,7 @@ def _prepare_generator_dataset(
     ).drop("is_thermal")
 
     if df.is_empty():
-        return Err(ParserError("Generator data is empty after joining"))
+        return Err(ValidationError("Generator data is empty after joining"))
 
     if excluded_technologies:
         initial_count = len(df)
@@ -364,7 +370,7 @@ def _prepare_generator_dataset(
             logger.info("Excluded {} generators with excluded technologies", excluded_count)
 
     if df.is_empty():
-        return Err(ParserError("All generators were excluded"))
+        return Err(ValidationError("All generators were excluded"))
 
     return Ok(df)
 
@@ -410,7 +416,7 @@ def calculate_reserve_requirement(
     wind_pct: float,
     solar_pct: float,
     load_pct: float,
-) -> Result[np.ndarray, ParserError]:
+) -> Result[np.ndarray, ValidationError]:
     """Calculate reserve requirement profile from component data.
 
     Reserve requirement = (wind_capacity * wind_pct) + (solar_capacity * solar_pct) + (load * load_pct)
@@ -434,7 +440,7 @@ def calculate_reserve_requirement(
 
     Returns
     -------
-    Result[np.ndarray, ParserError]
+    Result[np.ndarray, ValidationError]
         Ok(requirement_array) or Err if calculation fails
     """
     try:
@@ -468,21 +474,21 @@ def calculate_reserve_requirement(
                     requirement[:data_len] += ts_data[:data_len] * load_pct
 
         if requirement.sum() == 0:
-            return Err(ParserError("Reserve requirement is zero"))
+            return Err(ValidationError("Reserve requirement is zero"))
 
         return Ok(requirement)
 
     except Exception as e:
-        return Err(ParserError(f"Failed to calculate reserve requirement: {e}"))
+        return Err(ValidationError(f"Failed to calculate reserve requirement: {e}"))
 
 
 def _collect_component_kwargs_from_rule(
     data: pl.DataFrame,
     *,
-    rule_provider: Rule | Callable[[Mapping[str, Any]], Result[Rule, ParserError]],
-    parser_context: ParserContext,
+    rule_provider: Rule | Callable[[Mapping[str, Any]], Result[Rule, ValidationError]],
+    parser_context: PluginContext,
     row_identifier_getter: Callable[[Mapping[str, Any]], Result[str, Exception]],
-) -> Result[list[tuple[str, dict[str, Any]]], ParserError]:
+) -> Result[list[tuple[str, dict[str, Any]]], ValidationError]:
     """Collect kwargs dictionaries for rule-driven components."""
 
     errors: list[str] = []
@@ -513,8 +519,12 @@ def _collect_component_kwargs_from_rule(
             logger.error("Failed to resolve rule for %s: %s", identifier_value, rule_error)
             continue
         selected_rule = rule_result.ok()
+        if selected_rule is None:
+            errors.append(f"{identifier_value}: Rule resolution returned None")
+            logger.error("Failed to resolve rule for %s: returned None", identifier_value)
+            continue
 
-        result = build_component_kwargs(selected_rule, row, parser_context)
+        result = build_component_kwargs(row, rule=selected_rule, context=parser_context)
         if result.is_err():
             error_value = result.err()
             errors.append(f"{identifier_value}: {error_value}")
@@ -532,7 +542,7 @@ def _collect_component_kwargs_from_rule(
 
     if errors:
         failure_list = "; ".join(errors)
-        return Err(ParserError(f"Failed to build the following components: {failure_list}"))
+        return Err(ValidationError(f"Failed to build the following components: {failure_list}"))
 
     return Ok(collected)
 
@@ -542,12 +552,12 @@ def _resolve_generator_rule_from_row(
     technology_categories: dict[str, Any],
     category_class_mapping: dict[str, str],
     rules_by_target: dict[str, list[Rule]],
-) -> Result[Rule, ParserError]:
+) -> Result[Rule, ValidationError]:
     """Return the parser rule that matches the generator technology."""
 
     technology = row.get("technology")
     if technology is None:
-        return Err(ParserError("Generator row missing technology"))
+        return Err(ValidationError("Generator row missing technology"))
 
     class_result = get_generator_class(
         str(technology),
@@ -555,15 +565,15 @@ def _resolve_generator_rule_from_row(
         category_class_mapping,
     )
     if class_result.is_err():
-        return Err(ParserError(f"Generator {technology} class lookup failed: {class_result.err()}"))
+        return Err(ValidationError(f"Generator {technology} class lookup failed: {class_result.err()}"))
 
     generator_class = class_result.ok()
     if generator_class is None:
-        return Err(ParserError(f"Generator class not resolved for {technology}"))
+        return Err(ValidationError(f"Generator class not resolved for {technology}"))
 
     rules = rules_by_target.get(generator_class.__name__, [])
     if not rules:
-        return Err(ParserError(f"No parser rule found for {generator_class.__name__}"))
+        return Err(ValidationError(f"No parser rule found for {generator_class.__name__}"))
 
     return Ok(rules[0])
 
@@ -575,7 +585,7 @@ def prepare_generator_inputs(
     technology_categories: dict[str, Any],
     *,
     variable_categories: list[str] | None = None,
-) -> Result[tuple[pl.DataFrame, pl.DataFrame], ParserError]:
+) -> Result[tuple[pl.DataFrame, pl.DataFrame], ValidationError]:
     """Prepare cached generator datasets separated into variable renewables and others."""
 
     variable_categories = variable_categories or ["wind", "solar"]
@@ -586,11 +596,11 @@ def prepare_generator_inputs(
         technology_categories=technology_categories,
     )
     if base_result.is_err():
-        return base_result
+        return Err(base_result.err() or ValidationError("Unknown error preparing generator data"))
 
     df = base_result.ok()
     if df is None:
-        return Err(ParserError("Generator dataset preparation returned no data"))
+        return Err(ValidationError("Generator dataset preparation returned no data"))
 
     mask = None
     for category in variable_categories:
@@ -615,7 +625,7 @@ def prepare_generator_inputs(
     return Ok((aggregated_variable_df, non_variable_df))
 
 
-def get_rules_by_target(rules: list[Rule] | list[str]) -> Result[dict[str, list[Rule]], ParserError]:
+def get_rules_by_target(rules: list[Rule]) -> Result[dict[str, list[Rule]], ValidationError]:
     """Group parser rules by their target component types."""
 
     from collections import defaultdict
@@ -632,11 +642,11 @@ def get_rule_for_target(
     *,
     target_type: str,
     name: str | None = None,
-) -> Result[Rule, ParserError]:
+) -> Result[Rule, ValidationError]:
     """Retrieve a rule for a specific target type, optionally filtering by name."""
     candidates = rules_by_target.get(target_type, [])
     if not candidates:
-        return Err(ParserError(f"No parser rule found for {target_type}"))
+        return Err(ValidationError(f"No parser rule found for {target_type}"))
 
     if name is not None:
         for rule in candidates:
@@ -644,3 +654,159 @@ def get_rule_for_target(
                 return Ok(rule)
 
     return Ok(candidates[0])
+
+
+def filter_generators_by_transmission_region(
+    generators: Iterable[ReEDSGenerator],
+    *,
+    region_name: str,
+    category_filter: str | None = None,
+    tech_categories: dict[str, Any] | None = None,
+) -> list[ReEDSGenerator]:
+    """Filter generators to those in a transmission region."""
+    result = []
+    for gen in generators:
+        if not gen.region:
+            continue
+        if gen.region.transmission_region != region_name:
+            continue
+        if category_filter is not None:
+            if tech_categories is None:
+                continue
+            if not tech_matches_category(gen.technology, category_filter, tech_categories):
+                continue
+        result.append(gen)
+    return result
+
+
+def filter_loads_by_transmission_region(
+    loads: Iterable[ReEDSDemand],
+    *,
+    region_name: str,
+) -> list[ReEDSDemand]:
+    """Filter demand components to those in a transmission region."""
+    return [load for load in loads if load.region and load.region.transmission_region == region_name]
+
+
+def filter_generators_by_category(
+    generators: Iterable[ReEDSGenerator],
+    *,
+    category: str,
+    tech_categories: dict[str, Any],
+) -> list[ReEDSGenerator]:
+    """Filter generators matching a technology category."""
+    return [gen for gen in generators if tech_matches_category(gen.technology, category, tech_categories)]
+
+
+def build_generator_emission_lookup(
+    generators: Iterable[ReEDSGenerator],
+) -> dict[tuple[str | None, str, str], list[str]]:
+    """Create lookup from (technology, region, vintage) to generator names."""
+    lookup: dict[tuple[str | None, str, str], list[str]] = {}
+    for gen in generators:
+        vintage_key = gen.vintage or "__missing_vintage__"
+        key = (gen.technology, gen.region.name, vintage_key)
+        lookup.setdefault(key, []).append(gen.name)
+    return lookup
+
+
+def match_emission_rows_to_generators(
+    emission_df: pl.DataFrame,
+    *,
+    generator_lookup: dict[tuple[str | None, str, str], list[str]],
+) -> pl.DataFrame:
+    """Match emission rows to generators using the lookup."""
+    emission_df = emission_df.with_columns(
+        pl.col("vintage").fill_null("__missing_vintage__").alias("vintage_key")
+    )
+
+    matched_rows: list[dict[str, Any]] = []
+    for row in emission_df.iter_rows(named=True):
+        technology = row.get("technology")
+        region = row.get("region")
+        vintage_key = row.get("vintage_key")
+        if region is None or vintage_key is None:
+            continue
+        key: tuple[str | None, str, str] = (technology, str(region), str(vintage_key))
+        generator_names = generator_lookup.get(key)
+        if not generator_names:
+            continue
+        row_data = dict(row)
+        row_data["name"] = generator_names[0]
+        matched_rows.append(row_data)
+
+    if not matched_rows:
+        return pl.DataFrame()
+
+    return pl.DataFrame(matched_rows).drop("vintage_key")
+
+
+def build_year_month_calendar_df(years: list[int]) -> pl.DataFrame:
+    """Build DataFrame with calendar info for year-month combinations."""
+    if not years:
+        return pl.DataFrame(
+            schema={
+                "year": pl.Int64,
+                "month_num": pl.Int64,
+                "days_in_month": pl.Int64,
+                "hours_in_month": pl.Int64,
+            }
+        )
+
+    return pl.DataFrame(
+        {
+            "year": [y for y in years for _ in range(1, 13)],
+            "month_num": [m for _ in years for m in range(1, 13)],
+            "days_in_month": [calendar.monthrange(y, m)[1] for y in years for m in range(1, 13)],
+            "hours_in_month": [calendar.monthrange(y, m)[1] * 24 for y in years for m in range(1, 13)],
+        }
+    )
+
+
+def calculate_hydro_budgets_for_generator(
+    generator: ReEDSGenerator,
+    *,
+    hydro_data: pl.DataFrame,
+    solve_years: list[int],
+) -> list:
+    """Calculate hydro budget time series for a generator across solve years."""
+    from r2x_reeds.parser_types import HydroBudgetResult
+
+    results: list[HydroBudgetResult] = []
+
+    tech_region_filter = (pl.col("technology") == generator.technology) & (
+        pl.col("region") == generator.region.name
+    )
+    if generator.vintage:
+        tech_region_filter = tech_region_filter & (pl.col("vintage") == generator.vintage)
+
+    filtered_data = hydro_data.filter(tech_region_filter)
+    if filtered_data.is_empty():
+        return results
+
+    for year in solve_years:
+        year_data = filtered_data.filter(pl.col("year") == year)
+        if year_data.height != 12:
+            continue
+
+        year_data = year_data.sort("month_num")
+        monthly_profile = year_data["hydro_cf"].to_list()
+        days_in_month = year_data["days_in_month"].to_list()
+        hours_in_month = year_data["hours_in_month"].to_list()
+
+        if any(v is None for v in monthly_profile):
+            continue
+
+        daily_budgets = [
+            generator.capacity * cf * hours / days
+            for cf, hours, days in zip(monthly_profile, hours_in_month, days_in_month, strict=True)
+        ]
+
+        hourly_result = monthly_to_hourly_polars(year, daily_budgets)
+        if hourly_result.is_err():
+            continue
+
+        budget_array = np.asarray(hourly_result.ok(), dtype=np.float64)
+        results.append(HydroBudgetResult(year=year, budget_array=budget_array))
+
+    return results

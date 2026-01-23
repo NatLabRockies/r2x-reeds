@@ -1,4 +1,3 @@
-import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,12 +14,36 @@ pytest_plugins = [
 ]
 
 
+def pytest_addoption(parser):
+    """Add custom pytest command line options."""
+    parser.addoption(
+        "--reeds-data-path",
+        action="store",
+        default=None,
+        help="Path to ReEDS run data (overrides default test data)",
+    )
+
+
+@pytest.fixture(scope="session")
+def reeds_data_path_override(request) -> Path | None:
+    """Return override path from command line if provided."""
+    path_str = request.config.getoption("--reeds-data-path")
+    if path_str:
+        path = Path(path_str)
+        if not path.exists():
+            pytest.fail(f"Provided --reeds-data-path does not exist: {path}")
+        return path
+    return None
+
+
 @pytest.fixture
 def caplog(caplog):
     from r2x_core.logger import setup_logging
 
-    setup_logging(level="DEBUG", tracing=True, enable_console_log=False)
-    handler_id = logger.add(caplog.handler, format="{message}")
+    setup_logging(verbosity=2)
+    logger.remove()
+    logger.enable("r2x_reeds")
+    handler_id = logger.add(caplog.handler, level="TRACE", format="{message}")
     try:
         yield caplog
     finally:
@@ -36,57 +59,15 @@ def empty_file(tmp_path) -> Path:
 
 
 @pytest.fixture(scope="session")
-def data_path() -> Path:
-    """Path to test data directory."""
-    return Path(__file__).parent / "data"
-
-
-@pytest.fixture(scope="session")
-def reeds_run_path(tmp_path_factory, data_path: Path) -> Path:
-    """Copy the entire data_path folder into a fresh session tmp directory and return the copied dir."""
-    base_tmp = tmp_path_factory.mktemp("reeds_run")
-    archive_run = data_path / "test_Pacific.zip"
-    with zipfile.ZipFile(archive_run, "r") as zip_ref:
-        zip_ref.extractall(base_tmp)
-    return base_tmp / "test_Pacific"
-
-
-@pytest.fixture(scope="session")
-def reeds_run_upgrader(tmp_path_factory, data_path: Path) -> Path:
-    """Copy the entire data_path folder into a fresh session tmp directory and return the copied dir."""
-    base_tmp = tmp_path_factory.mktemp("reeds_run")
-    archive_run = data_path / "test_Upgrader.zip"
-    with zipfile.ZipFile(archive_run, "r") as zip_ref:
-        zip_ref.extractall(base_tmp)
-    return base_tmp / "test_Upgrader"
-
-
-@pytest.fixture(scope="session")
-def example_reeds_config() -> "ReEDSConfig":
-    """Create ReEDS configuration for testing."""
-    from r2x_reeds import ReEDSConfig
-
-    return ReEDSConfig(solve_year=2032, weather_year=2012, case_name="test", scenario="base")
-
-
-@pytest.fixture(scope="session")
-def example_data_store(reeds_run_path: Path, example_reeds_config: "ReEDSConfig") -> "DataStore":
-    """Create DataStore from file mapping."""
-
-    from r2x_core import DataStore
-
-    return DataStore.from_plugin_config(example_reeds_config, path=reeds_run_path)
-
-
-@pytest.fixture(scope="session")
-def example_parser(example_reeds_config: "ReEDSConfig", example_data_store: "DataStore") -> "ReEDSParser":
-    """Create ReEDS parser instance."""
-    from r2x_reeds import ReEDSParser
-
-    return ReEDSParser(config=example_reeds_config, store=example_data_store, name="test_system")
-
-
-@pytest.fixture(scope="session")
-def example_system(example_parser: "ReEDSParser") -> "System":
+def example_system(parser: "ReEDSParser", reeds_config: "ReEDSConfig", data_store: "DataStore") -> "System":
     """Build and return the system (shared fixture for all tests)."""
-    return example_parser.build_system()
+    from r2x_core import PluginContext
+
+    # Create a fresh context for the build operation
+    ctx = PluginContext(config=reeds_config, store=data_store)
+    result_ctx = parser.run(ctx=ctx)
+
+    # The system is stored in the context after on_build
+    if result_ctx.system is None:
+        raise RuntimeError("Failed to build system: system is None in context")
+    return result_ctx.system

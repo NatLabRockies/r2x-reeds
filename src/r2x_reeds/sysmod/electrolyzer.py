@@ -5,66 +5,77 @@ each of the ReEDS regions.
 """
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import polars as pl
 from infrasys import System
 from infrasys.time_series_models import SingleTimeSeries
 from loguru import logger
+from pydantic import Field
+from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore
+from r2x_core import DataStore, PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
 
 
-def add_electrolizer_load(
-    system: System,
-    weather_year: int | None = None,
-    electrolyzer_load_fpath: str | None = None,
-    h2_fuel_price_fpath: str | None = None,
-    hour_map_fpath: str | None = None,
-    **kwargs,
-) -> System:
+class ElectrolyzerConfig(PluginConfig):
+    """Configuration for adding electrolyzer load and hydrogen fuel prices."""
+
+    weather_year: int | None = Field(
+        default=None,
+        description="Weather year for time series alignment.",
+    )
+    electrolyzer_load_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing electrolyzer load data.",
+    )
+    h2_fuel_price_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing monthly hydrogen fuel prices.",
+    )
+    hour_map_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing hour mapping data.",
+    )
+
+
+@expose_plugin
+def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[System, str]:
     """Modify infrasys system to include electrolyzer load and monthly hydrogen fuel price.
 
     Parameters
     ----------
     system : System
         The system object to be updated (from stdin).
-    weather_year : int, optional
-        The weather year for time series data.
-    electrolyzer_load_fpath : str, optional
-        Path to CSV file containing electrolyzer load data with columns:
-        region, hour, load_MW.
-    h2_fuel_price_fpath : str, optional
-        Path to CSV file containing monthly hydrogen fuel prices with columns:
-        region, month, h2_price.
-    hour_map_fpath : str, optional
-        Path to CSV file containing hour mapping data with columns:
-        hour, time_index, season.
-    **kwargs
-        Additional keyword arguments (ignored).
+    config : ElectrolyzerConfig
+        Configuration for required input file paths and weather year.
 
     Returns
     -------
-    System
-        The updated system object.
+    Result[System, str]
+        The updated system object or an error message.
     """
     logger.info("Adding electrolyzer representation to the system")
 
-    if weather_year is None:
+    if config.weather_year is None:
         logger.warning("Weather year not specified. Skipping electrolyzer plugin.")
-        return system
+        return Ok(system)
 
     try:
         # Load required data files
-        hour_map = DataStore.load_file(hour_map_fpath, name="hour_map") if hour_map_fpath else None
+        hour_map = (
+            DataStore.load_file(config.hour_map_fpath, name="hour_map") if config.hour_map_fpath else None
+        )
         electrolyzer_load = (
-            DataStore.load_file(electrolyzer_load_fpath, name="electrolyzer_load")
-            if electrolyzer_load_fpath
+            DataStore.load_file(config.electrolyzer_load_fpath, name="electrolyzer_load")
+            if config.electrolyzer_load_fpath
             else None
         )
         h2_prices = (
-            DataStore.load_file(h2_fuel_price_fpath, name="h2_fuel_price") if h2_fuel_price_fpath else None
+            DataStore.load_file(config.h2_fuel_price_fpath, name="h2_fuel_price")
+            if config.h2_fuel_price_fpath
+            else None
         )
         if hour_map is not None:
             hour_map = hour_map.collect()
@@ -75,20 +86,21 @@ def add_electrolizer_load(
 
         if hour_map is None:
             logger.warning("hour_map data not available. Cannot add electrolyzer load.")
-            return system
+            return Ok(system)
 
         # Add electrolyzer load
         if electrolyzer_load is not None:
-            system = _add_electrolyzer_load(system, electrolyzer_load, hour_map, weather_year)
+            system = _add_electrolyzer_load(system, electrolyzer_load, hour_map, config.weather_year)
 
         # Add hydrogen fuel prices
         if h2_prices is not None:
-            system = _add_hydrogen_fuel_price(system, h2_prices, weather_year)
+            system = _add_hydrogen_fuel_price(system, h2_prices, config.weather_year)
 
-    except Exception as e:
-        logger.error(f"Error in electrolyzer plugin: {e}")
+    except Exception as exc:
+        logger.error("Error in electrolyzer plugin: {}", exc)
+        return Err(str(exc))
 
-    return system
+    return Ok(system)
 
 
 def _add_electrolyzer_load(

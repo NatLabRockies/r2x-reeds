@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from infrasys import SupplementalAttribute
-from pydantic import Field, PositiveFloat, confloat
+from pydantic import Field, PositiveFloat
 
 from r2x_core.units import HasUnits, Unit
 
-from .base import FromTo_ToFrom, MinMax, ReEDSComponent
+from .base import FromTo_ToFrom, MinMax, ReEDSComponent, UnitFloat
 from .enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
 
 
@@ -130,10 +130,8 @@ class ReEDSGenerator(HasUnits, ReEDSComponent):
     heat_rate: Annotated[PositiveFloat | None, Unit("MMBtu/MWh"), Field(description="Heat rate")] = None
     fuel_type: Annotated[str | None, Field(description="Fuel type")] = None
     fuel_price: Annotated[PositiveFloat | None, Unit("$/MMBtu"), Field(description="Fuel price")] = None
-    forced_outage_rate: Annotated[confloat(ge=0, le=1) | None, Field(description="Forced outage rate")] = None
-    planned_outage_rate: Annotated[confloat(ge=0, le=1) | None, Field(description="Planned outage rate")] = (
-        None
-    )
+    forced_outage_rate: Annotated[UnitFloat | None, Field(description="Forced outage rate")] = None
+    planned_outage_rate: Annotated[UnitFloat | None, Field(description="Planned outage rate")] = None
     max_age: Annotated[int | None, Unit("years"), Field(description="Maximum age")] = None
     vom_cost: Annotated[PositiveFloat | None, Unit("$/MWh"), Field(description="Variable O&M")] = None
     fom_cost: Annotated[PositiveFloat | None, Unit("$/MW/year"), Field(description="Fixed O&M")] = None
@@ -148,7 +146,7 @@ class ReEDSThermalGenerator(ReEDSGenerator):
     heat_rate: Annotated[PositiveFloat, Unit("MMBtu/MWh"), Field(description="Heat rate")]
     fuel_type: Annotated[str, Field(description="Fuel type")]
     fuel_price: Annotated[PositiveFloat | None, Unit("$/MMBtu"), Field(description="Fuel price")] = None
-    min_stable_level: Annotated[confloat(ge=0, le=1) | None, Field(description="Min load fraction")] = None
+    min_stable_level: Annotated[UnitFloat | None, Field(description="Min load fraction")] = None
     ramp_rate: Annotated[PositiveFloat | None, Unit("fraction/hour"), Field(description="Ramp rate")] = None
     capacity_factor_range: MinMax | None = None
     startup_cost: Annotated[PositiveFloat | None, Unit("$/MW"), Field(description="Startup cost")] = None
@@ -176,7 +174,7 @@ class ReEDSVariableGenerator(ReEDSGenerator):
     resource_class: Annotated[str | None, Field(description="Resource class identifier")] = None
     inverter_loading_ratio: Annotated[PositiveFloat | None, Field(description="ILR for PV")] = None
     capacity_factor_adjustment: Annotated[PositiveFloat | None, Field(description="CF adjustment")] = None
-    max_capacity_factor: Annotated[confloat(ge=0, le=1) | None, Field(description="Max CF")] = None
+    max_capacity_factor: Annotated[UnitFloat | None, Field(description="Max CF")] = None
     supply_curve_cost: Annotated[
         PositiveFloat | None, Unit("$/MW"), Field(description="Supply curve cost")
     ] = None
@@ -189,7 +187,7 @@ class ReEDSStorage(ReEDSGenerator):
     """Storage technologies with energy/power characteristics."""
 
     storage_duration: Annotated[PositiveFloat, Unit("hours"), Field(description="Storage duration")]
-    round_trip_efficiency: Annotated[confloat(ge=0, le=1), Field(description="Round-trip efficiency")]
+    round_trip_efficiency: Annotated[UnitFloat, Field(description="Round-trip efficiency")]
     energy_capacity: Annotated[PositiveFloat | None, Unit("MWh"), Field(description="Energy capacity")] = None
     max_charge_rate: Annotated[PositiveFloat | None, Unit("MW"), Field(description="Max charge")] = None
     max_discharge_rate: Annotated[PositiveFloat | None, Unit("MW"), Field(description="Max discharge")] = None

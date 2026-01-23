@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from r2x_core import ParserContext, System
+from r2x_core import DataStore, PluginContext, System
 from r2x_reeds.plugin_config import ReEDSConfig
 
 
@@ -12,8 +12,10 @@ def create_parser_context(
     system: System,
     config: ReEDSConfig,
     defaults: dict[str, Any],
-) -> ParserContext:
-    """Create a ParserContext for use with rules.
+    *,
+    store: DataStore | None = None,
+) -> PluginContext:
+    """Create a PluginContext for use with rules.
 
     Parameters
     ----------
@@ -26,11 +28,12 @@ def create_parser_context(
 
     Returns
     -------
-    ParserContext
+    PluginContext
         Context ready for use with parsing rules
     """
-    return ParserContext(
+    return PluginContext(
         system=system,
+        store=store,
         config=config,
         metadata={
             "tech_categories": defaults.get("tech_categories", {}),

@@ -5,6 +5,8 @@ from pydantic import ValidationError
 
 from r2x_reeds.models.base import FromTo_ToFrom, ReEDSComponent
 
+pytestmark = [pytest.mark.unit]
+
 
 def test_fromto_tofrom_creation():
     """Test creating a FromTo_ToFrom instance with valid values."""

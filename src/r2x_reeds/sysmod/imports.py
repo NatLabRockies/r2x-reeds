@@ -7,24 +7,42 @@ This plugin is only applicable for ReEDS, but could work with similarly arranged
 """
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import polars as pl
 from infrasys import System
 from infrasys.time_series_models import SingleTimeSeries
 from loguru import logger
+from pydantic import Field
+from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore
+from r2x_core import DataStore, PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSGenerator
 
 
-def add_imports(
-    system: System,
-    weather_year: int | None = None,
-    canada_imports_fpath: str | None = None,
-    canada_szn_frac_fpath: str | None = None,
-    hour_map_fpath: str | None = None,
-    **kwargs,
-) -> System:
+class ImportsConfig(PluginConfig):
+    """Configuration for adding Canadian imports time series."""
+
+    weather_year: int | None = Field(
+        default=None,
+        description="Weather year for time series alignment.",
+    )
+    canada_imports_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing total Canadian import values.",
+    )
+    canada_szn_frac_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing seasonal fraction data.",
+    )
+    hour_map_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to CSV file containing hour mapping data.",
+    )
+
+
+@expose_plugin
+def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
     """Add Canadian imports time series to the system.
 
     This function adds time series data for Canadian imports generators,
@@ -34,42 +52,35 @@ def add_imports(
     ----------
     system : System
         The system object to be updated (from stdin).
-    weather_year : int, optional
-        The weather year for the time series.
-    canada_imports_fpath : str, optional
-        Path to CSV file containing total Canadian import values with columns:
-        r (region), value.
-    canada_szn_frac_fpath : str, optional
-        Path to CSV file containing seasonal fraction data with columns:
-        season, value.
-    hour_map_fpath : str, optional
-        Path to CSV file containing hour mapping with columns:
-        hour, time_index, season.
-    **kwargs
-        Additional keyword arguments (ignored).
+    config : ImportsConfig
+        Configuration for required input file paths and weather year.
 
     Returns
     -------
-    System
-        The updated system object.
+    Result[System, str]
+        The updated system object or an error message.
     """
-    if weather_year is None:
+    if config.weather_year is None:
         logger.warning("Weather year not specified. Skipping imports plugin.")
-        return system
+        return Ok(system)
 
-    if canada_imports_fpath is None or canada_szn_frac_fpath is None or hour_map_fpath is None:
+    if (
+        config.canada_imports_fpath is None
+        or config.canada_szn_frac_fpath is None
+        or config.hour_map_fpath is None
+    ):
         msg = "Missing required file paths for imports plugin (canada_imports_fpath, "
         msg += "canada_szn_frac_fpath, hour_map_fpath)."
         logger.debug(msg)
-        return system
+        return Ok(system)
 
     logger.info("Adding imports time series...")
 
     try:
         # Load required data files using DataStore helper
-        hour_map = DataStore.load_file(hour_map_fpath, name="hour_map")
-        szn_frac = DataStore.load_file(canada_szn_frac_fpath, name="canada_szn_frac")
-        total_imports = DataStore.load_file(canada_imports_fpath, name="canada_imports")
+        hour_map = DataStore.load_file(config.hour_map_fpath, name="hour_map")
+        szn_frac = DataStore.load_file(config.canada_szn_frac_fpath, name="canada_szn_frac")
+        total_imports = DataStore.load_file(config.canada_imports_fpath, name="canada_imports")
 
         if hour_map is not None:
             hour_map = hour_map.collect()
@@ -83,7 +94,7 @@ def add_imports(
 
         if hourly_time_series.is_empty():
             logger.warning("Empty time series after joining hour_map and seasonal fractions")
-            return system
+            return Ok(system)
 
         # Convert time_index to datetime
         hourly_time_series = hourly_time_series.with_columns(
@@ -98,7 +109,7 @@ def add_imports(
         if "value" in daily_time_series.columns:
             daily_time_series = daily_time_series.with_columns(pl.col("value") / pl.col("value").sum())
 
-        initial_time = datetime(year=weather_year, month=1, day=1)
+        initial_time = datetime(year=config.weather_year, month=1, day=1)
 
         # Find Canadian import generators
         for generator in system.get_components(
@@ -131,6 +142,7 @@ def add_imports(
 
         logger.info("Finished adding imports time series")
     except Exception as e:
-        logger.error(f"Error in imports plugin: {e}")
+        logger.error("Error in imports plugin: {}", e)
+        return Err(str(e))
 
-    return system
+    return Ok(system)

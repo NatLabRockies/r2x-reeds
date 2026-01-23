@@ -16,12 +16,13 @@ from typing import Any
 
 import pytest
 
+pytestmark = [pytest.mark.unit]
+
 
 @pytest.fixture
 def test_system():
     """Create a test system with sample regions."""
-    from infrasys import System
-
+    from r2x_core import System
     from r2x_reeds.models import ReEDSRegion, ReEDSReserveRegion
 
     system = System(name="test_system")
@@ -34,12 +35,12 @@ def test_system():
 
 @pytest.fixture
 def test_context(test_system):
-    """Create a parser context for getter tests."""
-    from r2x_core import ParserContext
+    """Create a plugin context for getter tests."""
+    from r2x_core import PluginContext
     from r2x_reeds import ReEDSConfig
 
     config = ReEDSConfig(solve_year=2030, weather_year=2012, case_name="test_getters")
-    return ParserContext(
+    return PluginContext(
         system=test_system,
         config=config,
         metadata={
@@ -58,7 +59,7 @@ def test_lookup_region_dict(test_context) -> None:
     from r2x_reeds.getters import lookup_region
 
     row: dict[str, Any] = {"region": "p1"}
-    result = lookup_region(test_context, row)
+    result = lookup_region(row, context=test_context)
     assert result.is_ok()
 
 
@@ -68,7 +69,7 @@ def test_build_region_description_dict(test_context) -> None:
     from r2x_reeds.getters import build_region_description
 
     row: dict[str, Any] = {"region_id": "p1"}
-    result = build_region_description(test_context, row)
+    result = build_region_description(row, context=test_context)
     assert result.is_ok()
 
 
@@ -78,7 +79,7 @@ def test_build_region_name_dict(test_context) -> None:
     from r2x_reeds.getters import build_region_name
 
     row: dict[str, Any] = {"region_id": "p1"}
-    result = build_region_name(test_context, row)
+    result = build_region_name(row, context=test_context)
     assert result.is_ok()
 
 
@@ -88,7 +89,7 @@ def test_build_generator_name_dict(test_context) -> None:
     from r2x_reeds.getters import build_generator_name
 
     row: dict[str, Any] = {"technology": "wind", "region": "p1"}
-    result = build_generator_name(test_context, row)
+    result = build_generator_name(row, context=test_context)
     assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
@@ -98,7 +99,7 @@ def test_resolve_reserve_type_dict(test_context) -> None:
     from r2x_reeds.getters import resolve_reserve_type
 
     row: dict[str, Any] = {"reserve_type": "SPINNING"}
-    result = resolve_reserve_type(test_context, row)
+    result = resolve_reserve_type(row, context=test_context)
     assert result.is_ok()
 
 
@@ -108,7 +109,7 @@ def test_get_storage_duration_dict(test_context) -> None:
     from r2x_reeds.getters import get_storage_duration
 
     row: dict[str, Any] = {"storage_duration": 2.0}
-    result = get_storage_duration(test_context, row)
+    result = get_storage_duration(row, context=test_context)
     assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
@@ -121,7 +122,7 @@ def test_lookup_region_namespace(test_context) -> None:
     from r2x_reeds.getters import lookup_region
 
     row = SimpleNamespace(region="p1")
-    result = lookup_region(test_context, row)
+    result = lookup_region(row, context=test_context)
     assert result.is_ok()
 
 
@@ -131,7 +132,7 @@ def test_build_region_description_namespace(test_context) -> None:
     from r2x_reeds.getters import build_region_description
 
     row = SimpleNamespace(region_id="p1")
-    result = build_region_description(test_context, row)
+    result = build_region_description(row, context=test_context)
     assert result.is_ok()
 
 
@@ -141,7 +142,7 @@ def test_build_region_name_namespace(test_context) -> None:
     from r2x_reeds.getters import build_region_name
 
     row = SimpleNamespace(region_id="p1")
-    result = build_region_name(test_context, row)
+    result = build_region_name(row, context=test_context)
     assert result.is_ok()
 
 
@@ -151,7 +152,7 @@ def test_build_generator_name_namespace(test_context) -> None:
     from r2x_reeds.getters import build_generator_name
 
     row = SimpleNamespace(technology="wind", region="p1")
-    result = build_generator_name(test_context, row)
+    result = build_generator_name(row, context=test_context)
     assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
@@ -161,7 +162,7 @@ def test_resolve_reserve_type_namespace(test_context) -> None:
     from r2x_reeds.getters import resolve_reserve_type
 
     row = SimpleNamespace(reserve_type="SPINNING")
-    result = resolve_reserve_type(test_context, row)
+    result = resolve_reserve_type(row, context=test_context)
     assert result.is_ok()
 
 
@@ -171,7 +172,7 @@ def test_get_storage_duration_namespace(test_context) -> None:
     from r2x_reeds.getters import get_storage_duration
 
     row = SimpleNamespace(storage_duration=2.0)
-    result = get_storage_duration(test_context, row)
+    result = get_storage_duration(row, context=test_context)
     assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
@@ -186,8 +187,8 @@ def test_region_lookup_consistency(test_context) -> None:
     dict_row: dict[str, Any] = {"region": "p1"}
     ns_row = SimpleNamespace(region="p1")
 
-    dict_result = lookup_region(test_context, dict_row)
-    ns_result = lookup_region(test_context, ns_row)
+    dict_result = lookup_region(dict_row, context=test_context)
+    ns_result = lookup_region(ns_row, context=test_context)
 
     assert dict_result.is_ok() == ns_result.is_ok()
 
@@ -200,8 +201,8 @@ def test_generator_name_consistency(test_context) -> None:
     dict_row: dict[str, Any] = {"technology": "wind", "region": "p1"}
     ns_row = SimpleNamespace(technology="wind", region="p1")
 
-    dict_result = build_generator_name(test_context, dict_row)
-    ns_result = build_generator_name(test_context, ns_row)
+    dict_result = build_generator_name(dict_row, context=test_context)
+    ns_result = build_generator_name(ns_row, context=test_context)
 
     assert dict_result.is_ok() == ns_result.is_ok()
 
@@ -214,8 +215,8 @@ def test_reserve_type_consistency(test_context) -> None:
     dict_row: dict[str, Any] = {"reserve_type": "SPINNING"}
     ns_row = SimpleNamespace(reserve_type="SPINNING")
 
-    dict_result = resolve_reserve_type(test_context, dict_row)
-    ns_result = resolve_reserve_type(test_context, ns_row)
+    dict_result = resolve_reserve_type(dict_row, context=test_context)
+    ns_result = resolve_reserve_type(ns_row, context=test_context)
 
     assert dict_result.is_ok() == ns_result.is_ok()
     if dict_result.is_ok():
@@ -231,7 +232,7 @@ def test_lookup_region_missing_field_dict(test_context) -> None:
     from r2x_reeds.getters import lookup_region
 
     row: dict[str, Any] = {"other_field": "value"}
-    result = lookup_region(test_context, row)
+    result = lookup_region(row, context=test_context)
     assert result.is_err()
 
 
@@ -241,7 +242,7 @@ def test_lookup_region_missing_field_namespace(test_context) -> None:
     from r2x_reeds.getters import lookup_region
 
     row = SimpleNamespace(other_field="value")
-    result = lookup_region(test_context, row)
+    result = lookup_region(row, context=test_context)
     assert result.is_err()
 
 
@@ -268,8 +269,8 @@ def test_various_getters_missing_fields(
     from r2x_reeds import getters as getters_mod
 
     getter_func = getattr(getters_mod, getter_name)
-    dict_result = getter_func(test_context, field_dict)
-    ns_result = getter_func(test_context, field_ns)
+    dict_result = getter_func(field_dict, context=test_context)
+    ns_result = getter_func(field_ns, context=test_context)
 
     assert dict_result.is_ok() == ns_result.is_ok()
 
@@ -283,7 +284,7 @@ def test_reserve_type_mapping(test_context) -> None:
     from r2x_reeds.getters import resolve_reserve_type
 
     row: dict[str, Any] = {"reserve_type": "SPINNING"}
-    result = resolve_reserve_type(test_context, row)
+    result = resolve_reserve_type(row, context=test_context)
     assert result.is_ok()
 
 
@@ -293,7 +294,7 @@ def test_emission_type_mapping(test_context) -> None:
     from r2x_reeds.getters import resolve_emission_type
 
     row: dict[str, Any] = {"emission_type": "CO2"}
-    result = resolve_emission_type(test_context, row)
+    result = resolve_emission_type(row, context=test_context)
     assert result.is_ok()
 
 
@@ -303,7 +304,7 @@ def test_emission_source_mapping(test_context) -> None:
     from r2x_reeds.getters import resolve_emission_source
 
     row: dict[str, Any] = {"emission_source": "COMBUSTION"}
-    result = resolve_emission_source(test_context, row)
+    result = resolve_emission_source(row, context=test_context)
     assert result.is_ok()
 
 
@@ -313,5 +314,5 @@ def test_invalid_enum_values(test_context) -> None:
     from r2x_reeds.getters import resolve_reserve_type
 
     row: dict[str, Any] = {"reserve_type": "INVALID_TYPE"}
-    result = resolve_reserve_type(test_context, row)
+    result = resolve_reserve_type(row, context=test_context)
     assert result.is_err()

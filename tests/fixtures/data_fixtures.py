@@ -40,6 +40,23 @@ def reeds_run_path(reeds_data_path_override: Path | None, tmp_path_factory, test
 
 
 @pytest.fixture(scope="session")
+def reeds_run_upgrader(tmp_path_factory, test_data_path: Path) -> Path:
+    """ReEDS upgrader test data - unpacks test_Upgrader.zip."""
+    base_tmp = tmp_path_factory.mktemp("reeds_run_upgrader")
+    archive_run = test_data_path / "test_Upgrader.zip"
+
+    if not archive_run.exists():
+        pytest.fail(f"Test data archive not found: {archive_run}")
+
+    with zipfile.ZipFile(archive_run, "r") as zip_ref:
+        zip_ref.extractall(base_tmp)
+
+    run_path = base_tmp / "test_Upgrader"
+    logger.debug("Unpacked upgrader test data to: {}", run_path)
+    return run_path
+
+
+@pytest.fixture(scope="session")
 def reeds_config(reeds_run_path: Path) -> "ReEDSConfig":
     """ReEDS configuration for testing."""
     from r2x_reeds import ReEDSConfig
@@ -62,7 +79,30 @@ def data_store(reeds_run_path: Path, reeds_config: "ReEDSConfig") -> "DataStore"
 
 @pytest.fixture(scope="session")
 def parser(reeds_config: "ReEDSConfig", data_store: "DataStore") -> "ReEDSParser":
-    """ReEDS parser instance."""
+    """ReEDS parser instance (initialized with context)."""
+    from typing import cast
+
+    from r2x_core import PluginContext
     from r2x_reeds import ReEDSParser
 
-    return ReEDSParser(config=reeds_config, store=data_store, name="test_system")
+    ctx = PluginContext(config=reeds_config, store=data_store)
+    return cast(ReEDSParser, ReEDSParser.from_context(ctx))
+
+
+# Backward compatibility aliases for tests using old fixture names
+@pytest.fixture(scope="session")
+def example_reeds_config(reeds_config: "ReEDSConfig") -> "ReEDSConfig":
+    """Alias for reeds_config (backward compatibility)."""
+    return reeds_config
+
+
+@pytest.fixture(scope="session")
+def example_data_store(data_store: "DataStore") -> "DataStore":
+    """Alias for data_store (backward compatibility)."""
+    return data_store
+
+
+@pytest.fixture(scope="session")
+def example_parser(parser: "ReEDSParser") -> "ReEDSParser":
+    """Alias for parser (backward compatibility)."""
+    return parser

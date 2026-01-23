@@ -3,6 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
+pytestmark = [pytest.mark.unit]
+
 
 def test_thermal_generator_requires_heat_rate(sample_region):
     from r2x_reeds.models.components import ReEDSThermalGenerator

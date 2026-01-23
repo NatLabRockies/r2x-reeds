@@ -5,10 +5,11 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
-from r2x_core import Err, Ok, ValidationError
+from r2x_core import Err, Ok, Result
+from r2x_core.exceptions import ValidationError
 
 if TYPE_CHECKING:
-    from r2x_core import DataStore, Ok, Result, ValidationError
+    from r2x_core import DataStore
 
 
 def check_dataset_non_empty(
