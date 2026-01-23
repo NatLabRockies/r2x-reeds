@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/NatLabRockies/r2x-reeds/compare/v0.3.3...v0.3.4) (2026-01-23)
+
+
+### 🧹 Refactoring
+
+* **r2x-core:** Updating the codebase too match latest plugin discovery. ([#41](https://github.com/NatLabRockies/r2x-reeds/issues/41)) ([1ca11ab](https://github.com/NatLabRockies/r2x-reeds/commit/1ca11abc2b529afabd1483b48236b79cb699a559))
+
 ## [0.3.3](https://github.com/NREL/r2x-reeds/compare/v0.3.2...v0.3.3) (2026-01-14)
 
 
