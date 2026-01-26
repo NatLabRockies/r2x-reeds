@@ -28,7 +28,7 @@ pip install r2x-reeds
 
 ```python
 from r2x_reeds import ReEDSParser, ReEDSConfig, ReEDSGenerator
-from r2x_core.store import DataStore
+from r2x_core import DataStore, PluginContext
 
 # Configure
 config = ReEDSConfig(
@@ -37,14 +37,17 @@ config = ReEDSConfig(
     case_name="test_Pacific"
 )
 
+# Create data store
 run_path = "path/to/reeds_folder/"
-data_store = DataStore.from_plugin_config(path=run_path, plugin_config=config)
+store = DataStore.from_plugin_config(config, path=run_path)
 
-# Parse
-parser = ReEDSParser(system_name="reeds_system", store=data_store, config=config)
-system = parser.build_system()
+# Create plugin context and run parser
+ctx = PluginContext(config=config, store=store)
+parser = ReEDSParser.from_context(ctx)
+ctx = parser.run()
 
-# Access components
+# Access system and components
+system = ctx.system
 generators = list(system.get_components(ReEDSGenerator))
 print(f"Built system with {len(generators)} generators")
 ```
