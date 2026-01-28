@@ -3,12 +3,10 @@
 import ast
 import inspect
 from collections.abc import Callable
-from importlib.resources import files
 
 from loguru import logger
 
-COMMIT_HISTORY = files("r2x_reeds").joinpath("config/commits.txt").read_text().splitlines()
-LATEST_COMMIT = COMMIT_HISTORY[-1]
+LEGACY_VERSION = "0.0.0"
 
 
 def validate_string(value):

@@ -62,6 +62,7 @@ dev = [
     "pytest-coverage>=0.0",
     "pytest-mock>=3.15.1",
     "ruff>=0.13.3",
+    "ty>=0.0.14",
 ]
 docs = [
     "autodoc-pydantic",

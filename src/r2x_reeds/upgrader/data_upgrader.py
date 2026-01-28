@@ -7,8 +7,8 @@ from rust_ok import Err, Ok, Result
 
 from r2x_core import (
     DataStore,
-    GitVersioningStrategy,
     PluginContext,
+    SemanticVersioningStrategy,
     UpgradeStep,
     UpgradeType,
     VersionReader,
@@ -16,7 +16,7 @@ from r2x_core import (
     run_upgrade_step,
 )
 from r2x_core.utils import shall_we_upgrade
-from r2x_reeds.upgrader.helpers import COMMIT_HISTORY
+from r2x_reeds.upgrader.helpers import LEGACY_VERSION
 from r2x_reeds.upgrader.upgrade_steps import UPGRADE_STEPS
 
 if TYPE_CHECKING:
@@ -27,7 +27,8 @@ class ReEDSVersionDetector(VersionReader):
     """Version detector class for ReEDS."""
 
     def read_version(self, folder_path: Path) -> str | None:
-        """Read ReEDS model version.
+        """Read ReEDS model version from tag column.
+
         Parameters
         ----------
         folder_path : Path
@@ -36,7 +37,8 @@ class ReEDSVersionDetector(VersionReader):
         Returns
         -------
         str | None
-            Version string from meta.csv fourth column, or None if not found.
+            Version string from meta.csv "tag" column, or LEGACY_VERSION if
+            the column is missing or empty.
 
         Raises
         ------
@@ -54,10 +56,21 @@ class ReEDSVersionDetector(VersionReader):
 
         with open(csv_path) as f:
             reader = csv.reader(f)
-            next(reader)  # Skip header row
-            second_row = next(reader)
-            assert len(second_row) == 5, "meta file format changed."
-            return second_row[3]
+            header_row = next(reader)
+            data_row = next(reader)
+
+            # Find "tag" column by header name
+            try:
+                tag_index = header_row.index("tag")
+            except ValueError:
+                # No "tag" column found - legacy format
+                return LEGACY_VERSION
+
+            # Check if tag value exists and is not empty
+            if tag_index < len(data_row) and data_row[tag_index].strip():
+                return data_row[tag_index].strip()
+
+            return LEGACY_VERSION
 
 
 class ReEDSUpgrader:
@@ -65,7 +78,7 @@ class ReEDSUpgrader:
 
     steps: ClassVar[list[UpgradeStep]] = list(UPGRADE_STEPS)
     version_reader: ClassVar[VersionReader] = ReEDSVersionDetector()
-    version_strategy: ClassVar[VersionStrategy] = GitVersioningStrategy(COMMIT_HISTORY)
+    version_strategy: ClassVar[VersionStrategy] = SemanticVersioningStrategy()
 
     def __init__(self, path: Path | str) -> None:
         """Initialize ReEDS upgrader.

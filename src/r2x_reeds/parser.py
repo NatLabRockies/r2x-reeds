@@ -64,7 +64,6 @@ from .parser_utils import (
 from .plugin_config import ReEDSConfig
 from .rules_helper import create_parser_context
 from .upgrader.data_upgrader import run_reeds_upgrades
-from .upgrader.helpers import LATEST_COMMIT
 
 
 class ReEDSParser(Plugin[ReEDSConfig]):
@@ -1400,7 +1399,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Perform post-processing and finalization of the constructed system.
 
         Sets system-level metadata and logs summary statistics:
-        - Data format version (from repository commit hash)
+        - Data format version (from meta.csv tag column)
         - System description incorporating case name, scenario, solve/weather years
         - Component statistics and system validation information
 
@@ -1408,9 +1407,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         ensuring the system is properly documented and ready for export.
         """
         logger.info("Post-processing ReEDS system...")
-        logger.trace("Setting data format version to {}", LATEST_COMMIT)
+        logger.trace("Setting data format version to {}", self.ctx.current_version)
 
-        system.data_format_version = LATEST_COMMIT
+        if self.ctx.current_version is not None:
+            system.data_format_version = self.ctx.current_version
         system.description = (
             f"ReEDS model system for case '{self.config.case_name}', "
             f"scenario '{self.config.scenario}', "

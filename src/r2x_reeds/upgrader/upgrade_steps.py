@@ -6,7 +6,6 @@ from typing import Any
 from loguru import logger
 
 from r2x_core import UpgradeStep, UpgradeType
-from r2x_reeds.upgrader.helpers import LATEST_COMMIT
 
 
 def move_hmap_file(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
@@ -64,14 +63,14 @@ UPGRADE_STEPS = [
     UpgradeStep(
         name="move_hmap_file",
         func=move_hmap_file,
-        target_version=LATEST_COMMIT,
+        target_version="2026.01.22",
         upgrade_type=UpgradeType.FILE,
         priority=30,
     ),
     UpgradeStep(
         name="move_transmission_cost",
         func=move_transmission_cost,
-        target_version=LATEST_COMMIT,
+        target_version="2026.01.22",
         upgrade_type=UpgradeType.FILE,
         priority=30,
     ),

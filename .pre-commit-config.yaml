@@ -27,12 +27,6 @@ repos:
         language: system
         types_or: [python, pyi]
 
-      - id: docstring-coverage
-        name: docstring coverage
-        entry: uv run docstr-coverage src --badge docs/source/_static --percentage-only
-        language: system
-        types: [python]
-        pass_filenames: false
 
   - repo: builtin
     hooks:

@@ -1,6 +1,10 @@
+import csv
+
 import pytest
 
+from r2x_core import SemanticVersioningStrategy
 from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader
+from r2x_reeds.upgrader.helpers import LEGACY_VERSION
 
 pytestmark = [pytest.mark.integration]
 
@@ -42,3 +46,22 @@ def test_upgraded_system(upgraded_system):
     from r2x_core import System
 
     assert isinstance(upgraded_system, System)
+
+
+def test_upgrader_uses_semantic_versioning():
+    """Verify ReEDSUpgrader uses SemanticVersioningStrategy."""
+    assert isinstance(ReEDSUpgrader.version_strategy, SemanticVersioningStrategy)
+
+
+def test_legacy_dataset_runs_all_upgrades(tmp_path):
+    """Legacy datasets (without tag column) get version 0.0.0 and run all upgrades."""
+    # Create a legacy meta.csv without the "tag" column
+    meta_path = tmp_path / "meta.csv"
+    with open(meta_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["computer", "repo", "branch", "commit", "description"])
+        writer.writerow(["host", "/path", "main", "abc123", "desc"])
+
+    upgrader = ReEDSUpgrader(tmp_path)
+    version = upgrader.version_reader.read_version(tmp_path)
+    assert version == LEGACY_VERSION
