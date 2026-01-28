@@ -49,6 +49,15 @@ def test_lookup_region_missing_field(context_with_regions):
     assert result.is_err()
 
 
+def test_lookup_region_no_system(dummy_context):
+    from r2x_reeds.getters import lookup_region
+
+    # dummy_context has system=None
+    result = lookup_region({"region": "p1"}, context=dummy_context)
+    assert result.is_err()
+    assert "System not available" in str(result.err())
+
+
 def test_build_region_description_prefers_region_id(dummy_context):
     from r2x_reeds.getters import build_region_description
 
@@ -246,6 +255,28 @@ def test_emission_source_unknown_errors(dummy_context):
     from r2x_reeds.getters import resolve_emission_source
 
     result = resolve_emission_source({"emission_source": "mystery"}, context=dummy_context)
+    assert result.is_err()
+
+
+def test_emission_type_missing_errors(dummy_context):
+    from r2x_reeds.getters import resolve_emission_type
+
+    result = resolve_emission_type({}, context=dummy_context)
+    assert result.is_err()
+
+
+def test_resolve_emission_generator_identifier_success(dummy_context):
+    from r2x_reeds.getters import resolve_emission_generator_identifier
+
+    result = resolve_emission_generator_identifier({"name": "gen1"}, context=dummy_context)
+    assert result.is_ok()
+    assert result.ok() == "gen1"
+
+
+def test_resolve_emission_generator_identifier_missing(dummy_context):
+    from r2x_reeds.getters import resolve_emission_generator_identifier
+
+    result = resolve_emission_generator_identifier({}, context=dummy_context)
     assert result.is_err()
 
 

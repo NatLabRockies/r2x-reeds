@@ -105,3 +105,23 @@ def test_move_transmission_cost_moves_and_skips(tmp_path: Path) -> None:
     move_transmission_cost(tmp_path)
     assert (inputs_case / "transmission_cost_ac.csv").exists()
     assert (inputs_case / "transmission_distance.csv").exists()
+
+
+def test_move_hmap_file_raises_when_neither_exists(tmp_path: Path) -> None:
+    """Raises FileNotFoundError when neither old nor new file exists."""
+    inputs_case = tmp_path / "inputs_case"
+    rep_folder = inputs_case / "rep"
+    rep_folder.mkdir(parents=True)
+
+    with pytest.raises(FileNotFoundError):
+        move_hmap_file(tmp_path)
+
+
+def test_move_transmission_cost_skips_missing_files(tmp_path: Path) -> None:
+    """Skips files that don't exist without error."""
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+
+    # Neither old files exist - should complete without error
+    result = move_transmission_cost(tmp_path)
+    assert result == tmp_path
