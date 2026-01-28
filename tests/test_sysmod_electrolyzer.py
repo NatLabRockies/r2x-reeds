@@ -152,3 +152,68 @@ def test_electrolyzer_scope_empty_price(caplog) -> None:
     electrolyzer._add_hydrogen_fuel_price(system, electro_prices, weather_year=2024)
 
     assert "Hydrogen fuel price data is empty" in caplog.text
+
+
+def test_electrolyzer_region_not_found(tmp_path: Path, caplog) -> None:
+    """Test warning when load references non-existent region."""
+    system, _, _ = _build_regions()  # Creates "west" and "east" regions
+
+    hour_map_path = _write_csv(
+        tmp_path / "hour_map.csv",
+        {
+            "hour": [1, 2, 3],
+            "time_index": ["2024-01-01T00:00:00", "2024-01-01T01:00:00", "2024-01-01T02:00:00"],
+            "season": ["winter", "winter", "winter"],
+        },
+    )
+    # Load data references "nonexistent" region
+    load_path = _write_csv(
+        tmp_path / "electrolyzer_load.csv",
+        {
+            "region": ["nonexistent"],
+            "hour": [1],
+            "load_MW": [5.0],
+        },
+    )
+
+    _run_electrolyzer(
+        system,
+        weather_year=2024,
+        hour_map_fpath=hour_map_path,
+        electrolyzer_load_fpath=load_path,
+    )
+
+    assert "nonexistent" in caplog.text
+    assert "not found in system" in caplog.text
+
+
+def test_electrolyzer_small_load_skipped(tmp_path: Path, caplog) -> None:
+    """Test that loads smaller than 1 MW are skipped."""
+    system, _west, _ = _build_regions()
+
+    hour_map_path = _write_csv(
+        tmp_path / "hour_map.csv",
+        {
+            "hour": [1, 2, 3],
+            "time_index": ["2024-01-01T00:00:00", "2024-01-01T01:00:00", "2024-01-01T02:00:00"],
+            "season": ["winter", "winter", "winter"],
+        },
+    )
+    # Load data with very small load (< 1 MW)
+    load_path = _write_csv(
+        tmp_path / "electrolyzer_load.csv",
+        {
+            "region": ["west", "west", "west"],
+            "hour": [1, 2, 3],
+            "load_MW": [0.1, 0.2, 0.3],
+        },
+    )
+
+    _run_electrolyzer(
+        system,
+        weather_year=2024,
+        hour_map_fpath=hour_map_path,
+        electrolyzer_load_fpath=load_path,
+    )
+
+    assert "smaller than 1 MW" in caplog.text

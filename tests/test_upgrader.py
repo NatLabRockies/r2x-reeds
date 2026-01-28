@@ -134,3 +134,57 @@ def test_upgrader_skips_non_file_upgrades(tmp_path):
     # Request SYSTEM upgrades when all registered steps are FILE type
     result = upgrader.upgrade(current_version="0.0.0", upgrade_type=UpgradeType.SYSTEM)
     assert result.is_ok()
+
+
+def test_upgrader_runs_upgrade_steps(tmp_path):
+    """Test that upgrade steps are actually executed when version is old."""
+    # Create meta.csv with legacy version
+    meta_path = tmp_path / "meta.csv"
+    with open(meta_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["computer", "repo", "branch", "commit", "description", "tag"])
+        writer.writerow(["host", "/path", "main", "abc123", "desc", "0.0.0"])
+
+    # Create the files needed for the upgrade steps
+    inputs_case = tmp_path / "inputs_case"
+    rep_folder = inputs_case / "rep"
+    rep_folder.mkdir(parents=True)
+
+    # Create the file that move_hmap_file will move
+    hmap_file = inputs_case / "hmap_allyrs.csv"
+    hmap_file.write_text("test content")
+
+    # Run upgrade with legacy version
+    upgrader = ReEDSUpgrader(tmp_path)
+    result = upgrader.upgrade(current_version="0.0.0")
+
+    assert result.is_ok()
+    # Verify the file was moved
+    assert not hmap_file.exists()
+    assert (rep_folder / "hmap_allyrs.csv").exists()
+
+
+def test_upgrader_handles_failing_step(tmp_path):
+    """Test that upgrader returns error when a step fails."""
+
+    # Create meta.csv with legacy version
+    meta_path = tmp_path / "meta.csv"
+    with open(meta_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["computer", "repo", "branch", "commit", "description", "tag"])
+        writer.writerow(["host", "/path", "main", "abc123", "desc", "0.0.0"])
+
+    # Create the files needed for the upgrade steps
+    inputs_case = tmp_path / "inputs_case"
+    rep_folder = inputs_case / "rep"
+    rep_folder.mkdir(parents=True)
+
+    # Don't create hmap_allyrs.csv so the step will fail
+    # (move_hmap_file raises FileNotFoundError when neither old nor new exists)
+
+    upgrader = ReEDSUpgrader(tmp_path)
+    result = upgrader.upgrade(current_version="0.0.0")
+
+    # The upgrade should fail because move_hmap_file will raise FileNotFoundError
+    assert result.is_err()
+    assert "does not exist" in str(result.err())

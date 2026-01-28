@@ -84,7 +84,7 @@ build-backend = "uv_build"
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = [
-    "--cov=r2x_core",
+    "--cov=r2x_reeds",
     "--cov-report=term-missing",
     "--strict-markers",
     "-v",

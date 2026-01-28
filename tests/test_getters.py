@@ -446,3 +446,58 @@ def test_lookup_transmission_interface_and_flow_errors(dummy_context):
 
     lookup_result = lookup_transmission_interface(row, context=bad_context)
     assert lookup_result.is_err()
+
+
+def test_lookup_from_region_no_system(dummy_context):
+    from r2x_reeds.getters import lookup_from_region
+
+    result = lookup_from_region({"from_region": "p1"}, context=dummy_context)
+    assert result.is_err()
+    assert "System not available" in str(result.err())
+
+
+def test_lookup_to_region_no_system(dummy_context):
+    from r2x_reeds.getters import lookup_to_region
+
+    result = lookup_to_region({"to_region": "p1"}, context=dummy_context)
+    assert result.is_err()
+    assert "System not available" in str(result.err())
+
+
+def test_lookup_reserve_region_no_system(dummy_context):
+    from r2x_reeds.getters import lookup_reserve_region
+
+    result = lookup_reserve_region({"region": "rsv"}, context=dummy_context)
+    assert result.is_err()
+    assert "System not available" in str(result.err())
+
+
+def test_compute_is_dispatchable_no_tech(dummy_context):
+    from r2x_reeds.getters import compute_is_dispatchable
+
+    result = compute_is_dispatchable({}, context=dummy_context)
+    assert result.is_ok()
+    assert result.ok() is False
+
+
+def test_get_fuel_type_exploding_row(dummy_context):
+    from r2x_reeds.getters import get_fuel_type
+
+    result = get_fuel_type(ExplodingRow(), context=dummy_context)
+    assert result.is_err()
+
+
+def test_resolve_emission_generator_identifier_exploding_row(dummy_context):
+    from r2x_reeds.getters import resolve_emission_generator_identifier
+
+    result = resolve_emission_generator_identifier(ExplodingRow(), context=dummy_context)
+    assert result.is_err()
+
+
+def test_lookup_transmission_interface_not_found(context_with_regions):
+    from r2x_reeds.getters import lookup_transmission_interface
+
+    # Interface exists for p1||p2, but not for p1||p3
+    row = {"from_region": "p1", "to_region": "nonexistent"}
+    result = lookup_transmission_interface(row, context=context_with_regions)
+    assert result.is_err()
