@@ -56,8 +56,8 @@ add-imports = "r2x_reeds.sysmod.imports:add_imports"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.18.2",
     "pre-commit>=4.3.0",
+    "prek>=0.3.0,<1.0.0",
     "pytest>=8.4.2",
     "pytest-coverage>=0.0",
     "pytest-mock>=3.15.1",
