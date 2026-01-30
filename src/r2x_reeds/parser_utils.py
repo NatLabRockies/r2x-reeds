@@ -619,6 +619,19 @@ def prepare_generator_inputs(
             pl.lit(True).alias("is_aggregated")
         )
 
+    # Left joins against optional data (fuel_price, heat_rate, etc.) can produce
+    # fan-out when an optional dataset has multiple rows per join key. Variable
+    # generators get collapsed by aggregate_variable_generators above; non-variable
+    # generators need explicit dedup by their identifier columns.
+    pre_dedup = non_variable_df.height
+    non_variable_df = non_variable_df.unique(subset=["technology", "vintage", "region"], keep="first")
+    if non_variable_df.height < pre_dedup:
+        logger.debug(
+            "Deduplicated non-variable generators: {} -> {} rows",
+            pre_dedup,
+            non_variable_df.height,
+        )
+
     if "is_aggregated" not in non_variable_df.columns:
         non_variable_df = non_variable_df.with_columns(pl.lit(False).alias("is_aggregated"))
 

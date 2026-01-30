@@ -567,7 +567,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         for identifier, component_kwargs in kwargs_result.ok() or []:
             # Check for duplicate generator by name
             if identifier in self._generator_cache:
-                logger.warning("Duplicate generator '{}' detected, skipping.", identifier)
+                logger.debug("Duplicate generator '{}' detected, skipping.", identifier)
                 continue
 
             creation_result = self._instantiate_generator(identifier, component_kwargs)
@@ -1342,6 +1342,18 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
 
         hydro_data = hydro_capacity.join(self._hydro_cf_prepared, on=["technology", "region"], how="left")
+
+        # Drop rows where no CF data was found (null from the left join).
+        # These are generators whose technology/region has no entry in hydcf.csv.
+        missing_cf = hydro_data.filter(pl.col("hydro_cf").is_null())
+        if not missing_cf.is_empty():
+            missing_names = missing_cf["name"].unique().to_list()
+            logger.warning(
+                "No hydro CF data for {} generators (missing technology/region in hydcf.csv): {}",
+                len(missing_names),
+                ", ".join(missing_names),
+            )
+        hydro_data = hydro_data.filter(pl.col("hydro_cf").is_not_null())
 
         hydro_data = hydro_data.with_columns(
             (
