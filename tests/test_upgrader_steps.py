@@ -6,21 +6,59 @@ from pathlib import Path
 import pytest
 
 from r2x_reeds.upgrader.data_upgrader import ReEDSVersionDetector
+from r2x_reeds.upgrader.helpers import LEGACY_VERSION
 from r2x_reeds.upgrader.upgrade_steps import move_hmap_file, move_transmission_cost
 
 pytestmark = [pytest.mark.integration]
 
 
-def test_version_detector_reads_meta(tmp_path: Path) -> None:
-    """The version detector reads the fourth column of the second row."""
+def test_version_detector_reads_tag_by_header(tmp_path: Path) -> None:
+    """The version detector reads the tag column by header name."""
     meta_path = tmp_path / "meta.csv"
     with open(meta_path, "w", newline="") as fh:
         writer = csv.writer(fh)
-        writer.writerow(["a", "b", "c", "d", "e"])
-        writer.writerow(["0", "1", "2", "v1.2", "extra"])
+        writer.writerow(["computer", "repo", "branch", "commit", "description", "tag"])
+        writer.writerow(["host", "/path", "main", "abc123", "desc", "2026.01.22"])
 
     detector = ReEDSVersionDetector()
-    assert detector.read_version(tmp_path) == "v1.2"
+    assert detector.read_version(tmp_path) == "2026.01.22"
+
+
+def test_version_detector_legacy_format_returns_sentinel(tmp_path: Path) -> None:
+    """Legacy format without tag header returns LEGACY_VERSION."""
+    meta_path = tmp_path / "meta.csv"
+    with open(meta_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["computer", "repo", "branch", "commit", "description"])
+        writer.writerow(["host", "/path", "main", "abc123", "desc"])
+
+    detector = ReEDSVersionDetector()
+    assert detector.read_version(tmp_path) == LEGACY_VERSION
+
+
+def test_version_detector_empty_tag_returns_sentinel(tmp_path: Path) -> None:
+    """Empty tag value returns LEGACY_VERSION."""
+    meta_path = tmp_path / "meta.csv"
+    with open(meta_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["computer", "repo", "branch", "commit", "description", "tag"])
+        writer.writerow(["host", "/path", "main", "abc123", "desc", ""])
+
+    detector = ReEDSVersionDetector()
+    assert detector.read_version(tmp_path) == LEGACY_VERSION
+
+
+def test_version_detector_tag_column_any_position(tmp_path: Path) -> None:
+    """Tag column works regardless of position in header."""
+    meta_path = tmp_path / "meta.csv"
+    with open(meta_path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        # Put tag column in different position (index 2)
+        writer.writerow(["computer", "repo", "tag", "branch", "commit", "description"])
+        writer.writerow(["host", "/path", "2025.12.01", "main", "abc123", "desc"])
+
+    detector = ReEDSVersionDetector()
+    assert detector.read_version(tmp_path) == "2025.12.01"
 
 
 def test_version_detector_missing_file(tmp_path: Path) -> None:
@@ -67,3 +105,23 @@ def test_move_transmission_cost_moves_and_skips(tmp_path: Path) -> None:
     move_transmission_cost(tmp_path)
     assert (inputs_case / "transmission_cost_ac.csv").exists()
     assert (inputs_case / "transmission_distance.csv").exists()
+
+
+def test_move_hmap_file_raises_when_neither_exists(tmp_path: Path) -> None:
+    """Raises FileNotFoundError when neither old nor new file exists."""
+    inputs_case = tmp_path / "inputs_case"
+    rep_folder = inputs_case / "rep"
+    rep_folder.mkdir(parents=True)
+
+    with pytest.raises(FileNotFoundError):
+        move_hmap_file(tmp_path)
+
+
+def test_move_transmission_cost_skips_missing_files(tmp_path: Path) -> None:
+    """Skips files that don't exist without error."""
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+
+    # Neither old files exist - should complete without error
+    result = move_transmission_cost(tmp_path)
+    assert result == tmp_path

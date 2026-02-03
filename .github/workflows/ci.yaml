@@ -39,8 +39,8 @@ jobs:
 
 
   pytest:
-    name: Tests ${{ matrix.os }} / py${{ matrix.python }}
-    needs: pre-commit
+    name: Tests ${{ matrix.os }}/py${{ matrix.python }}
+    needs: prek
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

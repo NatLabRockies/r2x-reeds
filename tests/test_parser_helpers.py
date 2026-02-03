@@ -534,3 +534,202 @@ def test_calculate_hydro_budgets_for_generator_uses_capacity_and_cf(sample_regio
 
     jan_daily_budget = 100.0 * 1.0 * (31 * 24) / 31
     assert results[0].budget_array[0] == pytest.approx(jan_daily_budget)
+
+
+def test_filter_generators_category_filter_with_none_tech_categories(sample_region):
+    """Category filter with None tech_categories should skip all."""
+    from r2x_reeds.models import ReEDSVariableGenerator
+    from r2x_reeds.parser_utils import filter_generators_by_transmission_region
+
+    gen = ReEDSVariableGenerator(name="upv_p1", region=sample_region, technology="upv", capacity=100.0)
+
+    # category_filter is set but tech_categories is None
+    result = filter_generators_by_transmission_region(
+        [gen],
+        region_name=sample_region.transmission_region,
+        category_filter="solar",
+        tech_categories=None,  # None tech_categories
+    )
+
+    # Should skip all generators when tech_categories is None
+    assert len(result) == 0
+
+
+def test_calculate_hydro_budgets_generator_no_vintage(sample_region):
+    """Generator without vintage should still work with matching data."""
+    from r2x_reeds.models import ReEDSHydroGenerator
+    from r2x_reeds.parser_types import HydroBudgetResult
+    from r2x_reeds.parser_utils import calculate_hydro_budgets_for_generator
+
+    gen = ReEDSHydroGenerator(
+        name="hyd_p1",
+        region=sample_region,
+        technology="hyd",
+        capacity=200.0,
+        vintage=None,  # No vintage
+        is_dispatchable=True,
+    )
+
+    # Data without vintage filter should match
+    hydro_data = pl.DataFrame(
+        {
+            "technology": ["hyd"] * 12,
+            "region": [sample_region.name] * 12,
+            "vintage": [None] * 12,  # No vintage in data either
+            "year": [2024] * 12,
+            "month_num": list(range(1, 13)),
+            "hydro_cf": [0.5] * 12,
+            "days_in_month": [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+            "hours_in_month": [d * 24 for d in [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]],
+        }
+    )
+
+    results = calculate_hydro_budgets_for_generator(
+        gen,
+        hydro_data=hydro_data,
+        solve_years=[2024],
+    )
+
+    # Should find match because generator has no vintage (no vintage filter applied)
+    assert len(results) == 1
+    assert isinstance(results[0], HydroBudgetResult)
+
+
+def test_calculate_hydro_budgets_none_cf_values(sample_region):
+    """Rows with None in hydro_cf should be skipped."""
+    from r2x_reeds.models import ReEDSHydroGenerator
+    from r2x_reeds.parser_utils import calculate_hydro_budgets_for_generator
+
+    gen = ReEDSHydroGenerator(
+        name="hyd_p1",
+        region=sample_region,
+        technology="hyd",
+        capacity=200.0,
+        vintage="2020",
+        is_dispatchable=True,
+    )
+
+    # hydro_cf has None values
+    hydro_data = pl.DataFrame(
+        {
+            "technology": ["hyd"] * 12,
+            "region": [sample_region.name] * 12,
+            "vintage": ["2020"] * 12,
+            "year": [2024] * 12,
+            "month_num": list(range(1, 13)),
+            "hydro_cf": [0.5, None, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],  # None in Feb
+            "days_in_month": [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+            "hours_in_month": [d * 24 for d in [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]],
+        }
+    )
+
+    results = calculate_hydro_budgets_for_generator(
+        gen,
+        hydro_data=hydro_data,
+        solve_years=[2024],
+    )
+
+    # Should skip year with None CF values
+    assert len(results) == 0
+
+
+def test_calculate_hydro_budgets_multiple_years_partial_data(sample_region):
+    """Only years with complete 12 months should return results."""
+    from r2x_reeds.models import ReEDSHydroGenerator
+    from r2x_reeds.parser_utils import calculate_hydro_budgets_for_generator
+
+    gen = ReEDSHydroGenerator(
+        name="hyd_p1",
+        region=sample_region,
+        technology="hyd",
+        capacity=200.0,
+        vintage="2020",
+        is_dispatchable=True,
+    )
+
+    # 2024 has complete data, 2025 has only 6 months
+    hydro_data_2024 = pl.DataFrame(
+        {
+            "technology": ["hyd"] * 12,
+            "region": [sample_region.name] * 12,
+            "vintage": ["2020"] * 12,
+            "year": [2024] * 12,
+            "month_num": list(range(1, 13)),
+            "hydro_cf": [0.5] * 12,
+            "days_in_month": [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+            "hours_in_month": [d * 24 for d in [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]],
+        }
+    )
+    hydro_data_2025 = pl.DataFrame(
+        {
+            "technology": ["hyd"] * 6,
+            "region": [sample_region.name] * 6,
+            "vintage": ["2020"] * 6,
+            "year": [2025] * 6,
+            "month_num": list(range(1, 7)),  # Only Jan-Jun
+            "hydro_cf": [0.5] * 6,
+            "days_in_month": [31, 28, 31, 30, 31, 30],
+            "hours_in_month": [d * 24 for d in [31, 28, 31, 30, 31, 30]],
+        }
+    )
+    hydro_data = pl.concat([hydro_data_2024, hydro_data_2025])
+
+    results = calculate_hydro_budgets_for_generator(
+        gen,
+        hydro_data=hydro_data,
+        solve_years=[2024, 2025],
+    )
+
+    # Only 2024 should have results (complete 12 months)
+    assert len(results) == 1
+    assert results[0].year == 2024
+
+
+def test_match_emission_rows_missing_region():
+    """Rows with None region should be skipped."""
+    from r2x_reeds.parser_utils import match_emission_rows_to_generators
+
+    emit_df = pl.DataFrame(
+        {
+            "technology": ["gas-cc", "coal"],
+            "region": [None, "p1"],  # First row has None region
+            "vintage": ["2020", "2015"],
+            "rate": [0.5, 0.8],
+        }
+    )
+
+    lookup = {
+        ("gas-cc", "p1", "2020"): ["gas_p1_2020"],
+        ("coal", "p1", "2015"): ["coal_p1"],
+    }
+
+    result = match_emission_rows_to_generators(emit_df, generator_lookup=lookup)
+
+    # Only coal should match (gas-cc has None region)
+    assert result.height == 1
+    assert result["name"][0] == "coal_p1"
+
+
+def test_match_emission_rows_multiple_generators_per_key():
+    """When lookup has multiple generators, first one is used."""
+    from r2x_reeds.parser_utils import match_emission_rows_to_generators
+
+    emit_df = pl.DataFrame(
+        {
+            "technology": ["gas-cc"],
+            "region": ["p1"],
+            "vintage": ["2020"],
+            "rate": [0.5],
+        }
+    )
+
+    # Lookup has multiple generators for the same key
+    lookup = {
+        ("gas-cc", "p1", "2020"): ["gas_p1_2020_unit1", "gas_p1_2020_unit2", "gas_p1_2020_unit3"],
+    }
+
+    result = match_emission_rows_to_generators(emit_df, generator_lookup=lookup)
+
+    assert result.height == 1
+    # Should use the first generator in the list
+    assert result["name"][0] == "gas_p1_2020_unit1"
