@@ -1658,13 +1658,13 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Set up solve/weather year lists and derived time indices."""
 
         self.hourly_time_index = np.arange(
-            f"{self.config.primary_weather_year}",
-            f"{self.config.primary_weather_year + 1}",
+            np.datetime64(f"{self.config.primary_weather_year}"),
+            np.datetime64(f"{self.config.primary_weather_year + 1}"),
             dtype="datetime64[h]",
         )
         self.daily_time_index = np.arange(
-            f"{self.config.primary_weather_year}",
-            f"{self.config.primary_weather_year + 1}",
+            np.datetime64(f"{self.config.primary_weather_year}"),
+            np.datetime64(f"{self.config.primary_weather_year + 1}"),
             dtype="datetime64[D]",
         )
         self.initial_timestamp = self.hourly_time_index[0].astype("datetime64[s]").astype(datetime)

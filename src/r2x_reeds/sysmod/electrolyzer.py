@@ -217,8 +217,8 @@ def _add_hydrogen_fuel_price(system: System, h2_prices: pl.DataFrame, weather_ye
 
     # Create datetime array for the weather year
     date_time_array = np.arange(
-        f"{weather_year}",
-        f"{weather_year + 1}",
+        np.datetime64(f"{weather_year}"),
+        np.datetime64(f"{weather_year + 1}"),
         dtype="datetime64[h]",
     )[:-24]  # Removing 1 day to match ReEDS convention
 

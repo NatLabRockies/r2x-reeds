@@ -8,6 +8,7 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from infrasys.supplemental_attribute import SupplementalAttribute
 from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
@@ -175,7 +176,7 @@ def _create_split_generator(
     logger.trace("Created new generator {} with capacity {}", component.label, new_capacity)
     system.add_component(component)
 
-    for attribute in system.get_supplemental_attributes_with_component(original):
+    for attribute in system.get_supplemental_attributes_with_component(original, SupplementalAttribute):
         logger.trace("Component {} has supplemental attribute {}. Copying.", original.label, attribute.label)
         system.add_supplemental_attribute(component, attribute)
 
