@@ -1,6 +1,6 @@
 [project]
 name = "r2x-reeds"
-version = "0.3.4"
+version = "0.3.5"
 readme = "README.md"
 description = "ReEDS model plugin"
 license = {file = "LICENSE.txt"}

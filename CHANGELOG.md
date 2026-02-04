@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.5](https://github.com/NatLabRockies/r2x-reeds/compare/v0.3.4...v0.3.5) (2026-02-04)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** removing stale reference to pre-commit ([#44](https://github.com/NatLabRockies/r2x-reeds/issues/44)) ([128116e](https://github.com/NatLabRockies/r2x-reeds/commit/128116e60d62d36be4a5907acc7e01d6b1eeeeb1))
+* **parser:** Deduping generators on the source data ([#45](https://github.com/NatLabRockies/r2x-reeds/issues/45)) ([0edac97](https://github.com/NatLabRockies/r2x-reeds/commit/0edac977dc9f9abf7a68a5b7988c87b497c3996d))
+
+
+### 📚 Documentation
+
+* **README.md:** matching latest API on the readme ([#31](https://github.com/NatLabRockies/r2x-reeds/issues/31)) ([315b68b](https://github.com/NatLabRockies/r2x-reeds/commit/315b68b3dae464043af0605dc5f46d312e7c8679))
+
 ## [0.3.4](https://github.com/NatLabRockies/r2x-reeds/compare/v0.3.3...v0.3.4) (2026-01-23)
 
 
