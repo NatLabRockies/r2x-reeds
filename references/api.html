@@ -1,0 +1,1584 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="prev" title="Reference" href="index.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.09.25 -->
+        <title>API Reference - r2x-core</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=580074bf" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-reports.089ed2e62f89368aa21ac7591d90c12a.css?v=83177741" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">r2x-core</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">r2x-core</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-tos/index.html">How-To Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../explanations/index.html">Explanations</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">API Reference</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/NREL/r2x-core/blob/main/docs/references/api.md?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/NREL/r2x-core/edit/main/docs/references/api.md" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="api-reference">
+<span id="id1"></span><h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h1>
+<p>Complete API documentation for all r2x-reeds classes and functions.</p>
+<section id="parser">
+<h2>Parser<a class="headerlink" href="#parser" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSParser</span></span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Plugin</span></code>[<a class="reference internal" href="#r2x_reeds.ReEDSConfig" title="r2x_reeds.plugin_config.ReEDSConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReEDSConfig</span></code></a>]</p>
+<p>Parser for ReEDS model data using the Plugin[ReEDSConfig] pattern.</p>
+<p>This parser builds an <code class="xref py py-class docutils literal notranslate"><span class="pre">infrasys.System</span></code> from ReEDS model output through three main phases:</p>
+<ol class="arabic simple">
+<li><p><strong>Validation</strong> (<a class="reference internal" href="#id0" title="r2x_reeds.ReEDSParser.on_validate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">on_validate()</span></code></a>):
+- Presence of required datasets
+- Validity of configured solve and weather years
+- Loading and parsing of configuration assets</p></li>
+<li><p><strong>Preparation</strong> (<a class="reference internal" href="#id1" title="r2x_reeds.ReEDSParser.on_prepare"><code class="xref py py-meth docutils literal notranslate"><span class="pre">on_prepare()</span></code></a>):
+- Parser context with configuration and defaults
+- Time indices and calendar mappings for the weather year
+- Generator datasets separated into variable and non-variable groups
+- Hydro capacity factor data for budget calculations
+- Reserve requirement configuration and costs</p></li>
+<li><p><strong>Building</strong> (<a class="reference internal" href="#id2" title="r2x_reeds.ReEDSParser.on_build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">on_build()</span></code></a>):
+- Regions from hierarchy data with regional attributes
+- Generators split into renewable (aggregated by tech-region) and non-renewable (with vintage)
+- Transmission interfaces and lines with bi-directional ratings
+- Loads with peak demand by region
+- Reserves by transmission region and type
+- Emissions as supplemental attributes on generators
+- Time series data (load profiles, capacity factors, reserve requirements, hydro budgets)
+- System metadata and description</p></li>
+</ol>
+<section id="key-implementation-details">
+<h3>Key Implementation Details<a class="headerlink" href="#key-implementation-details" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Renewable generators are aggregated by technology and region (no vintage)</p></li>
+<li><p>Non-renewable generators retain vintage information</p></li>
+<li><p>Reserve requirements are calculated dynamically based on wind capacity, solar capacity,
+and load data with configurable percentage contributions</p></li>
+<li><p>Time series data is filtered to match configured weather years and solve years</p></li>
+<li><p>Component caches are used during building for efficient cross-referencing</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">param config<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ReEDS-specific configuration with solve years, weather years, etc.</p>
+</dd>
+<dt class="field-even">type config<span class="colon">:</span></dt>
+<dd class="field-even"><p>ReEDSConfig</p>
+</dd>
+<dt class="field-odd">param store<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initialized DataStore with ReEDS file mappings loaded</p>
+</dd>
+<dt class="field-even">type store<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataStore</p>
+</dd>
+<dt class="field-odd">param overrides<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Configuration overrides to apply, by default None</p>
+</dd>
+<dt class="field-even">type overrides<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, Any] | None, optional</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#r2x_reeds.ReEDSParser.config" title="Link to this definition">¶</a></dt>
+<dd><p>The ReEDS configuration instance</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#r2x_reeds.ReEDSConfig" title="r2x_reeds.ReEDSConfig">ReEDSConfig</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.store">
+<span class="sig-name descname"><span class="pre">store</span></span><a class="headerlink" href="#r2x_reeds.ReEDSParser.store" title="Link to this definition">¶</a></dt>
+<dd><p>The DataStore for accessing ReEDS data files</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DataStore</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.on_validate">
+<span class="sig-name descname"><span class="pre">on_validate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.on_validate" title="Link to this definition">¶</a></dt>
+<dd><p>Validate input data and configuration before building the system</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Result</em>[None, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.on_prepare">
+<span class="sig-name descname"><span class="pre">on_prepare</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_prepare"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.on_prepare" title="Link to this definition">¶</a></dt>
+<dd><p>Prepare and normalize configuration, time arrays, and component datasets</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Result</em>[None, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.on_build">
+<span class="sig-name descname"><span class="pre">on_build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.on_build" title="Link to this definition">¶</a></dt>
+<dd><p>Build and return the complete infrasys.System</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Result</em>[<em>System</em>, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><code class="xref py py-class docutils literal notranslate"><span class="pre">Plugin</span></code></dt><dd><p>Parent class with lifecycle hooks</p>
+</dd>
+<dt><a class="reference internal" href="#r2x_reeds.ReEDSConfig" title="r2x_reeds.ReEDSConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReEDSConfig</span></code></a></dt><dd><p>Configuration class for ReEDS parser</p>
+</dd>
+<dt><code class="xref py py-class docutils literal notranslate"><span class="pre">DataStore</span></code></dt><dd><p>Data storage and access interface</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Examples</p>
+<p>Build a ReEDS system from test data:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">r2x_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">PluginContext</span><span class="p">,</span> <span class="n">DataStore</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">r2x_reeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReEDSConfig</span><span class="p">,</span> <span class="n">ReEDSParser</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">ReEDSConfig</span><span class="p">(</span><span class="n">solve_year</span><span class="o">=</span><span class="mi">2030</span><span class="p">,</span> <span class="n">weather_year</span><span class="o">=</span><span class="mi">2012</span><span class="p">,</span> <span class="n">case_name</span><span class="o">=</span><span class="s2">&quot;High_Renewable&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">store</span> <span class="o">=</span> <span class="n">DataStore</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;tests/data/test_Pacific&quot;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctx</span> <span class="o">=</span> <span class="n">PluginContext</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">ReEDSParser</span><span class="o">.</span><span class="n">from_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result_ctx</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">system</span> <span class="o">=</span> <span class="n">result_ctx</span><span class="o">.</span><span class="n">system</span>
+</pre></div>
+</div>
+<p class="rubric">Notes</p>
+<p>The parser uses internal caches for regions and generators to optimize cross-referencing
+during component construction. These caches are populated during the build phase
+and are used for all subsequent operations.</p>
+<p>Initialize the ReEDS parser with internal state.</p>
+<p>Note: Configuration and store are provided via from_context() class method.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.on_validate_config">
+<span class="sig-name descname"><span class="pre">on_validate_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_validate_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.on_validate_config" title="Link to this definition">¶</a></dt>
+<dd><p>Validate configuration assets before upgrades or data I/O.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Result</em>[None, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.on_upgrade">
+<span class="sig-name descname"><span class="pre">on_upgrade</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_upgrade"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.on_upgrade" title="Link to this definition">¶</a></dt>
+<dd><p>Run ReEDS file upgrades before input validation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Result</em>[<em>System</em> | None, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.read_data_file">
+<span class="sig-name descname"><span class="pre">read_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.read_data_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.read_data_file" title="Link to this definition">¶</a></dt>
+<dd><p>Read a data file from the store.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – Name of the data file to load</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded data (typically a polars LazyFrame or DataFrame)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSParser.create_component">
+<span class="sig-name descname"><span class="pre">create_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_class</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.create_component"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSParser.create_component" title="Link to this definition">¶</a></dt>
+<dd><p>Create a component instance with consistent validation handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component_class</strong> (<em>type</em><em>[</em><em>Component</em><em>]</em>)</p></li>
+<li><p><strong>kwargs</strong> (<em>Any</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Component</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">on_validate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition">¶</a></dt>
+<dd><p>Validate input data after upgrades, before building the system.</p>
+<p>Performs comprehensive validation including:
+- Presence of required datasets
+- Validity of configured solve and weather years
+- Rule validation from parser configuration (already loaded)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Ok() if all validation checks pass, Err() with detailed error message otherwise</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result[None, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">on_prepare</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_prepare"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition">¶</a></dt>
+<dd><p>Prepare and normalize configuration, time arrays, and component datasets.</p>
+<p>Initializes internal caches and datasets required for component building:
+- Parser context with configuration and defaults
+- Time indices and calendar mappings for the weather year
+- Generator datasets separated into variable and non-variable groups
+- Hydro capacity factor data for budget calculations
+- Reserve requirement configuration and costs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Ok() on successful preparation, Err() with error message if any step fails</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result[None, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">on_build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/parser.html#ReEDSParser.on_build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id2" title="Link to this definition">¶</a></dt>
+<dd><p>Build and return the complete infrasys.System.</p>
+<p>Constructs all system components in dependency order:
+1. Regions (required by all other components)
+2. Generators (requires regions)
+3. Transmission interfaces and lines
+4. Loads (requires regions)
+5. Reserves and reserve regions (requires transmission regions)
+6. Emissions (requires generators)
+7. Time series data (load profiles, capacity factors, reserve requirements, hydro budgets)
+8. Post-processing (metadata and description)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Ok(system) with the constructed power system, or Err() with error message</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result[System, str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h2>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSConfig</span></span><a class="reference internal" href="../_modules/r2x_reeds/plugin_config.html#ReEDSConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSConfig" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for ReEDS model parser.</p>
+<p>This configuration class defines all parameters needed to parse
+ReEDS model data, including year information and model-specific settings.
+Model-specific defaults and constants are loaded from configuration files
+in the <cite>config/</cite> directory relative to this module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>solve_year</strong> (<em>int</em><em> | </em><em>list</em><em>[</em><em>int</em><em>]</em>) – Model solve year(s) (e.g., 2030, [2030, 2040, 2050])</p></li>
+<li><p><strong>weather_year</strong> (<em>int</em><em> | </em><em>list</em><em>[</em><em>int</em><em>]</em>) – Weather data year(s) used for time series profiles (e.g., 2012, [2007, 2012])</p></li>
+<li><p><strong>case_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the ReEDS case</p></li>
+<li><p><strong>scenario</strong> (<em>str</em><em>, </em><em>optional</em>) – Scenario identifier</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Single year:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">ReEDSConfig</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">solve_year</span><span class="o">=</span><span class="mi">2030</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">weather_year</span><span class="o">=</span><span class="mi">2012</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">case_name</span><span class="o">=</span><span class="s2">&quot;High_Renewable&quot;</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Multiple years:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">ReEDSConfig</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">solve_year</span><span class="o">=</span><span class="p">[</span><span class="mi">2030</span><span class="p">,</span> <span class="mi">2040</span><span class="p">,</span> <span class="mi">2050</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">weather_year</span><span class="o">=</span><span class="p">[</span><span class="mi">2007</span><span class="p">,</span> <span class="mi">2012</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">case_name</span><span class="o">=</span><span class="s2">&quot;Multi_Year_Analysis&quot;</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Load model defaults separately for use in parser:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load defaults using the class method</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">defaults</span> <span class="o">=</span> <span class="n">ReEDSConfig</span><span class="o">.</span><span class="n">load_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">excluded_techs</span> <span class="o">=</span> <span class="n">defaults</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;defaults&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;excluded_techs&quot;</span><span class="p">,</span> <span class="p">[])</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create config</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">ReEDSConfig</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">solve_year</span><span class="o">=</span><span class="mi">2030</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">weather_year</span><span class="o">=</span><span class="mi">2012</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">r2x_core.PluginConfig</span></code></dt><dd><p>Base configuration class</p>
+</dd>
+<dt><a class="reference internal" href="#r2x_reeds.ReEDSParser" title="r2x_reeds.parser.ReEDSParser"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r2x_reeds.parser.ReEDSParser</span></code></a></dt><dd><p>Parser that uses this configuration</p>
+</dd>
+</dl>
+</div>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">case_name</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scenario</span> <span class="pre">(str)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">solve_year</span> <span class="pre">(int</span> <span class="pre">|</span> <span class="pre">list[int])</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">weather_year</span> <span class="pre">(int</span> <span class="pre">|</span> <span class="pre">list[int])</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig.case_name">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">case_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Case</span> <span class="pre">name'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSConfig.case_name" title="Link to this definition">¶</a></dt>
+<dd><p>Case name</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig.scenario">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scenario</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'base'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Scenario</span> <span class="pre">identifier'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'base'</span></em><a class="headerlink" href="#r2x_reeds.ReEDSConfig.scenario" title="Link to this definition">¶</a></dt>
+<dd><p>Scenario identifier</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig.solve_year">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">solve_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Model</span> <span class="pre">solve</span> <span class="pre">year(s)</span> <span class="pre">-</span> <span class="pre">automatically</span> <span class="pre">converted</span> <span class="pre">to</span> <span class="pre">list'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSConfig.solve_year" title="Link to this definition">¶</a></dt>
+<dd><p>Model solve year(s) - automatically converted to list</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig.weather_year">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">weather_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Weather</span> <span class="pre">data</span> <span class="pre">year(s)</span> <span class="pre">-</span> <span class="pre">automatically</span> <span class="pre">converted</span> <span class="pre">to</span> <span class="pre">list'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSConfig.weather_year" title="Link to this definition">¶</a></dt>
+<dd><p>Weather data year(s) - automatically converted to list</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig.primary_solve_year">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">primary_solve_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#r2x_reeds.ReEDSConfig.primary_solve_year" title="Link to this definition">¶</a></dt>
+<dd><p>Get the primary (first) solve year.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The first solve year in the list</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSConfig.primary_weather_year">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">primary_weather_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#r2x_reeds.ReEDSConfig.primary_weather_year" title="Link to this definition">¶</a></dt>
+<dd><p>Get the primary (first) weather year.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The first weather year in the list</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="component-models">
+<h2>Component Models<a class="headerlink" href="#component-models" title="Link to this heading">¶</a></h2>
+<section id="generator">
+<h3>Generator<a class="headerlink" href="#generator" title="Link to this heading">¶</a></h3>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSGenerator</span></span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSGenerator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSGenerator" title="Link to this definition">¶</a></dt>
+<dd><p>Base generator component with fields common to all generation types.</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">capacity</span> <span class="pre">(float)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">capital_cost</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fom_cost</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">forced_outage_rate</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fuel_price</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fuel_type</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">heat_rate</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_age</span> <span class="pre">(int</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">planned_outage_rate</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">region</span> <span class="pre">(r2x_reeds.models.components.ReEDSRegion)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">retirement_year</span> <span class="pre">(int</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">technology</span> <span class="pre">(str)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vintage</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vom_cost</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.capacity">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'MW'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Installed</span> <span class="pre">capacity'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">ge</span></span><span class="o"><span class="pre">=</span></span><span class="m"><span class="pre">0</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.capacity" title="Link to this definition">¶</a></dt>
+<dd><p>Installed capacity</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gt</strong> = 0</p></li>
+<li><p><strong>unit</strong> = MW</p></li>
+<li><p><strong>ge</strong> = 0</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.capital_cost">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">capital_cost</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'$/MW'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Capital</span> <span class="pre">cost'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.capital_cost" title="Link to this definition">¶</a></dt>
+<dd><p>Capital cost</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = $/MW</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.fom_cost">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fom_cost</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'$/MW/year'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Fixed</span> <span class="pre">O&amp;M'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.fom_cost" title="Link to this definition">¶</a></dt>
+<dd><p>Fixed O&amp;M</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = $/MW/year</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.forced_outage_rate">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">forced_outage_rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">UnitFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Forced</span> <span class="pre">outage</span> <span class="pre">rate'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.forced_outage_rate" title="Link to this definition">¶</a></dt>
+<dd><p>Forced outage rate</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.fuel_price">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fuel_price</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'$/MMBtu'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Fuel</span> <span class="pre">price'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.fuel_price" title="Link to this definition">¶</a></dt>
+<dd><p>Fuel price</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = $/MMBtu</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.fuel_type">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fuel_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Fuel</span> <span class="pre">type'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.fuel_type" title="Link to this definition">¶</a></dt>
+<dd><p>Fuel type</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.heat_rate">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">heat_rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'MMBtu/MWh'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Heat</span> <span class="pre">rate'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.heat_rate" title="Link to this definition">¶</a></dt>
+<dd><p>Heat rate</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = MMBtu/MWh</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.max_age">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_age</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'years'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Maximum</span> <span class="pre">age'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.max_age" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum age</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = years</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.planned_outage_rate">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">planned_outage_rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">UnitFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Planned</span> <span class="pre">outage</span> <span class="pre">rate'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.planned_outage_rate" title="Link to this definition">¶</a></dt>
+<dd><p>Planned outage rate</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#r2x_reeds.ReEDSRegion" title="r2x_reeds.ReEDSRegion"><span class="pre">ReEDSRegion</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'ReEDS</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.region" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS region</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.retirement_year">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">retirement_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Planned</span> <span class="pre">retirement</span> <span class="pre">year'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.retirement_year" title="Link to this definition">¶</a></dt>
+<dd><p>Planned retirement year</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.technology">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">technology</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'ReEDS</span> <span class="pre">technology</span> <span class="pre">type'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.technology" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS technology type</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.vintage">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vintage</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Vintage</span> <span class="pre">bin</span> <span class="pre">identifier'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.vintage" title="Link to this definition">¶</a></dt>
+<dd><p>Vintage bin identifier</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSGenerator.vom_cost">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vom_cost</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'$/MWh'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Variable</span> <span class="pre">O&amp;M'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSGenerator.vom_cost" title="Link to this definition">¶</a></dt>
+<dd><p>Variable O&amp;M</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = $/MWh</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="region-bus">
+<h3>Region (Bus)<a class="headerlink" href="#region-bus" title="Link to this heading">¶</a></h3>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSRegion</span></span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSRegion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSRegion" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS regional component.</p>
+<p>Represents a geographic region in the ReEDS model with various regional attributes and hierarchies.</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cc_region</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cendiv</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">country</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">h2ptc_region</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">hurdle_region</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">interconnect</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_active_power</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">nerc_region</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">state</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">timezone</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">transmission_group</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">transmission_region</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">usda_region</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.cc_region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cc_region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Climate</span> <span class="pre">change</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.cc_region" title="Link to this definition">¶</a></dt>
+<dd><p>Climate change region</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.cendiv">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cendiv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Census</span> <span class="pre">division'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.cendiv" title="Link to this definition">¶</a></dt>
+<dd><p>Census division</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.country">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Country</span> <span class="pre">code'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.country" title="Link to this definition">¶</a></dt>
+<dd><p>Country code</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.h2ptc_region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">h2ptc_region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'H2</span> <span class="pre">PTC</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.h2ptc_region" title="Link to this definition">¶</a></dt>
+<dd><p>H2 PTC region</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.hurdle_region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hurdle_region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Hurdle</span> <span class="pre">rate</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.hurdle_region" title="Link to this definition">¶</a></dt>
+<dd><p>Hurdle rate region</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.interconnect">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">interconnect</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Interconnection</span> <span class="pre">(eastern,</span> <span class="pre">western,</span> <span class="pre">texas)'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.interconnect" title="Link to this definition">¶</a></dt>
+<dd><p>Interconnection (eastern, western, texas)</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.max_active_power">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_active_power</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Peak</span> <span class="pre">demand</span> <span class="pre">in</span> <span class="pre">MW'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.max_active_power" title="Link to this definition">¶</a></dt>
+<dd><p>Peak demand in MW</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.nerc_region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nerc_region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'NERC</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.nerc_region" title="Link to this definition">¶</a></dt>
+<dd><p>NERC region</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.state">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">state</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'State</span> <span class="pre">abbreviation'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.state" title="Link to this definition">¶</a></dt>
+<dd><p>State abbreviation</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.timezone">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">timezone</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Time</span> <span class="pre">zone</span> <span class="pre">identifier'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.timezone" title="Link to this definition">¶</a></dt>
+<dd><p>Time zone identifier</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.transmission_group">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">transmission_group</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Transmission</span> <span class="pre">group'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.transmission_group" title="Link to this definition">¶</a></dt>
+<dd><p>Transmission group</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.transmission_region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">transmission_region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Transmission</span> <span class="pre">planning</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.transmission_region" title="Link to this definition">¶</a></dt>
+<dd><p>Transmission planning region</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.usda_region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">usda_region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'USDA</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSRegion.usda_region" title="Link to this definition">¶</a></dt>
+<dd><p>USDA region</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSRegion.example">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">example</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSRegion.example"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSRegion.example" title="Link to this definition">¶</a></dt>
+<dd><p>Example region.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#r2x_reeds.ReEDSRegion" title="r2x_reeds.models.components.ReEDSRegion"><em>ReEDSRegion</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="transmission-line">
+<h3>Transmission Line<a class="headerlink" href="#transmission-line" title="Link to this heading">¶</a></h3>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSTransmissionLine</span></span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSTransmissionLine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS transmission line component.</p>
+<p>Represents a transmission line connection between two regions.</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance_miles</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">hurdle_rate</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">interface</span> <span class="pre">(r2x_reeds.models.components.ReEDSInterface)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">line_cost_per_mw_mile</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">line_type</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">losses</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_active_power</span> <span class="pre">(r2x_reeds.models.base.FromTo_ToFrom)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">voltage</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.distance_miles">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">distance_miles</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Distance</span> <span class="pre">in</span> <span class="pre">miles'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.distance_miles" title="Link to this definition">¶</a></dt>
+<dd><p>Distance in miles</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.hurdle_rate">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hurdle_rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Hurdle</span> <span class="pre">rate</span> <span class="pre">forward</span> <span class="pre">direction'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.hurdle_rate" title="Link to this definition">¶</a></dt>
+<dd><p>Hurdle rate forward direction</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.interface">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">interface</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">ReEDSInterface</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Interface</span> <span class="pre">connecting</span> <span class="pre">two</span> <span class="pre">regions'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.interface" title="Link to this definition">¶</a></dt>
+<dd><p>Interface connecting two regions</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.line_cost_per_mw_mile">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">line_cost_per_mw_mile</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Cost</span> <span class="pre">per</span> <span class="pre">MW-mile'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.line_cost_per_mw_mile" title="Link to this definition">¶</a></dt>
+<dd><p>Cost per MW-mile</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.line_type">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">line_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Line</span> <span class="pre">type</span> <span class="pre">(AC/DC)'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.line_type" title="Link to this definition">¶</a></dt>
+<dd><p>Line type (AC/DC)</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.losses">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">losses</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Transmission</span> <span class="pre">losses</span> <span class="pre">(fraction)'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.losses" title="Link to this definition">¶</a></dt>
+<dd><p>Transmission losses (fraction)</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.max_active_power">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_active_power</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">FromTo_ToFrom</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Transfer</span> <span class="pre">capacity</span> <span class="pre">limit</span> <span class="pre">in</span> <span class="pre">MW'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.max_active_power" title="Link to this definition">¶</a></dt>
+<dd><p>Transfer capacity limit in MW</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSTransmissionLine.voltage">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">voltage</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Voltage</span> <span class="pre">level</span> <span class="pre">in</span> <span class="pre">kV'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSTransmissionLine.voltage" title="Link to this definition">¶</a></dt>
+<dd><p>Voltage level in kV</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="reserve-requirement">
+<h3>Reserve Requirement<a class="headerlink" href="#reserve-requirement" title="Link to this heading">¶</a></h3>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSReserve</span></span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSReserve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSReserve" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS operating reserve component.</p>
+<p>Defines operating reserve requirements and parameters for the system.</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">direction</span> <span class="pre">(r2x_reeds.models.enums.ReserveDirection)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">duration</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">flex_cost</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">or_load_percentage</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">or_pv_percentage</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">or_wind_percentage</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reg_cost</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">region</span> <span class="pre">(r2x_reeds.models.components.ReEDSReserveRegion</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reserve_type</span> <span class="pre">(r2x_reeds.models.enums.ReserveType)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">season</span> <span class="pre">(str</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">spin_cost</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">time_frame</span> <span class="pre">(float)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vors</span> <span class="pre">(float)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.direction">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">direction</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#r2x_reeds.ReserveDirection" title="r2x_reeds.ReserveDirection"><span class="pre">ReserveDirection</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Direction</span> <span class="pre">of</span> <span class="pre">reserve</span> <span class="pre">provision'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.direction" title="Link to this definition">¶</a></dt>
+<dd><p>Direction of reserve provision</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.duration">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">duration</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Time</span> <span class="pre">over</span> <span class="pre">which</span> <span class="pre">the</span> <span class="pre">required</span> <span class="pre">response</span> <span class="pre">must</span> <span class="pre">be</span> <span class="pre">maintained</span> <span class="pre">in</span> <span class="pre">seconds'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.duration" title="Link to this definition">¶</a></dt>
+<dd><p>Time over which the required response must be maintained in seconds</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.flex_cost">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flex_cost</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Flexibility</span> <span class="pre">reserve</span> <span class="pre">cost</span> <span class="pre">in</span> <span class="pre">$/MW</span> <span class="pre">from</span> <span class="pre">cost_opres</span> <span class="pre">files'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.flex_cost" title="Link to this definition">¶</a></dt>
+<dd><p>Flexibility reserve cost in $/MW from cost_opres files</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.or_load_percentage">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">or_load_percentage</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Proportion</span> <span class="pre">of</span> <span class="pre">load</span> <span class="pre">that</span> <span class="pre">contributes</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">reserve</span> <span class="pre">requirement'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.or_load_percentage" title="Link to this definition">¶</a></dt>
+<dd><p>Proportion of load that contributes to the reserve requirement</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.or_pv_percentage">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">or_pv_percentage</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Proportion</span> <span class="pre">of</span> <span class="pre">solar</span> <span class="pre">generation</span> <span class="pre">that</span> <span class="pre">contributes</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">reserve</span> <span class="pre">requirement'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.or_pv_percentage" title="Link to this definition">¶</a></dt>
+<dd><p>Proportion of solar generation that contributes to the reserve requirement</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.or_wind_percentage">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">or_wind_percentage</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Proportion</span> <span class="pre">of</span> <span class="pre">wind</span> <span class="pre">generation</span> <span class="pre">that</span> <span class="pre">contributes</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">reserve</span> <span class="pre">requirement'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.or_wind_percentage" title="Link to this definition">¶</a></dt>
+<dd><p>Proportion of wind generation that contributes to the reserve requirement</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.reg_cost">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reg_cost</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Regulation</span> <span class="pre">reserve</span> <span class="pre">cost</span> <span class="pre">in</span> <span class="pre">$/MW</span> <span class="pre">from</span> <span class="pre">cost_opres</span> <span class="pre">files'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.reg_cost" title="Link to this definition">¶</a></dt>
+<dd><p>Regulation reserve cost in $/MW from cost_opres files</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">ReEDSReserveRegion</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Reserve</span> <span class="pre">region</span> <span class="pre">where</span> <span class="pre">requirement</span> <span class="pre">applies'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.region" title="Link to this definition">¶</a></dt>
+<dd><p>Reserve region where requirement applies</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.reserve_type">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reserve_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#r2x_reeds.ReserveType" title="r2x_reeds.ReserveType"><span class="pre">ReserveType</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Type</span> <span class="pre">of</span> <span class="pre">reserve'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.reserve_type" title="Link to this definition">¶</a></dt>
+<dd><p>Type of reserve</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.season">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">season</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Seasonal</span> <span class="pre">identifier</span> <span class="pre">for</span> <span class="pre">reserve</span> <span class="pre">requirement</span> <span class="pre">variations</span> <span class="pre">(summ/fall/wint/spri)'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.season" title="Link to this definition">¶</a></dt>
+<dd><p>Seasonal identifier for reserve requirement variations (summ/fall/wint/spri)</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.spin_cost">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spin_cost</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Spinning</span> <span class="pre">reserve</span> <span class="pre">cost</span> <span class="pre">in</span> <span class="pre">$/MW</span> <span class="pre">from</span> <span class="pre">cost_opres</span> <span class="pre">files'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.spin_cost" title="Link to this definition">¶</a></dt>
+<dd><p>Spinning reserve cost in $/MW from cost_opres files</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.time_frame">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">time_frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">PositiveFloat</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Timeframe</span> <span class="pre">in</span> <span class="pre">which</span> <span class="pre">the</span> <span class="pre">reserve</span> <span class="pre">is</span> <span class="pre">required</span> <span class="pre">in</span> <span class="pre">seconds'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1e+30</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.time_frame" title="Link to this definition">¶</a></dt>
+<dd><p>Timeframe in which the reserve is required in seconds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gt</strong> = 0</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSReserve.vors">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vors</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Value</span> <span class="pre">of</span> <span class="pre">reserve</span> <span class="pre">shortage</span> <span class="pre">in</span> <span class="pre">$/MW.</span> <span class="pre">Positive</span> <span class="pre">value</span> <span class="pre">acts</span> <span class="pre">as</span> <span class="pre">soft</span> <span class="pre">constraint'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">-1</span></em><a class="headerlink" href="#r2x_reeds.ReEDSReserve.vors" title="Link to this definition">¶</a></dt>
+<dd><p>Value of reserve shortage in $/MW. Positive value acts as soft constraint</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="demand-profile">
+<h3>Demand Profile<a class="headerlink" href="#demand-profile" title="Link to this heading">¶</a></h3>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSDemand">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSDemand</span></span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSDemand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSDemand" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS electrical demand component.</p>
+<p>Represents load/demand in a region.</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_active_power</span> <span class="pre">(float</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">region</span> <span class="pre">(r2x_reeds.models.components.ReEDSRegion)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSDemand.max_active_power">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_active_power</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Maximum</span> <span class="pre">active</span> <span class="pre">power</span> <span class="pre">demand</span> <span class="pre">in</span> <span class="pre">MW'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#r2x_reeds.ReEDSDemand.max_active_power" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum active power demand in MW</p>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSDemand.region">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">region</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#r2x_reeds.ReEDSRegion" title="r2x_reeds.ReEDSRegion"><span class="pre">ReEDSRegion</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'ReEDS</span> <span class="pre">region'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSDemand.region" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS region</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="emission-rate">
+<h3>Emission Rate<a class="headerlink" href="#emission-rate" title="Link to this heading">¶</a></h3>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSEmission">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReEDSEmission</span></span><a class="reference internal" href="../_modules/r2x_reeds/models/components.html#ReEDSEmission"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReEDSEmission" title="Link to this definition">¶</a></dt>
+<dd><p>ReEDS emission supplemental attribute.</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">rate</span> <span class="pre">(float)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">source</span> <span class="pre">(r2x_reeds.models.enums.EmissionSource)</span></code></p></li>
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">type</span> <span class="pre">(r2x_reeds.models.enums.EmissionType)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSEmission.rate">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Unit</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'kg/MWh'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Field</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="s"><span class="pre">'Emission</span> <span class="pre">rate</span> <span class="pre">for</span> <span class="pre">emission</span> <span class="pre">type</span> <span class="pre">in</span> <span class="pre">kg/MWh'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSEmission.rate" title="Link to this definition">¶</a></dt>
+<dd><p>Emission rate for emission type in kg/MWh</p>
+<dl class="field-list simple">
+<dt class="field-odd">Constraints<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> = kg/MWh</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSEmission.source">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">source</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">EmissionSource</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">EmissionSource.COMBUSTION</span></em><a class="headerlink" href="#r2x_reeds.ReEDSEmission.source" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="r2x_reeds.ReEDSEmission.type">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#r2x_reeds.EmissionType" title="r2x_reeds.EmissionType"><span class="pre">EmissionType</span></a></em><em class="property"> <span class="pre">[Required]</span></em><a class="headerlink" href="#r2x_reeds.ReEDSEmission.type" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="enumerations">
+<h2>Enumerations<a class="headerlink" href="#enumerations" title="Link to this heading">¶</a></h2>
+<section id="emission-type">
+<h3>Emission Type<a class="headerlink" href="#emission-type" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">EmissionType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/models/enums.html#EmissionType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.EmissionType" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Types of emissions tracked in power system models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.CO2E">
+<span class="sig-name descname"><span class="pre">CO2E</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CO2E'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.CO2E" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.CO2">
+<span class="sig-name descname"><span class="pre">CO2</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CO2'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.CO2" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.NOX">
+<span class="sig-name descname"><span class="pre">NOX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NOx'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.NOX" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.SO2">
+<span class="sig-name descname"><span class="pre">SO2</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'SO2'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.SO2" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.PM25">
+<span class="sig-name descname"><span class="pre">PM25</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'PM2.5'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.PM25" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.PM10">
+<span class="sig-name descname"><span class="pre">PM10</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'PM10'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.PM10" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.VOC">
+<span class="sig-name descname"><span class="pre">VOC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'VOC'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.VOC" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.NH3">
+<span class="sig-name descname"><span class="pre">NH3</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NH3'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.NH3" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.CH4">
+<span class="sig-name descname"><span class="pre">CH4</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CH4'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.CH4" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.N2O">
+<span class="sig-name descname"><span class="pre">N2O</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'N2O'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.N2O" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.EmissionType.H2">
+<span class="sig-name descname"><span class="pre">H2</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'H2'</span></em><a class="headerlink" href="#r2x_reeds.EmissionType.H2" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="reserve-type">
+<h3>Reserve Type<a class="headerlink" href="#reserve-type" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReserveType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/models/enums.html#ReserveType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReserveType" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Types of operating reserves.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType.REGULATION">
+<span class="sig-name descname"><span class="pre">REGULATION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'REGULATION'</span></em><a class="headerlink" href="#r2x_reeds.ReserveType.REGULATION" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType.SPINNING">
+<span class="sig-name descname"><span class="pre">SPINNING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'SPINNING'</span></em><a class="headerlink" href="#r2x_reeds.ReserveType.SPINNING" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType.NON_SPINNING">
+<span class="sig-name descname"><span class="pre">NON_SPINNING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NON_SPINNING'</span></em><a class="headerlink" href="#r2x_reeds.ReserveType.NON_SPINNING" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType.FLEXIBILITY">
+<span class="sig-name descname"><span class="pre">FLEXIBILITY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'FLEXIBILITY'</span></em><a class="headerlink" href="#r2x_reeds.ReserveType.FLEXIBILITY" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType.CONTINGENCY">
+<span class="sig-name descname"><span class="pre">CONTINGENCY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONTINGENCY'</span></em><a class="headerlink" href="#r2x_reeds.ReserveType.CONTINGENCY" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveType.COMBO">
+<span class="sig-name descname"><span class="pre">COMBO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'COMBO'</span></em><a class="headerlink" href="#r2x_reeds.ReserveType.COMBO" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="reserve-direction">
+<h3>Reserve Direction<a class="headerlink" href="#reserve-direction" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveDirection">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_reeds.</span></span><span class="sig-name descname"><span class="pre">ReserveDirection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/r2x_reeds/models/enums.html#ReserveDirection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#r2x_reeds.ReserveDirection" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Direction of reserve provision.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveDirection.UP">
+<span class="sig-name descname"><span class="pre">UP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Up'</span></em><a class="headerlink" href="#r2x_reeds.ReserveDirection.UP" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_reeds.ReserveDirection.DOWN">
+<span class="sig-name descname"><span class="pre">DOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Down'</span></em><a class="headerlink" href="#r2x_reeds.ReserveDirection.DOWN" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../how-tos/index.html"><span class="doc">How-To Guides</span></a> - How-to guides</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Alliance for Sustainable Energy LLC, All rights reserved.
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/NREL/r2x-core" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#parser">Parser</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser"><code class="docutils literal notranslate"><span class="pre">ReEDSParser</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.config"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.config</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.store"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.store</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.on_validate"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_validate()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.on_prepare"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_prepare()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.on_build"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_build()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.on_validate_config"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_validate_config()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.on_upgrade"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_upgrade()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.read_data_file"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.read_data_file()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSParser.create_component"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.create_component()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_validate()</span></code></a></li>
+<li><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_prepare()</span></code></a></li>
+<li><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">ReEDSParser.on_build()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig.case_name"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig.case_name</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig.scenario"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig.scenario</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig.solve_year"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig.solve_year</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig.weather_year"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig.weather_year</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig.primary_solve_year"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig.primary_solve_year</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSConfig.primary_weather_year"><code class="docutils literal notranslate"><span class="pre">ReEDSConfig.primary_weather_year</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#component-models">Component Models</a><ul>
+<li><a class="reference internal" href="#generator">Generator</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.capacity"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.capacity</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.capital_cost"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.capital_cost</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.fom_cost"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.fom_cost</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.forced_outage_rate"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.forced_outage_rate</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.fuel_price"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.fuel_price</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.fuel_type"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.fuel_type</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.heat_rate"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.heat_rate</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.max_age"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.max_age</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.planned_outage_rate"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.planned_outage_rate</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.region"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.retirement_year"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.retirement_year</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.technology"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.technology</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.vintage"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.vintage</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSGenerator.vom_cost"><code class="docutils literal notranslate"><span class="pre">ReEDSGenerator.vom_cost</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#region-bus">Region (Bus)</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.cc_region"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.cc_region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.cendiv"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.cendiv</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.country"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.country</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.h2ptc_region"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.h2ptc_region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.hurdle_region"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.hurdle_region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.interconnect"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.interconnect</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.max_active_power"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.max_active_power</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.nerc_region"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.nerc_region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.state"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.state</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.timezone"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.timezone</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.transmission_group"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.transmission_group</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.transmission_region"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.transmission_region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.usda_region"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.usda_region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSRegion.example"><code class="docutils literal notranslate"><span class="pre">ReEDSRegion.example()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#transmission-line">Transmission Line</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.distance_miles"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.distance_miles</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.hurdle_rate"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.hurdle_rate</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.interface"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.interface</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.line_cost_per_mw_mile"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.line_cost_per_mw_mile</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.line_type"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.line_type</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.losses"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.losses</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.max_active_power"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.max_active_power</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSTransmissionLine.voltage"><code class="docutils literal notranslate"><span class="pre">ReEDSTransmissionLine.voltage</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reserve-requirement">Reserve Requirement</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.direction"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.direction</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.duration"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.duration</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.flex_cost"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.flex_cost</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.or_load_percentage"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.or_load_percentage</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.or_pv_percentage"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.or_pv_percentage</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.or_wind_percentage"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.or_wind_percentage</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.reg_cost"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.reg_cost</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.region"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.region</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.reserve_type"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.reserve_type</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.season"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.season</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.spin_cost"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.spin_cost</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.time_frame"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.time_frame</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSReserve.vors"><code class="docutils literal notranslate"><span class="pre">ReEDSReserve.vors</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#demand-profile">Demand Profile</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSDemand"><code class="docutils literal notranslate"><span class="pre">ReEDSDemand</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSDemand.max_active_power"><code class="docutils literal notranslate"><span class="pre">ReEDSDemand.max_active_power</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSDemand.region"><code class="docutils literal notranslate"><span class="pre">ReEDSDemand.region</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#emission-rate">Emission Rate</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSEmission"><code class="docutils literal notranslate"><span class="pre">ReEDSEmission</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSEmission.rate"><code class="docutils literal notranslate"><span class="pre">ReEDSEmission.rate</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSEmission.source"><code class="docutils literal notranslate"><span class="pre">ReEDSEmission.source</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReEDSEmission.type"><code class="docutils literal notranslate"><span class="pre">ReEDSEmission.type</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#enumerations">Enumerations</a><ul>
+<li><a class="reference internal" href="#emission-type">Emission Type</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType"><code class="docutils literal notranslate"><span class="pre">EmissionType</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.CO2E"><code class="docutils literal notranslate"><span class="pre">EmissionType.CO2E</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.CO2"><code class="docutils literal notranslate"><span class="pre">EmissionType.CO2</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.NOX"><code class="docutils literal notranslate"><span class="pre">EmissionType.NOX</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.SO2"><code class="docutils literal notranslate"><span class="pre">EmissionType.SO2</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.PM25"><code class="docutils literal notranslate"><span class="pre">EmissionType.PM25</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.PM10"><code class="docutils literal notranslate"><span class="pre">EmissionType.PM10</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.VOC"><code class="docutils literal notranslate"><span class="pre">EmissionType.VOC</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.NH3"><code class="docutils literal notranslate"><span class="pre">EmissionType.NH3</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.CH4"><code class="docutils literal notranslate"><span class="pre">EmissionType.CH4</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.N2O"><code class="docutils literal notranslate"><span class="pre">EmissionType.N2O</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.EmissionType.H2"><code class="docutils literal notranslate"><span class="pre">EmissionType.H2</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reserve-type">Reserve Type</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType"><code class="docutils literal notranslate"><span class="pre">ReserveType</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType.REGULATION"><code class="docutils literal notranslate"><span class="pre">ReserveType.REGULATION</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType.SPINNING"><code class="docutils literal notranslate"><span class="pre">ReserveType.SPINNING</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType.NON_SPINNING"><code class="docutils literal notranslate"><span class="pre">ReserveType.NON_SPINNING</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType.FLEXIBILITY"><code class="docutils literal notranslate"><span class="pre">ReserveType.FLEXIBILITY</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType.CONTINGENCY"><code class="docutils literal notranslate"><span class="pre">ReserveType.CONTINGENCY</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReserveType.COMBO"><code class="docutils literal notranslate"><span class="pre">ReserveType.COMBO</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reserve-direction">Reserve Direction</a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReserveDirection"><code class="docutils literal notranslate"><span class="pre">ReserveDirection</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_reeds.ReserveDirection.UP"><code class="docutils literal notranslate"><span class="pre">ReserveDirection.UP</span></code></a></li>
+<li><a class="reference internal" href="#r2x_reeds.ReserveDirection.DOWN"><code class="docutils literal notranslate"><span class="pre">ReserveDirection.DOWN</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=f539c95a"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=3a0c56fd"></script>
+    </body>
+</html>
