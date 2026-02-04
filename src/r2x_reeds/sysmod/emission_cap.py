@@ -216,6 +216,7 @@ def add_precombustion(system: System, emission_rates: pl.DataFrame) -> bool:
 
         # Get emission attributes for this component
         def _matches_emission_type(a: ReEDSEmission, et: EmissionType = emission_type) -> bool:
+            """Emission matching"""
             return a.type == et
 
         attrs = system.get_supplemental_attributes_with_component(
