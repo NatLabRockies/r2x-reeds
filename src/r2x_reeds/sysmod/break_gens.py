@@ -176,7 +176,8 @@ def _create_split_generator(
     logger.trace("Created new generator {} with capacity {}", component.label, new_capacity)
     system.add_component(component)
 
-    for attribute in system.get_supplemental_attributes_with_component(original, SupplementalAttribute):
+    attributes: list[SupplementalAttribute] = system.get_supplemental_attributes_with_component(original)
+    for attribute in attributes:
         logger.trace("Component {} has supplemental attribute {}. Copying.", original.label, attribute.label)
         system.add_supplemental_attribute(component, attribute)
 
