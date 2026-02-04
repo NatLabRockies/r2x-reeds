@@ -303,6 +303,7 @@ def _prepare_generator_dataset(
             else:
                 common_cols = list(df_cols & transformed_cols)
             if common_cols:
+                transformed = transformed.unique(subset=common_cols)
                 df = df.join(transformed, how="left", on=common_cols)
                 if (
                     name == "storage_duration_out"
@@ -317,10 +318,10 @@ def _prepare_generator_dataset(
         except Exception as e:
             return Err(ValidationError(f"Failed to join {name} data: {e}"))
 
-    df = df.collect()
-    df = df.with_columns(pl.col("technology").str.split("_").list.get(0).alias("technology_base"))
+    collected: pl.DataFrame = df.collect()
+    df_out = collected.with_columns(pl.col("technology").str.split("_").list.get(0).alias("technology_base"))
 
-    if "fuel_type" not in df.columns:
+    if "fuel_type" not in df_out.columns:
         return Err(ValidationError("Generator fuel_type column is missing from the fuel2tech mapping"))
 
     def _categories_for_tech(tech: str) -> list[str]:
@@ -332,7 +333,7 @@ def _prepare_generator_dataset(
         categories = result.ok()
         return categories if categories is not None else []
 
-    df = df.with_columns(
+    df_out = df_out.with_columns(
         pl.col("technology_base")
         .map_elements(
             _categories_for_tech,
@@ -341,7 +342,7 @@ def _prepare_generator_dataset(
         .alias("categories")
     ).with_columns(pl.col("categories").list.first().alias("category"))
 
-    df = df.with_columns(
+    df_out = df_out.with_columns(
         pl.col("technology")
         .map_elements(
             lambda tech: tech_matches_category(tech, "thermal", technology_categories),
@@ -350,29 +351,29 @@ def _prepare_generator_dataset(
         .alias("is_thermal")
     )
 
-    df = df.drop("technology_base")
+    df_out = df_out.drop("technology_base")
 
-    df = df.with_columns(
+    df_out = df_out.with_columns(
         pl.when(pl.col("is_thermal") & pl.col("fuel_type").is_null())
         .then(pl.lit("OTHER"))
         .otherwise(pl.col("fuel_type"))
         .alias("fuel_type")
     ).drop("is_thermal")
 
-    if df.is_empty():
+    if df_out.is_empty():
         return Err(ValidationError("Generator data is empty after joining"))
 
     if excluded_technologies:
-        initial_count = len(df)
-        df = df.filter(~pl.col("technology").is_in(excluded_technologies))
-        excluded_count = initial_count - len(df)
+        initial_count = len(df_out)
+        df_out = df_out.filter(~pl.col("technology").is_in(excluded_technologies))
+        excluded_count = initial_count - len(df_out)
         if excluded_count > 0:
             logger.info("Excluded {} generators with excluded technologies", excluded_count)
 
-    if df.is_empty():
+    if df_out.is_empty():
         return Err(ValidationError("All generators were excluded"))
 
-    return Ok(df)
+    return Ok(df_out)
 
 
 def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:

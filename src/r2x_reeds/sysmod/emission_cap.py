@@ -215,21 +215,25 @@ def add_precombustion(system: System, emission_rates: pl.DataFrame) -> bool:
             continue
 
         # Get emission attributes for this component
-        attr = system.get_supplemental_attributes_with_component(
-            component, ReEDSEmission, filter_func=lambda attr, et=emission_type: attr.type == et
+        def _matches_emission_type(a: ReEDSEmission, et: EmissionType = emission_type) -> bool:
+            """Emission matching"""
+            return a.type == et
+
+        attrs = system.get_supplemental_attributes_with_component(
+            component, ReEDSEmission, filter_func=_matches_emission_type
         )
 
-        if not attr:
+        if not attrs:
             logger.trace("`ReEDSEmission:{}` object not found for {}", emission_type, generator_name)
             continue
 
-        if len(attr) != 1:
+        if len(attrs) != 1:
             msg = f"Multiple emission of the same type attached to {generator_name}. "
             msg += "Check addition of supplemental attributes."
             raise ValueError(msg)
 
-        attr = attr[0]
-        attr.rate += rate
+        emission_attr = attrs[0]
+        emission_attr.rate += rate
         applied_rate = True
 
     return applied_rate
