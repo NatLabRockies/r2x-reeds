@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/NatLabRockies/r2x-reeds/compare/v0.8.0...v0.9.0) (2026-09-15)
+
+
+### 🚀 Features
+
+* add flag to enable can-imports and update file handling logic ([#98](https://github.com/NatLabRockies/r2x-reeds/issues/98)) ([2f05bef](https://github.com/NatLabRockies/r2x-reeds/commit/2f05bef0a196c86fb98d19b0158e57d5866705ef))
+* implement flag to use degraded capacity on reeds target ([#102](https://github.com/NatLabRockies/r2x-reeds/issues/102)) ([1d42fc1](https://github.com/NatLabRockies/r2x-reeds/commit/1d42fc1ae424d6c6fc32ce835d3c886c0ba08927))
+
+
+### 📦 Build
+
+* **deps-dev:** bump prek from 0.4.14 to 0.5.2 ([#104](https://github.com/NatLabRockies/r2x-reeds/issues/104)) ([17b84de](https://github.com/NatLabRockies/r2x-reeds/commit/17b84de9199599df15980d4c256da3ea77d834f3))
+* **deps-dev:** bump ruff from 0.16.4 to 0.16.6 ([#103](https://github.com/NatLabRockies/r2x-reeds/issues/103)) ([26c1084](https://github.com/NatLabRockies/r2x-reeds/commit/26c1084422d180aa952e9d4858e699c9c0835b6b))
+
 ## [0.8.0](https://github.com/NatLabRockies/r2x-reeds/compare/v0.7.0...v0.8.0) (2026-08-21)
 
 

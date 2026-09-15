@@ -1289,7 +1289,7 @@ wheels = [
 
 [[package]]
 name = "r2x-reeds"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "r2x-core" },
