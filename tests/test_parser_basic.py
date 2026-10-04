@@ -168,6 +168,39 @@ def test_read_data_file_reports_missing_degraded_capacity(tmp_path: Path, reeds_
         parser.read_data_file("online_capacity")
 
 
+def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path) -> None:
+    import json
+
+    from r2x_core import DataFile, DataStore, PluginContext
+    from r2x_reeds import ReEDSConfig, ReEDSParser
+
+    input_case = tmp_path / "inputs_case"
+    input_case.mkdir()
+    (input_case / "modeledyears.csv").write_text("2010,2020,2030\n")
+    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    records = json.loads(mapping_path.read_text())
+    record = next(item for item in records if item["name"] == "modeled_years")
+    data_file = DataFile.from_record(record, folder_path=tmp_path)
+    store = DataStore(tmp_path)
+    store.add_data([data_file])
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="test",
+        scenario="base",
+    )
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
+
+    result = parser.store.read_data("modeled_years").collect()
+
+    assert result.schema["modeled_years"] == pl.Int32
+    assert result.to_dicts() == [
+        {"modeled_years": 2010},
+        {"modeled_years": 2020},
+        {"modeled_years": 2030},
+    ]
+
+
 def test_read_fuel_tech_map_uses_reeds_mapping_nodes(tmp_path: Path, reeds_run_path: Path) -> None:
     """The ReEDS fuel2tech group uses f/i/value nodes, not columns/Value."""
     run_path = tmp_path / "test_Pacific"

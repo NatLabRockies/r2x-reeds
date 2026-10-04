@@ -44,6 +44,7 @@
       "units": "MW"
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "r": "region",
@@ -357,6 +358,7 @@
       "units": "$/MMBtu"
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "r": "region",
@@ -532,12 +534,6 @@
         "separator": ","
       },
       "function": null
-    },
-    "proc_spec": {
-      "column_schema": {
-        "modeledyears": "i16"
-      },
-      "pivot_on": "modeled_years"
     }
   },
   {
