@@ -66,9 +66,11 @@ class ReEDSVersionDetector(VersionReader):
                 # No "tag" column found - legacy format
                 return LEGACY_VERSION
 
-            # Check if tag value exists and is not empty
-            if tag_index < len(data_row) and data_row[tag_index].strip():
-                return data_row[tag_index].strip()
+            # ReEDS writes the literal "None" when no tag is available.
+            if tag_index < len(data_row):
+                tag = data_row[tag_index].strip()
+                if tag and tag.lower() != "none":
+                    return tag
 
             return LEGACY_VERSION
 
