@@ -182,6 +182,7 @@
       "units": "MW"
     },
     "proc_spec": {
+      "lower_case": true,
       "column_mapping": {
         "*r": "from_region",
         "rr": "to_region",
