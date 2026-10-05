@@ -9,10 +9,10 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "computer": "computer",
         "repo": "repo",
         "branch": "branch",
         "commit": "commit",
+        "tag": "tag",
         "description": "description"
       }
     }
@@ -223,8 +223,6 @@
       "column_mapping": {
         "r": "from_region",
         "rr": "to_region",
-        "length_miles": "distance_mi",
-        "USD2004perMW": "cost_usd_per_mw",
         "USD2004perMW_forward": "cost_usd_per_mw_forward",
         "USD2004perMW_reverse": "cost_usd_per_mw_reverse",
         "tscbin": "cost_bin",
@@ -245,7 +243,6 @@
       "column_mapping": {
         "r": "from_region",
         "rr": "to_region",
-        "length_miles": "distance_mi",
         "miles": "distance_mi"
       }
     }
@@ -513,10 +510,7 @@
       "column_mapping": {
         "i": "technology",
         "r": "region",
-        "rscbin": "resource_class",
-        "value": "capacity",
-        "supply_curve_cost_per_mw": "supply_curve_cost",
-        "capital_adder_per_mw": "transmission_adder"
+        "value": "capacity"
       }
     }
   },
@@ -578,7 +572,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "t": "year",
+        "*t": "year",
         "tonne_per_year": "value"
       },
       "filter_by": {
@@ -1137,8 +1131,7 @@
     "proc_spec": {
       "column_mapping": {
         "*i": "technology",
-        "$2004/MW": "startup_cost",
-        "$2004/mw": "startup_cost"
+        "$2004/MW": "startup_cost"
       }
     }
   },
@@ -1267,7 +1260,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "*i": "reserve_type",
+        "": "reserve_type",
         "or_load": "or_load_percentage",
         "or_wind": "or_wind_percentage",
         "or_pv": "or_pv_percentage"
@@ -1299,7 +1292,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "*i": "technology",
+        "": "technology",
         "reg": "reg_cost",
         "flex": "flex_cost",
         "spin": "spin_cost"
@@ -1317,7 +1310,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "*i": "technology",
+        "": "technology",
         "reg": "reg_cost",
         "flex": "flex_cost",
         "spin": "spin_cost"
