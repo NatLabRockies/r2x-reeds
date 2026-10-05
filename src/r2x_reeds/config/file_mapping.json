@@ -377,6 +377,7 @@
       "units": "$/MMBtu"
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "r": "region",
         "t": "year",
