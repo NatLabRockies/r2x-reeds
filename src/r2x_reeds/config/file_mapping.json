@@ -455,8 +455,7 @@
     },
     "proc_spec": {
       "filter_by": {
-        "datetime": "{weather_year}",
-        "solve_year": "{solve_year}"
+        "datetime": "{weather_year}"
       }
     }
   },
