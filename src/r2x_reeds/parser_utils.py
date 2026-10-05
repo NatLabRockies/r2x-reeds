@@ -47,7 +47,7 @@ def _build_generator_field_map(row: Mapping[str, Any], system: System) -> dict[s
 
     if isinstance(region_name, str):
         try:
-            region_component = system.get_component(ReEDSRegion, region_name)
+            region_component = system.get_component(ReEDSRegion, name=region_name)
         except Exception:
             region_component = None
 

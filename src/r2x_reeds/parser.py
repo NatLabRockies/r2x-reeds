@@ -1165,7 +1165,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         region = self._region_cache.get(str(region_name))
         if region is None:
-            region = system.get_component(ReEDSRegion, str(region_name))
+            region = system.get_component(ReEDSRegion, name=str(region_name))
         if region is None:
             logger.debug("Skipping {} row with unknown region {}", technology, region_name)
             return None

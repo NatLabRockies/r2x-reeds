@@ -49,7 +49,7 @@ def lookup_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Ex
 
         if context.system is None:
             return Err(ValueError("System not available in context"))
-        region = context.system.get_component(ReEDSRegion, str(region_name))
+        region = context.system.get_component(ReEDSRegion, name=str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)
@@ -308,7 +308,7 @@ def _lookup_region_by_field(
 
         if context.system is None:
             return Err(ValueError("System not available in context"))
-        region = context.system.get_component(ReEDSRegion, str(region_name))
+        region = context.system.get_component(ReEDSRegion, name=str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)
