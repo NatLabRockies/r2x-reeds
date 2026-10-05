@@ -403,10 +403,7 @@
       "column_mapping": {
         "f": "fuel_type",
         "i": "technology"
-      },
-      "drop_columns": [
-        "value"
-      ]
+      }
     }
   },
   {
@@ -474,6 +471,7 @@
       "is_optional": true
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "v": "vintage",
