@@ -12,7 +12,6 @@
         "repo": "repo",
         "branch": "branch",
         "commit": "commit",
-        "tag": "tag",
         "description": "description"
       }
     }
@@ -223,10 +222,8 @@
       "column_mapping": {
         "r": "from_region",
         "rr": "to_region",
-        "USD2004perMW_forward": "cost_usd_per_mw_forward",
-        "USD2004perMW_reverse": "cost_usd_per_mw_reverse",
-        "tscbin": "cost_bin",
-        "binwidth_USD2004": "binwidth_usd2004"
+        "length_miles": "distance_mi",
+        "USD2004perMW": "cost_usd_per_mw_forward"
       }
     }
   },
@@ -243,7 +240,7 @@
       "column_mapping": {
         "r": "from_region",
         "rr": "to_region",
-        "miles": "distance_mi"
+        "length_miles": "distance_mi"
       }
     }
   },
@@ -258,7 +255,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "*r": "from_region",
+        "r": "from_region",
         "value": "losses",
         "rr": "to_region"
       }
@@ -333,6 +330,7 @@
       "units": "MMBtu/MWh"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "r": "region",
@@ -397,6 +395,7 @@
       "is_optional": true
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "f": "fuel_type",
         "i": "technology"
@@ -416,6 +415,7 @@
       "units": "%"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "value": "forced_outage_rate"
@@ -432,6 +432,7 @@
       "units": "%"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "value": "planned_outage_rate"
@@ -590,6 +591,7 @@
       "units": "$/MWh"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "r": "region",
@@ -622,6 +624,7 @@
       "function": null
     },
     "proc_spec": {
+      "lowercase": true,
       "column_schema": {
         "technology": "string",
         "maxage_years": "int"
@@ -660,9 +663,7 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
+        "capacity": "available_capacity",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -715,8 +716,7 @@
       "column_mapping": {
         "class": "resource_class",
         "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
+        "capacity": "available_capacity",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -769,8 +769,7 @@
       "column_mapping": {
         "class": "resource_class",
         "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
+        "capacity": "available_capacity",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -823,8 +822,7 @@
       "column_mapping": {
         "class": "resource_class",
         "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
+        "capacity": "available_capacity",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -877,8 +875,7 @@
       "column_mapping": {
         "class": "resource_class",
         "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
+        "capacity": "available_capacity",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -931,8 +928,7 @@
       "column_mapping": {
         "class": "resource_class",
         "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
+        "capacity": "available_capacity",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -1031,6 +1027,7 @@
       "is_input": true
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "*i": "technology",
         "month": "month",
@@ -1053,6 +1050,7 @@
       "units": "fraction"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "*i": "technology",
         "month": "month",
@@ -1081,6 +1079,7 @@
       "function": null
     },
     "proc_spec": {
+      "lowercase": true,
       "column_schema": {
         "technology": "string",
         "ramp_rate": "float"
@@ -1129,6 +1128,7 @@
       "function": null
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "*i": "technology",
         "$2004/MW": "startup_cost"
@@ -1145,6 +1145,7 @@
       "units": "fraction"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "t": "year",
@@ -1165,6 +1166,7 @@
       "units": "hours"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "v": "vintage",
@@ -1184,6 +1186,7 @@
       "units": "hours"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "i": "technology",
         "value": "storage_duration"
@@ -1239,6 +1242,7 @@
       "is_optional": true
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "*i": "technology",
         "t": "year",
@@ -1259,6 +1263,7 @@
       "is_optional": true
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "": "reserve_type",
         "or_load": "or_load_percentage",
@@ -1276,6 +1281,7 @@
       "is_optional": true
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "*szn": "season"
       }
@@ -1291,6 +1297,7 @@
       "units": "$/MW"
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "": "technology",
         "reg": "reg_cost",
@@ -1309,6 +1316,7 @@
       "units": "$/MW"
     },
     "proc_spec": {
+      "lowercase": true,
       "column_mapping": {
         "": "technology",
         "reg": "reg_cost",
