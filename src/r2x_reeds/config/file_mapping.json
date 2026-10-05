@@ -1136,7 +1136,7 @@
       "lowercase": true,
       "column_mapping": {
         "*i": "technology",
-        "$2004/MW": "startup_cost"
+        "$2004/mw": "startup_cost"
       }
     }
   },
