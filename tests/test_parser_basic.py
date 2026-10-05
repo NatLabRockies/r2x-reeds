@@ -23,8 +23,6 @@ if TYPE_CHECKING:
 
 
 def _build_parser(run_path: Path, *, use_degraded_capacity: bool = False):
-    from typing import cast
-
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
@@ -37,7 +35,7 @@ def _build_parser(run_path: Path, *, use_degraded_capacity: bool = False):
     )
     store = DataStore.from_plugin_config(config, path=run_path)
     ctx = PluginContext(config=config, store=store)
-    return cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    return ReEDSParser.from_context(ctx)
 
 
 def _write_minimal_outputs_h5_from_fuel_price(csv_path: Path, h5_path: Path) -> None:

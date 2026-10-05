@@ -157,7 +157,6 @@
     "proc_spec": {
       "column_mapping": {
         "ba": "ba",
-        "ccreg": "cc_region",
         "cendiv": "cendiv",
         "country": "country",
         "h2ptcreg": "h2ptc_region",

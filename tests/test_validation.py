@@ -20,11 +20,9 @@ def test_invalid_solve_year_raises_error(reeds_run_path):
         case_name="test",
     )
 
-    from typing import cast
-
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
     ctx = PluginContext(config=config, store=data_store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
 
     result = parser.on_validate()
     assert result.is_err()
@@ -43,11 +41,9 @@ def test_invalid_weather_year_raises_error(reeds_run_path):
         case_name="test",
     )
 
-    from typing import cast
-
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
     ctx = PluginContext(config=config, store=data_store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
 
     result = parser.on_validate()
     assert result.is_err()
@@ -66,11 +62,9 @@ def test_valid_years_pass_validation(reeds_run_path):
         case_name="test",
     )
 
-    from typing import cast
-
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
     ctx = PluginContext(config=config, store=data_store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
 
     result = parser.on_validate()
     assert result.is_ok()
@@ -78,7 +72,6 @@ def test_valid_years_pass_validation(reeds_run_path):
 
 def test_missing_deprecated_agglevels_file_still_validates(tmp_path: Path, reeds_run_path: Path) -> None:
     """Parser validation should allow runs without deprecated agglevels.csv."""
-    from typing import cast
 
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
@@ -98,7 +91,7 @@ def test_missing_deprecated_agglevels_file_still_validates(tmp_path: Path, reeds
 
     data_store = DataStore.from_plugin_config(config, path=run_path)
     ctx = PluginContext(config=config, store=data_store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
 
     result = parser.on_validate()
     assert result.is_ok()
