@@ -222,8 +222,10 @@
       "column_mapping": {
         "r": "from_region",
         "rr": "to_region",
-        "length_miles": "distance_mi",
-        "USD2004perMW": "cost_usd_per_mw_forward"
+        "USD2004perMW_forward": "cost_usd_per_mw_forward",
+        "USD2004perMW_reverse": "cost_usd_per_mw_reverse",
+        "tscbin": "cost_bin",
+        "binwidth_USD2004": "binwidth_usd2004"
       }
     }
   },
@@ -641,6 +643,7 @@
       "units": "$/MWh"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "r": "from_region",
         "rr": "to_region",
@@ -1005,6 +1008,7 @@
       "units": "kg/MWh"
     },
     "proc_spec": {
+        "lowercase": true,
       "column_mapping": {
         "eall": "emission_type",
         "etype": "emission_source",
