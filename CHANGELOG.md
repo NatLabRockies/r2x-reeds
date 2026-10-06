@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.1...v0.9.2) (2026-10-06)
+
+
+### 🐛 Bug Fixes
+
+* align ReEDS input mappings with current schemas ([#111](https://github.com/NatLabRockies/r2x-reeds/issues/111)) ([a3fce3c](https://github.com/NatLabRockies/r2x-reeds/commit/a3fce3cfa04979f3134c827253c86e005faf6963))
+
 ## [0.9.1](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.0...v0.9.1) (2026-10-06)
 
 
