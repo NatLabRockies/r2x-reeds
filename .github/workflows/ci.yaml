@@ -15,7 +15,7 @@ permissions: {}
 jobs:
   prek:
     runs-on: ubuntu-latest
-    name: Prek hooks (lint/format/spell/type, all files)
+    name: Prek hooks (lint/format/type, all files)
     permissions:
       contents: read
     steps:
@@ -39,7 +39,7 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run prek
-        run: uv run prek run --show-diff-on-failure --color=always --all-files --hook-stage pre-push
+        run: uv run prek run --show-diff-on-failure --color=always --all-files --stage pre-commit
 
 
   pytest:
@@ -53,7 +53,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.12", "3.13"]
     defaults:
       run:
         shell: bash

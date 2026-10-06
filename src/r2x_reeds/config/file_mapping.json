@@ -403,7 +403,10 @@
       "column_mapping": {
         "f": "fuel_type",
         "i": "technology"
-      }
+      },
+      "drop_columns": [
+        "value"
+      ]
     }
   },
   {
@@ -842,9 +845,7 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
         "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -860,9 +861,6 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -895,9 +893,7 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
         "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -913,9 +909,6 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
