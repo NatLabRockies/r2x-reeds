@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.0...v0.9.1) (2026-10-06)
+
+
+### 🐛 Bug Fixes
+
+* support r2x-core 0.9 modeled years parsing ([#109](https://github.com/NatLabRockies/r2x-reeds/issues/109)) ([49bad0d](https://github.com/NatLabRockies/r2x-reeds/commit/49bad0d170171efc34961079163952256a6cc3a9))
+
 ## [0.9.0](https://github.com/NatLabRockies/r2x-reeds/compare/v0.8.0...v0.9.0) (2026-09-15)
 
 
