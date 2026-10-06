@@ -12,6 +12,7 @@ __version__ = version("r2x_reeds")
 
 # Import getters to register them with r2x-core
 from . import getters  # noqa: F401
+from .data_readers import register_modeled_years_reader
 from .models import (
     EmissionRate,
     EmissionType,
@@ -83,4 +84,5 @@ __all__ = [
     "ReserveDirection",
     "ReserveType",
     "__version__",
+    "register_modeled_years_reader",
 ]

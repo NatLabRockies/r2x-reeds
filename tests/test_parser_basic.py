@@ -86,6 +86,7 @@ def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_pa
 
     outputs_dir = run_path / "outputs"
     fuel_price_csv = outputs_dir / "fuel_price.csv"
+    pl.DataFrame({"i": ["NGAS"], "r": ["P1"], "t": [2032], "value": [4.2]}).write_csv(fuel_price_csv)
     outputs_h5 = outputs_dir / "outputs.h5"
 
     _write_minimal_outputs_h5_from_fuel_price(fuel_price_csv, outputs_h5)
@@ -98,10 +99,14 @@ def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_pa
     df = result.collect()
     assert not df.is_empty()
     assert {"technology", "region", "year", "fuel_price"}.issubset(set(df.columns))
+    assert df.select("technology", "region").to_dict(as_series=False) == {
+        "technology": ["ngas"],
+        "region": ["p1"],
+    }
 
 
 def test_read_data_file_uses_degraded_capacity_from_outputs_h5(tmp_path: Path, reeds_run_path: Path) -> None:
-    """The degraded-capacity flag selects cap_deg_ivrt from outputs.h5."""
+    """Select degraded capacity and lowercase its technology and region identifiers."""
     run_path = tmp_path / "test_Pacific"
     shutil.copytree(reeds_run_path, run_path)
 
@@ -109,8 +114,8 @@ def test_read_data_file_uses_degraded_capacity_from_outputs_h5(tmp_path: Path, r
     with h5py.File(outputs_h5, "w") as h5_file:
         group = h5_file.create_group("cap_deg_ivrt")
         group.create_dataset("columns", data=np.array([b"i", b"r", b"t", b"v", b"value"]))
-        group.create_dataset("i", data=np.array([b"wind-ons"]))
-        group.create_dataset("r", data=np.array([b"p4"]))
+        group.create_dataset("i", data=np.array([b"WIND-ONS"]))
+        group.create_dataset("r", data=np.array([b"P4"]))
         group.create_dataset("t", data=np.array([2032]))
         group.create_dataset("v", data=np.array([2020]))
         group.create_dataset("value", data=np.array([95.0]))
@@ -166,11 +171,16 @@ def test_read_data_file_reports_missing_degraded_capacity(tmp_path: Path, reeds_
         parser.read_data_file("online_capacity")
 
 
-def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "register_with_parser",
+    [False, True],
+    ids=["explicit-reader-registration", "parser-context"],
+)
+def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path, register_with_parser: bool) -> None:
     import json
 
     from r2x_core import DataFile, DataStore, PluginContext
-    from r2x_reeds import ReEDSConfig, ReEDSParser
+    from r2x_reeds import ReEDSConfig, ReEDSParser, register_modeled_years_reader
 
     input_case = tmp_path / "inputs_case"
     input_case.mkdir()
@@ -187,9 +197,12 @@ def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path) -> None:
         case_name="test",
         scenario="base",
     )
-    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
+    if register_with_parser:
+        store = ReEDSParser.from_context(PluginContext(config=config, store=store)).store
+    else:
+        register_modeled_years_reader(store)
 
-    result = parser.store.read_data("modeled_years").collect()
+    result = store.read_data("modeled_years").collect()
 
     assert result.schema["modeled_years"] == pl.Int32
     assert result.to_dicts() == [

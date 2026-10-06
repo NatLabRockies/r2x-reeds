@@ -96,7 +96,10 @@ def example_reeds_config(reeds_config: "ReEDSConfig") -> "ReEDSConfig":
 
 @pytest.fixture(scope="session")
 def example_data_store(data_store: "DataStore") -> "DataStore":
-    """Alias for data_store (backward compatibility)."""
+    """Legacy test store with ReEDS-specific readers explicitly registered."""
+    from r2x_reeds import register_modeled_years_reader
+
+    register_modeled_years_reader(data_store)
     return data_store
 
 

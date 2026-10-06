@@ -26,13 +26,13 @@ from r2x_core import (
     ComponentCreationError,
     Plugin,
     PluginContext,
-    ReaderConfig,
     Rule,
     System,
     create_component,
 )
 from r2x_core.processors import apply_processing
 
+from .data_readers import register_modeled_years_reader
 from .enum_mappings import RESERVE_TYPE_MAP
 from .getters import (
     build_generator_name,
@@ -152,15 +152,6 @@ def _coerce_optional_bool(value: Any) -> bool | None:
         if normalized in {"false", "f", "no", "n", "0"}:
             return False
     return None
-
-
-def _read_modeled_years_file(fpath: Path) -> pl.LazyFrame:
-    """Read ReEDS' headerless, wide list of modeled years into one typed column."""
-    return (
-        pl.scan_csv(fpath, has_header=False)
-        .unpivot(value_name="modeled_years")
-        .select(pl.col("modeled_years").cast(pl.Int32))
-    )
 
 
 def _build_synthetic_hour_map(weather_years: Iterable[int]) -> pl.DataFrame:
@@ -316,14 +307,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
     def from_context(cls, ctx: PluginContext[ReEDSConfig]) -> Self:
         """Create the parser and install the reader for ReEDS' dynamic year columns."""
         parser = cast(Self, super().from_context(ctx))
-        if ctx.store is not None and "modeled_years" in ctx.store:
-            data_file = ctx.store["modeled_years"].model_copy(
-                update={
-                    "reader": ReaderConfig(kwargs={}, function=_read_modeled_years_file),
-                    "proc_spec": None,
-                }
-            )
-            ctx.store.add_data([data_file], overwrite=True)
+        if ctx.store is not None:
+            register_modeled_years_reader(ctx.store)
         return parser
 
     def _truncate_and_cast_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
