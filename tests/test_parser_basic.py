@@ -64,7 +64,6 @@ def _write_fuel2tech_outputs_h5(h5_path: Path) -> None:
         group = h5_file.create_group("fuel2tech")
         group.create_dataset("f", data=np.array(["ngas", "coal"], dtype="S"))
         group.create_dataset("i", data=np.array(["gas-cc", "coal"], dtype="S"))
-        group.create_dataset("value", data=np.array([1, 1]))
 
 
 def test_read_data_file_falls_back_to_legacy_outputs_csv(reeds_run_path: Path) -> None:
@@ -213,7 +212,7 @@ def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path, register_wit
 
 
 def test_read_fuel_tech_map_uses_reeds_mapping_nodes(tmp_path: Path, reeds_run_path: Path) -> None:
-    """The ReEDS fuel2tech group uses f/i/value nodes, not columns/Value."""
+    """The ReEDS fuel2tech group uses f/i nodes without a value column."""
     run_path = tmp_path / "test_Pacific"
     shutil.copytree(reeds_run_path, run_path)
 
@@ -240,6 +239,113 @@ def test_read_data_file_uses_store_for_non_outputs_dataset(reeds_run_path: Path)
     df = result.collect()
     assert not df.is_empty()
     assert "region_id" in df.columns
+
+
+def test_read_existing_capacity_with_domain_marked_technology_column(tmp_path: Path) -> None:
+    """Existing capacity inputs use GAMS' domain-marked '*i' technology column."""
+    import json
+
+    from r2x_core import DataFile, DataStore
+
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    (inputs_case / "capnonrsc.csv").write_text("*i,r,value\nsolar,p1,100.0\n")
+
+    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    records = json.loads(mapping_path.read_text())
+    record = next(item for item in records if item["name"] == "existing_capacity")
+    store = DataStore(path=tmp_path)
+    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+
+    result = store.read_data("existing_capacity")
+
+    assert result.collect().to_dicts() == [{"technology": "solar", "region": "p1", "capacity": 100.0}]
+
+
+def test_read_existing_transmission_capacity_with_r_column(tmp_path: Path) -> None:
+    """Initial transmission capacity inputs use 'r' as the from-region column."""
+    import json
+
+    from r2x_core import DataFile, DataStore
+
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    (inputs_case / "trancap_init_energy.csv").write_text("r,rr,trtype,MW\np1,p2,AC,10.7\n")
+
+    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    records = json.loads(mapping_path.read_text())
+    record = next(item for item in records if item["name"] == "existing_transmission_capacity")
+    store = DataStore(path=tmp_path)
+    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+
+    result = store.read_data("existing_transmission_capacity")
+
+    assert result.collect().to_dicts() == [
+        {"from_region": "p1", "to_region": "p2", "trtype": "ac", "capacity": 10.7}
+    ]
+
+
+def test_read_renewable_supply_curves_with_domain_marked_technology_column(tmp_path: Path) -> None:
+    """Renewable supply curves use GAMS' domain-marked '*i' technology column."""
+    import json
+
+    from r2x_core import DataFile, DataStore
+
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    (inputs_case / "caprsc.csv").write_text("*i,r,value\nupv,p1,10.0\n")
+
+    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    records = json.loads(mapping_path.read_text())
+    record = next(item for item in records if item["name"] == "renewable_supply_curves")
+    store = DataStore(path=tmp_path)
+    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+
+    result = store.read_data("renewable_supply_curves")
+
+    assert result.collect().to_dicts() == [{"technology": "upv", "region": "p1", "capacity": 10.0}]
+
+
+def test_read_original_hierarchy_with_r_column(tmp_path: Path) -> None:
+    """Current original hierarchy inputs use 'r' instead of 'ba' and 'aggreg'."""
+    import json
+
+    from r2x_core import DataFile, DataStore
+
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    (inputs_case / "hierarchy_original.csv").write_text(
+        "r,st,interconnect,transgrp,transreg,nercr,hurdlereg,country,cendiv,"
+        "usda_region,h2ptcreg,gasreg,offshore\n"
+        "p1,wa,western,northerngrid_west,northerngrid,wecc_nw,bonneville,usa,"
+        "pacific,pacific,northwest,northwest,0\n"
+    )
+
+    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    records = json.loads(mapping_path.read_text())
+    record = next(item for item in records if item["name"] == "hierarchy_original")
+    store = DataStore(path=tmp_path)
+    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+
+    result = store.read_data("hierarchy_original")
+
+    assert result.collect().to_dicts() == [
+        {
+            "r": "p1",
+            "state": "wa",
+            "interconnect": "western",
+            "transmission_group": "northerngrid_west",
+            "transmission_region": "northerngrid",
+            "nerc_region": "wecc_nw",
+            "hurdle_region": "bonneville",
+            "country": "usa",
+            "cendiv": "pacific",
+            "usda_region": "pacific",
+            "h2ptc_region": "northwest",
+            "gasreg": "northwest",
+            "offshore": 0,
+        }
+    ]
 
 
 def test_is_outputs_h5_mapped_matches_expected_datasets(reeds_run_path: Path) -> None:
