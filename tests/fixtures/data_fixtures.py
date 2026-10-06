@@ -80,13 +80,11 @@ def data_store(reeds_run_path: Path, reeds_config: "ReEDSConfig") -> "DataStore"
 @pytest.fixture(scope="session")
 def parser(reeds_config: "ReEDSConfig", data_store: "DataStore") -> "ReEDSParser":
     """ReEDS parser instance (initialized with context)."""
-    from typing import cast
-
     from r2x_core import PluginContext
     from r2x_reeds import ReEDSParser
 
     ctx = PluginContext(config=reeds_config, store=data_store)
-    return cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    return ReEDSParser.from_context(ctx)
 
 
 # Backward compatibility aliases for tests using old fixture names
@@ -98,7 +96,10 @@ def example_reeds_config(reeds_config: "ReEDSConfig") -> "ReEDSConfig":
 
 @pytest.fixture(scope="session")
 def example_data_store(data_store: "DataStore") -> "DataStore":
-    """Alias for data_store (backward compatibility)."""
+    """Legacy test store with ReEDS-specific readers explicitly registered."""
+    from r2x_reeds import register_modeled_years_reader
+
+    register_modeled_years_reader(data_store)
     return data_store
 
 

@@ -12,7 +12,7 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import h5py
 import numpy as np
@@ -25,12 +25,14 @@ from rust_ok import Err, Ok, Result
 from r2x_core import (
     ComponentCreationError,
     Plugin,
+    PluginContext,
     Rule,
     System,
     create_component,
 )
 from r2x_core.processors import apply_processing
 
+from .data_readers import register_modeled_years_reader
 from .enum_mappings import RESERVE_TYPE_MAP
 from .getters import (
     build_generator_name,
@@ -300,6 +302,14 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         self._excluded_techs: list[str] = []
         self._category_to_class_map: dict[str, str | type[ReEDSGenerator]] = {}
         self._resource_supply_curve_datasets: tuple[str, ...] = ()
+
+    @classmethod
+    def from_context(cls, ctx: PluginContext[ReEDSConfig]) -> Self:
+        """Create the parser and install the reader for ReEDS' dynamic year columns."""
+        parser = cast(Self, super().from_context(ctx))
+        if ctx.store is not None:
+            register_modeled_years_reader(ctx.store)
+        return parser
 
     def _truncate_and_cast_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
         """Truncate a time series to 8760 and ensure dtype float64."""
@@ -1140,7 +1150,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         region = self._region_cache.get(str(region_name))
         if region is None:
-            region = system.get_component(ReEDSRegion, str(region_name))
+            region = system.get_component(ReEDSRegion, name=str(region_name))
         if region is None:
             logger.debug("Skipping {} row with unknown region {}", technology, region_name)
             return None

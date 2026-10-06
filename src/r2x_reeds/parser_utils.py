@@ -47,7 +47,7 @@ def _build_generator_field_map(row: Mapping[str, Any], system: System) -> dict[s
 
     if isinstance(region_name, str):
         try:
-            region_component = system.get_component(ReEDSRegion, region_name)
+            region_component = system.get_component(ReEDSRegion, name=region_name)
         except Exception:
             region_component = None
 
@@ -547,7 +547,7 @@ def _collect_component_kwargs_from_rule(
         if rule_result.is_err():
             rule_error = rule_result.err()
             errors.append(f"{identifier_value}: {rule_error}")
-            logger.error("Failed to resolve rule for %s: %s", identifier_value, rule_error)
+            logger.error("Failed to resolve rule for {}: {}", identifier_value, rule_error)
             continue
         selected_rule = rule_result.ok()
         if selected_rule is None:
@@ -558,21 +558,21 @@ def _collect_component_kwargs_from_rule(
         if parser_context is None:
             error_msg = "Parser context is required to build component kwargs"
             errors.append(f"{identifier_value}: {error_msg}")
-            logger.error("Failed to build kwargs for %s: %s", identifier_value, error_msg)
+            logger.error("Failed to build kwargs for {}: {}", identifier_value, error_msg)
             continue
 
         result = build_component_kwargs(row, rule=selected_rule, context=parser_context)
         if result.is_err():
             error_value = result.err()
             errors.append(f"{identifier_value}: {error_value}")
-            logger.error("Failed to build kwargs for %s: %s", identifier_value, error_value)
+            logger.error("Failed to build kwargs for {}: {}", identifier_value, error_value)
             continue
 
         component_kwargs = result.ok()
         if component_kwargs is None:
             error_msg = "Empty kwargs result"
             errors.append(f"{identifier_value}: {error_msg}")
-            logger.error("Failed to build kwargs for %s: %s", identifier_value, error_msg)
+            logger.error("Failed to build kwargs for {}: {}", identifier_value, error_msg)
             continue
 
         collected.append((identifier_value, component_kwargs))

@@ -12,7 +12,6 @@ pytestmark = [pytest.mark.integration]
 
 @pytest.fixture
 def upgraded_system(reeds_run_upgrader, example_reeds_config, caplog):
-    from typing import cast
 
     from r2x_core import DataStore, PluginContext
     from r2x_reeds.parser import ReEDSParser
@@ -20,7 +19,7 @@ def upgraded_system(reeds_run_upgrader, example_reeds_config, caplog):
     store = DataStore.from_plugin_config(example_reeds_config, path=reeds_run_upgrader)
 
     ctx = PluginContext(config=example_reeds_config, store=store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
     result_ctx = parser.run()
     system = result_ctx.system
     assert system is not None

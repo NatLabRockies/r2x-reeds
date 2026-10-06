@@ -24,6 +24,23 @@ def _reeds_getter(func):
     return getter(func)
 
 
+def _get_region_by_name(system: Any, region_name: str) -> ReEDSRegion:
+    """Return a region by exact name, allowing source-case differences."""
+    try:
+        return system.get_component(ReEDSRegion, name=region_name)
+    except Exception as exact_error:
+        matches = [
+            region
+            for region in system.get_components(ReEDSRegion)
+            if region.name.casefold() == region_name.casefold()
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(f"Multiple regions match {region_name!r} case-insensitively") from exact_error
+        raise
+
+
 @_reeds_getter
 def lookup_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Exception]:
     """Look up region component by name from the system.
@@ -40,7 +57,6 @@ def lookup_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Ex
     Result[ReEDSRegion, Exception]
         Ok(region) if found, Err(exception) if failed
     """
-    from r2x_reeds.models.components import ReEDSRegion
 
     try:
         region_name = get_row_field(row, "region")
@@ -49,7 +65,7 @@ def lookup_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Ex
 
         if context.system is None:
             return Err(ValueError("System not available in context"))
-        region = context.system.get_component(ReEDSRegion, str(region_name))
+        region = _get_region_by_name(context.system, str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)
@@ -299,7 +315,6 @@ def _lookup_region_by_field(
     row: Any, field: str, *, context: PluginContext
 ) -> Result[ReEDSRegion, Exception]:
     """Shared helper to look up regions by a configurable field."""
-    from r2x_reeds.models.components import ReEDSRegion
 
     try:
         region_name = get_row_field(row, field)
@@ -308,7 +323,7 @@ def _lookup_region_by_field(
 
         if context.system is None:
             return Err(ValueError("System not available in context"))
-        region = context.system.get_component(ReEDSRegion, str(region_name))
+        region = _get_region_by_name(context.system, str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)

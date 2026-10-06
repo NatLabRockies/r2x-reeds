@@ -23,8 +23,6 @@ if TYPE_CHECKING:
 
 
 def _build_parser(run_path: Path, *, use_degraded_capacity: bool = False):
-    from typing import cast
-
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
@@ -37,7 +35,7 @@ def _build_parser(run_path: Path, *, use_degraded_capacity: bool = False):
     )
     store = DataStore.from_plugin_config(config, path=run_path)
     ctx = PluginContext(config=config, store=store)
-    return cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    return ReEDSParser.from_context(ctx)
 
 
 def _write_minimal_outputs_h5_from_fuel_price(csv_path: Path, h5_path: Path) -> None:
@@ -88,6 +86,7 @@ def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_pa
 
     outputs_dir = run_path / "outputs"
     fuel_price_csv = outputs_dir / "fuel_price.csv"
+    pl.DataFrame({"i": ["NGAS"], "r": ["P1"], "t": [2032], "value": [4.2]}).write_csv(fuel_price_csv)
     outputs_h5 = outputs_dir / "outputs.h5"
 
     _write_minimal_outputs_h5_from_fuel_price(fuel_price_csv, outputs_h5)
@@ -100,10 +99,14 @@ def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_pa
     df = result.collect()
     assert not df.is_empty()
     assert {"technology", "region", "year", "fuel_price"}.issubset(set(df.columns))
+    assert df.select("technology", "region").to_dict(as_series=False) == {
+        "technology": ["ngas"],
+        "region": ["p1"],
+    }
 
 
 def test_read_data_file_uses_degraded_capacity_from_outputs_h5(tmp_path: Path, reeds_run_path: Path) -> None:
-    """The degraded-capacity flag selects cap_deg_ivrt from outputs.h5."""
+    """Select degraded capacity and lowercase its technology and region identifiers."""
     run_path = tmp_path / "test_Pacific"
     shutil.copytree(reeds_run_path, run_path)
 
@@ -111,8 +114,8 @@ def test_read_data_file_uses_degraded_capacity_from_outputs_h5(tmp_path: Path, r
     with h5py.File(outputs_h5, "w") as h5_file:
         group = h5_file.create_group("cap_deg_ivrt")
         group.create_dataset("columns", data=np.array([b"i", b"r", b"t", b"v", b"value"]))
-        group.create_dataset("i", data=np.array([b"wind-ons"]))
-        group.create_dataset("r", data=np.array([b"p4"]))
+        group.create_dataset("i", data=np.array([b"WIND-ONS"]))
+        group.create_dataset("r", data=np.array([b"P4"]))
         group.create_dataset("t", data=np.array([2032]))
         group.create_dataset("v", data=np.array([2020]))
         group.create_dataset("value", data=np.array([95.0]))
@@ -166,6 +169,47 @@ def test_read_data_file_reports_missing_degraded_capacity(tmp_path: Path, reeds_
     parser = _build_parser(run_path, use_degraded_capacity=True)
     with pytest.raises(FileNotFoundError, match="cap_deg_ivrt"):
         parser.read_data_file("online_capacity")
+
+
+@pytest.mark.parametrize(
+    "register_with_parser",
+    [False, True],
+    ids=["explicit-reader-registration", "parser-context"],
+)
+def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path, register_with_parser: bool) -> None:
+    import json
+
+    from r2x_core import DataFile, DataStore, PluginContext
+    from r2x_reeds import ReEDSConfig, ReEDSParser, register_modeled_years_reader
+
+    input_case = tmp_path / "inputs_case"
+    input_case.mkdir()
+    (input_case / "modeledyears.csv").write_text("2010,2020,2030\n")
+    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    records = json.loads(mapping_path.read_text())
+    record = next(item for item in records if item["name"] == "modeled_years")
+    data_file = DataFile.from_record(record, folder_path=tmp_path)
+    store = DataStore(tmp_path)
+    store.add_data([data_file])
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="test",
+        scenario="base",
+    )
+    if register_with_parser:
+        store = ReEDSParser.from_context(PluginContext(config=config, store=store)).store
+    else:
+        register_modeled_years_reader(store)
+
+    result = store.read_data("modeled_years").collect()
+
+    assert result.schema["modeled_years"] == pl.Int32
+    assert result.to_dicts() == [
+        {"modeled_years": 2010},
+        {"modeled_years": 2020},
+        {"modeled_years": 2030},
+    ]
 
 
 def test_read_fuel_tech_map_uses_reeds_mapping_nodes(tmp_path: Path, reeds_run_path: Path) -> None:

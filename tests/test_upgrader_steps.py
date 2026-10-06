@@ -7,7 +7,12 @@ import pytest
 
 from r2x_reeds.upgrader.data_upgrader import ReEDSVersionDetector
 from r2x_reeds.upgrader.helpers import LEGACY_VERSION
-from r2x_reeds.upgrader.upgrade_steps import move_hmap_file, move_hmap_myr_file, move_transmission_cost
+from r2x_reeds.upgrader.upgrade_steps import (
+    move_hmap_file,
+    move_hmap_myr_file,
+    move_transmission_cost,
+    upgrade_transmission_cost_format,
+)
 
 pytestmark = [pytest.mark.integration]
 
@@ -125,6 +130,91 @@ def test_move_transmission_cost_skips_missing_files(tmp_path: Path) -> None:
     # Neither old files exist - should complete without error
     result = move_transmission_cost(tmp_path)
     assert result == tmp_path
+
+
+@pytest.mark.parametrize(
+    ("current_version", "ac_filename", "distance_filename"),
+    [
+        (
+            "2025.12.01",
+            "transmission_distance_cost_500kVac.csv",
+            "transmission_distance_cost_500kVdc.csv",
+        ),
+        ("2026.03.24", "transmission_cost_ac.csv", "transmission_distance.csv"),
+    ],
+)
+def test_upgrader_migrates_legacy_transmission_files(
+    tmp_path: Path,
+    current_version: str,
+    ac_filename: str,
+    distance_filename: str,
+) -> None:
+    """Old file names and renamed legacy files both reach the current schema."""
+    from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader
+
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+    (inputs_case / ac_filename).write_text("r,rr,length_miles,USD2004perMW\np1,p2,132.46,298752.72\n")
+    (inputs_case / distance_filename).write_text("r,rr,length_miles,USD2004perMW\np1,p2,132.46,123589.84\n")
+
+    result = ReEDSUpgrader(tmp_path).upgrade(current_version=current_version)
+
+    assert result.is_ok()
+    with (inputs_case / "transmission_cost_ac.csv").open(newline="") as fh:
+        assert csv.DictReader(fh).fieldnames == [
+            "r",
+            "rr",
+            "USD2004perMW_forward",
+            "USD2004perMW_reverse",
+            "tscbin",
+            "binwidth_USD2004",
+        ]
+    with (inputs_case / "transmission_distance.csv").open(newline="") as fh:
+        assert csv.DictReader(fh).fieldnames == ["r", "rr", "miles"]
+
+
+def test_upgrade_transmission_cost_format_converts_and_is_idempotent(tmp_path: Path) -> None:
+    """Convert renamed legacy transmission tables to the current schema."""
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+    ac_path = inputs_case / "transmission_cost_ac.csv"
+    ac_path.write_text("r,rr,length_miles,USD2004perMW\np1,p2,132.46,298752.72\n")
+    distance_path = inputs_case / "transmission_distance.csv"
+    distance_path.write_text("r,rr,length_miles,USD2004perMW\np1,p2,132.46,123589.84\n")
+
+    result = upgrade_transmission_cost_format(tmp_path)
+
+    assert result == tmp_path
+    with ac_path.open(newline="") as fh:
+        ac_reader = csv.DictReader(fh)
+        assert ac_reader.fieldnames == [
+            "r",
+            "rr",
+            "USD2004perMW_forward",
+            "USD2004perMW_reverse",
+            "tscbin",
+            "binwidth_USD2004",
+        ]
+        assert list(ac_reader) == [
+            {
+                "r": "p1",
+                "rr": "p2",
+                "USD2004perMW_forward": "298752.72",
+                "USD2004perMW_reverse": "",
+                "tscbin": "",
+                "binwidth_USD2004": "",
+            }
+        ]
+    with distance_path.open(newline="") as fh:
+        distance_reader = csv.DictReader(fh)
+        assert distance_reader.fieldnames == ["r", "rr", "miles"]
+        assert list(distance_reader) == [{"r": "p1", "rr": "p2", "miles": "132.46"}]
+
+    converted_ac = ac_path.read_text()
+    converted_distance = distance_path.read_text()
+    upgrade_transmission_cost_format(tmp_path)
+    assert ac_path.read_text() == converted_ac
+    assert distance_path.read_text() == converted_distance
 
 
 def test_move_hmap_myr_file_moves_legacy_file(tmp_path: Path) -> None:

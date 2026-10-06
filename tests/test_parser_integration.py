@@ -171,7 +171,6 @@ def loadsite_run_path(tmp_path_factory, reeds_run_path):
 @pytest.fixture(scope="session")
 def loadsite_system(loadsite_run_path):
     """Build a system with loadsite_op + hmap_myr data included."""
-    from typing import cast
 
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
@@ -184,7 +183,7 @@ def loadsite_system(loadsite_run_path):
     )
     store = DataStore.from_plugin_config(config, path=loadsite_run_path)
     ctx = PluginContext(config=config, store=store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
     ctx = parser.run(ctx=ctx)
     if ctx.system is None:
         raise RuntimeError("loadsite system build returned None")

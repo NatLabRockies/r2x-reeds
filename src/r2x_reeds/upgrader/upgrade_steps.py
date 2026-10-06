@@ -1,5 +1,9 @@
 """Upgrades for ReEDS data."""
 
+import csv
+import os
+import stat
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +64,83 @@ def move_transmission_cost(folder: Path, upgrader_context: dict[str, Any] | None
     return folder
 
 
+def _rewrite_transmission_csv(path: Path, column_mapping: dict[str, str | None]) -> None:
+    """Rewrite a legacy transmission CSV with the specified current columns."""
+    if not path.exists():
+        logger.debug("Transmission file {} not found; skipping conversion", path.name)
+        return
+
+    fieldnames = list(column_mapping)
+    with path.open(newline="", encoding="utf-8") as source:
+        reader = csv.DictReader(source)
+        source_fields = reader.fieldnames
+        if source_fields is None:
+            raise ValueError(f"Cannot upgrade transmission file {path}: CSV header is missing")
+        if set(fieldnames).issubset(source_fields):
+            logger.debug("Transmission file {} already has the current columns", path.name)
+            return
+
+        required_fields = {source for source in column_mapping.values() if source is not None}
+        missing_fields = required_fields.difference(source_fields)
+        if missing_fields:
+            missing = ", ".join(sorted(missing_fields))
+            raise ValueError(f"Cannot upgrade transmission file {path}: missing legacy column(s): {missing}")
+
+        rows = [
+            {target: row[source] if source is not None else "" for target, source in column_mapping.items()}
+            for row in reader
+        ]
+
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            newline="",
+            encoding="utf-8",
+            dir=path.parent,
+            delete=False,
+        ) as destination:
+            temporary_path = Path(destination.name)
+            writer = csv.DictWriter(destination, fieldnames=fieldnames, lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(rows)
+
+        os.chmod(temporary_path, stat.S_IMODE(path.stat().st_mode))
+        temporary_path.replace(path)
+    except Exception:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
+
+    logger.debug("Converted legacy transmission file {} to current columns", path.name)
+
+
+def upgrade_transmission_cost_format(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
+    """Convert renamed legacy transmission inputs to the current CSV schemas.
+
+    Legacy AC costs become forward costs. The new reverse-cost and cost-bin fields
+    have no legacy equivalents and are left empty. The DC table contributes only
+    distances to the current shared transmission-distance table.
+    """
+    inputs_case = folder / "inputs_case"
+    _rewrite_transmission_csv(
+        inputs_case / "transmission_cost_ac.csv",
+        {
+            "r": "r",
+            "rr": "rr",
+            "USD2004perMW_forward": "USD2004perMW",
+            "USD2004perMW_reverse": None,
+            "tscbin": None,
+            "binwidth_USD2004": None,
+        },
+    )
+    _rewrite_transmission_csv(
+        inputs_case / "transmission_distance.csv",
+        {"r": "r", "rr": "rr", "miles": "length_miles"},
+    )
+    return folder
+
+
 def move_hmap_myr_file(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
     """Move hmap_myr.csv from inputs_case/ to inputs_case/rep/ if present at the old location.
 
@@ -106,6 +187,13 @@ UPGRADE_STEPS = [
         target_version="2026.01.22",
         upgrade_type=UpgradeType.FILE,
         priority=30,
+    ),
+    UpgradeStep(
+        name="upgrade_transmission_cost_format",
+        func=upgrade_transmission_cost_format,
+        target_version="2026.10.04",
+        upgrade_type=UpgradeType.FILE,
+        priority=31,
     ),
     UpgradeStep(
         name="move_hmap_myr_file",

@@ -214,7 +214,7 @@ def _normalize_loadsite(frame: pl.DataFrame, solve_year: int | None) -> pl.DataF
 def _get_region(system: System, region_name: str) -> ReEDSRegion | None:
     """Fetch region component by name, returning ``None`` when absent."""
     try:
-        return system.get_component(ReEDSRegion, region_name)
+        return system.get_component(ReEDSRegion, name=region_name)
     except Exception:
         return None
 

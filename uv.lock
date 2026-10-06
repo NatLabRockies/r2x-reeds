@@ -1271,7 +1271,7 @@ wheels = [
 
 [[package]]
 name = "r2x-core"
-version = "0.8.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -1282,9 +1282,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "rust-ok" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/06/322b18ace8b40b475cb3a6be3a2bb69bc57e5df92970efcfb9031b390e03/r2x_core-0.8.0.tar.gz", hash = "sha256:1010261b345a5b3211a018f024202219578f476ba9c2bf48364af90cea96e552", size = 78530, upload-time = "2026-08-20T23:54:22.389Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4d/ce/e2224b14eccaf8a272973ba72b61f6b1a7548faf23e9fe1498a3ad2afd3b/r2x_core-0.9.0.tar.gz", hash = "sha256:af8afe6bb3a00f47d6747f6c613c551887168351ce9ef070fead1faf0a3ef5fd", size = 84821, upload-time = "2026-10-01T04:35:33.382Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/af/2a1b750aaaa8088bc355d3988b802e7ce896bffe86b63e969967a9283746/r2x_core-0.8.0-py3-none-any.whl", hash = "sha256:1953e13d21c01737d3983acad61d1e106645c1ef479fac3b2f538ca497ba368d", size = 94089, upload-time = "2026-08-20T23:54:21.204Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/a5/f934885c51badc789ee8ca0468feeda1c690e1c31207d8fe8745815dc52a/r2x_core-0.9.0-py3-none-any.whl", hash = "sha256:2e3fe77fdfe7a990dac2e87c1159d7e7c2b9015636df4b510aa78e68499c691a", size = 100252, upload-time = "2026-10-01T04:35:31.61Z" },
 ]
 
 [[package]]
@@ -1320,7 +1320,7 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "r2x-core", specifier = ">=0.8.0,<1.0.0" }]
+requires-dist = [{ name = "r2x-core", specifier = ">=0.9.0,<1.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [

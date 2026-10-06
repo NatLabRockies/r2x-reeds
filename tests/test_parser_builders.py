@@ -40,7 +40,7 @@ def initialized_parser(
     from r2x_core import PluginContext
 
     ctx = PluginContext(config=example_reeds_config, store=example_data_store)
-    parser = cast(ReEDSParser, example_parser.from_context(ctx))
+    parser = example_parser.from_context(ctx)
     assert parser.on_prepare().is_ok()
     return parser
 
@@ -140,14 +140,13 @@ def test_build_emissions_only_attaches_to_created_generators(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Ensure emissions are only attached to generators that were created."""
-    from typing import cast
 
     from r2x_core import PluginContext, System
     from r2x_reeds import ReEDSParser
     from r2x_reeds.models.components import ReEDSRegion, ReEDSThermalGenerator
 
     ctx = PluginContext(config=example_reeds_config, store=example_data_store)
-    parser = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    parser = ReEDSParser.from_context(ctx)
     assert parser.on_prepare().is_ok()
 
     system = System(name="emissions-test")
@@ -250,13 +249,12 @@ def test_builder_methods_return_result(initialized_parser: ReEDSParser, built_sy
 @pytest.fixture
 def fresh_parser(reeds_config: ReEDSConfig, data_store: DataStore) -> ReEDSParser:
     """Fresh function-scoped parser with on_prepare already called."""
-    from typing import cast
 
     from r2x_core import PluginContext
     from r2x_reeds import ReEDSParser
 
     ctx = PluginContext(config=reeds_config, store=data_store)
-    p = cast(ReEDSParser, ReEDSParser.from_context(ctx))
+    p = ReEDSParser.from_context(ctx)
     assert p.on_prepare().is_ok()
     return p
 
