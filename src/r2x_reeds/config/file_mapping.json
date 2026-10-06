@@ -27,7 +27,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "i": "technology",
+        "*i": "technology",
         "r": "region",
         "value": "capacity"
       }
@@ -155,7 +155,6 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "ba": "ba",
         "cendiv": "cendiv",
         "country": "country",
         "h2ptcreg": "h2ptc_region",
@@ -165,8 +164,7 @@
         "st": "state",
         "transgrp": "transmission_group",
         "transreg": "transmission_region",
-        "usda_region": "usda_region",
-        "aggreg": "aggreg"
+        "usda_region": "usda_region"
       }
     }
   },
@@ -182,7 +180,7 @@
     "proc_spec": {
       "lowercase": true,
       "column_mapping": {
-        "*r": "from_region",
+        "r": "from_region",
         "rr": "to_region",
         "mw": "capacity"
       }
@@ -403,10 +401,7 @@
       "column_mapping": {
         "f": "fuel_type",
         "i": "technology"
-      },
-      "drop_columns": [
-        "value"
-      ]
+      }
     }
   },
   {
@@ -515,7 +510,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "i": "technology",
+        "*i": "technology",
         "r": "region",
         "value": "capacity"
       }
