@@ -1,0 +1,616 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="ReEDS to X with Python Scripts" href="reeds-to-x-script.html"><link rel="prev" title="Add Purchaser Load Transform" href="purchaser-load.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>ReEDS to X with the CLI - r2x-core</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-reports.089ed2e62f89368aa21ac7591d90c12a.css?v=83177741" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">r2x-core</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">r2x-core</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">How-To Guides</a><input aria-label="Toggle navigation of How-To Guides" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="purchaser-load.html">Add Purchaser Load Transform</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">ReEDS to X with the CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reeds-to-x-script.html">ReEDS to X with Python Scripts</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../references/transforms.html">Transforms Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../references/upgrader.html">Upgrader Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../references/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../references/api.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../references/configuration.html">Configuration Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../references/transforms.html">Transforms Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../references/upgrader.html">Upgrader Reference</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/NREL/r2x-core/blob/main/docs/how-tos/reeds-to-x-cli.md?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/NREL/r2x-core/edit/main/docs/how-tos/reeds-to-x-cli.md" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="reeds-to-x-with-the-cli">
+<h1>ReEDS to X with the CLI<a class="headerlink" href="#reeds-to-x-with-the-cli" title="Link to this heading">¶</a></h1>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">r2x</span></code> CLI for standard ReEDS translations. This page covers pipeline YAML configuration, parser capabilities, system modifiers, and CLI validation. For Python runners with custom logic and target-system setup, see <a class="reference internal" href="reeds-to-x-script.html"><span class="std std-doc">ReEDS to X with Python scripts</span></a>.</p>
+<section id="install-plugins">
+<h2>Install Plugins<a class="headerlink" href="#install-plugins" title="Link to this heading">¶</a></h2>
+<p>Install the plugins required by the translation target:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>r2x<span class="w"> </span>install<span class="w"> </span>r2x-reeds
+r2x<span class="w"> </span>install<span class="w"> </span>r2x-plexos
+r2x<span class="w"> </span>install<span class="w"> </span>r2x-reeds-to-plexos
+</pre></div>
+</div>
+<p>For ReEDS to Sienna, install <code class="docutils literal notranslate"><span class="pre">r2x-sienna</span></code> and <code class="docutils literal notranslate"><span class="pre">r2x-reeds-to-sienna</span></code> instead of the PLEXOS plugins.</p>
+</section>
+<section id="reeds-to-plexos-pipeline">
+<h2>ReEDS to PLEXOS Pipeline<a class="headerlink" href="#reeds-to-plexos-pipeline" title="Link to this heading">¶</a></h2>
+<p>Save this as <code class="docutils literal notranslate"><span class="pre">reeds-to-plexos-pipeline.yaml</span></code> and replace the placeholder paths:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">variables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;reeds_run_name&gt;</span>
+<span class="w">  </span><span class="nt">output_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;output_path&gt;</span>
+<span class="w">  </span><span class="nt">reeds_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;reeds_run_path&gt;</span>
+<span class="w">  </span><span class="nt">plexos_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PLEXOS12.0</span>
+<span class="w">  </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2050</span>
+<span class="w">  </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2012</span>
+
+<span class="nt">pipelines</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">r2p</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds.reeds-parser</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds.break-gens</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds.add-pcm-defaults</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds-to-plexos.reeds-to-plexos</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-plexos.plexos-exporter</span>
+
+<span class="nt">config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">r2x-reeds.reeds-parser</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${reeds_run}</span>
+<span class="w">    </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+<span class="w">    </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${weather_year}</span>
+<span class="w">    </span><span class="nt">case_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_case_label&gt;</span>
+<span class="w">    </span><span class="nt">scenario</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base</span>
+
+<span class="w">  </span><span class="nt">r2x-reeds.break-gens</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">drop_capacity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+
+<span class="w">  </span><span class="nt">r2x-reeds.add-pcm-defaults</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">pcm_defaults_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_pcm_defaults.json&gt;</span>
+<span class="w">    </span><span class="nt">pcm_defaults_override</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">  </span><span class="nt">r2x-reeds-to-plexos.reeds-to-plexos</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+<span class="w">    </span><span class="nt">hydro_budget_ts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly</span>
+
+<span class="w">  </span><span class="nt">r2x-plexos.plexos-exporter</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">model_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${model_name}</span>
+<span class="w">    </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${weather_year}</span>
+<span class="w">    </span><span class="nt">horizon_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+<span class="w">    </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${plexos_template}</span>
+<span class="w">    </span><span class="nt">output_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${output_dir}</span>
+
+<span class="nt">output_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${output_dir}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">pcm_defaults_fpath</span></code> is optional. The parser can build a system without it, and <code class="docutils literal notranslate"><span class="pre">break-gens</span></code> uses package defaults when <code class="docutils literal notranslate"><span class="pre">reference_units</span></code> is omitted.</p>
+</section>
+<section id="run-and-inspect">
+<h2>Run and Inspect<a class="headerlink" href="#run-and-inspect" title="Link to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>r2x<span class="w"> </span>run<span class="w"> </span>reeds-to-plexos-pipeline.yaml<span class="w"> </span>r2p
+
+<span class="c1"># List pipeline names and steps</span>
+r2x<span class="w"> </span>run<span class="w"> </span>reeds-to-plexos-pipeline.yaml<span class="w"> </span>--list
+
+<span class="c1"># Print resolved variables and plugin configuration</span>
+r2x<span class="w"> </span>run<span class="w"> </span>reeds-to-plexos-pipeline.yaml<span class="w"> </span>--print<span class="w"> </span>r2p
+
+<span class="c1"># Preview without executing</span>
+r2x<span class="w"> </span>run<span class="w"> </span>reeds-to-plexos-pipeline.yaml<span class="w"> </span>r2p<span class="w"> </span>--dry-run
+</pre></div>
+</div>
+<p>Use a scalar <code class="docutils literal notranslate"><span class="pre">weather_year</span></code> in CLI pipeline variables. Although <code class="docutils literal notranslate"><span class="pre">ReEDSConfig</span></code> accepts <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">list[int]</span></code>, the CLI pipeline and downstream transforms currently operate on one system per run. Run the pipeline once for each weather year when separate outputs are required.</p>
+</section>
+<section id="reeds-to-sienna-pipeline">
+<h2>ReEDS to Sienna Pipeline<a class="headerlink" href="#reeds-to-sienna-pipeline" title="Link to this heading">¶</a></h2>
+<p>The same parser and modifier steps can feed a Sienna translation:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">pipelines</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">r2s</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds.reeds-parser</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds.break-gens</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds.add-pcm-defaults</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-reeds-to-sienna.reeds-to-sienna</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2x-sienna.sienna-exporter</span>
+
+<span class="nt">config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">r2x-reeds-to-sienna.reeds-to-sienna</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+
+<span class="w">  </span><span class="nt">r2x-sienna.sienna-exporter</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">model_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+<span class="w">    </span><span class="nt">system_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${model_name}</span>
+<span class="w">    </span><span class="nt">output_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${output_dir}/${model_name}.json</span>
+<span class="w">    </span><span class="nt">system_base_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100.0</span>
+<span class="w">    </span><span class="nt">scenario</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base</span>
+</pre></div>
+</div>
+<p>Install the Sienna target plugins before running the pipeline:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>r2x<span class="w"> </span>install<span class="w"> </span>r2x-sienna
+r2x<span class="w"> </span>install<span class="w"> </span>r2x-reeds-to-sienna
+r2x<span class="w"> </span>run<span class="w"> </span>reeds-to-sienna-pipeline.yaml<span class="w"> </span>r2s
+</pre></div>
+</div>
+</section>
+<section id="parser-capabilities">
+<h2>Parser Capabilities<a class="headerlink" href="#parser-capabilities" title="Link to this heading">¶</a></h2>
+<p>Plugin id: <code class="docutils literal notranslate"><span class="pre">r2x-reeds.reeds-parser</span></code></p>
+<p>Required fields:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code>: ReEDS run folder used as the parser data store root.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">solve_year</span></code>: solve year or list of solve years.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">weather_year</span></code>: weather year or list of weather years.</p></li>
+</ul>
+<p>Optional fields:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">case_name</span></code>: case label stored in the system description.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scenario</span></code>: scenario label; defaults to <code class="docutils literal notranslate"><span class="pre">base</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">excluded_techs</span></code>: optional list of technologies to exclude. When omitted, the list from <code class="docutils literal notranslate"><span class="pre">defaults.json</span></code> is used.</p></li>
+</ul>
+<p>The package defaults still contain <code class="docutils literal notranslate"><span class="pre">can-imports</span></code> in <code class="docutils literal notranslate"><span class="pre">excluded_techs</span></code>. To include it while keeping the other default exclusions,
+set <code class="docutils literal notranslate"><span class="pre">excluded_techs</span></code> explicitly (for example, to the default list with <code class="docutils literal notranslate"><span class="pre">can-imports</span></code> removed), then apply <code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-imports</span></code>
+after the parser to attach the Canadian import time series.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">r2x-reeds.reeds-parser</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/reeds/run</span>
+<span class="w">    </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2030</span>
+<span class="w">    </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2012</span>
+<span class="w">    </span><span class="nt">excluded_techs</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">electrolyzer</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smr</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smr_ccs</span>
+</pre></div>
+</div>
+<p>The parser supports CSV inputs and <code class="docutils literal notranslate"><span class="pre">outputs/outputs.h5</span></code>, with fallback to legacy output CSV files. It can build:</p>
+<ul class="simple">
+<li><p>Regions and transmission-region hierarchies.</p></li>
+<li><p>Thermal, variable renewable, storage, hydro, and consuming-technology components.</p></li>
+<li><p>Demand components and load profiles.</p></li>
+<li><p>Wind and solar capacity-factor profiles.</p></li>
+<li><p>Hydro profiles expanded from monthly data.</p></li>
+<li><p>Transmission interfaces and bidirectional lines.</p></li>
+<li><p>Reserve regions, requirements, and memberships.</p></li>
+<li><p>Generator emission supplemental attributes.</p></li>
+<li><p>ReEDS resource-supply-curve site components.</p></li>
+<li><p>Generator heat rates, outage rates, fuel prices, variable operating costs, storage properties, and startup costs.</p></li>
+</ul>
+<p>Time series are truncated to 8760 values when a source contains more than one calendar year.</p>
+</section>
+<section id="system-modifiers">
+<h2>System Modifiers<a class="headerlink" href="#system-modifiers" title="Link to this heading">¶</a></h2>
+<p>Insert modifiers after <code class="docutils literal notranslate"><span class="pre">r2x-reeds.reeds-parser</span></code>. Every modifier requires a matching configuration block under <code class="docutils literal notranslate"><span class="pre">config</span></code>. The full field descriptions are also available in the <a class="reference internal" href="../references/transforms.html"><span class="std std-doc">transforms reference</span></a>.</p>
+<section id="r2x-reeds-break-gens">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.break-gens</span></code><a class="headerlink" href="#r2x-reeds-break-gens" title="Link to this heading">¶</a></h3>
+<p>Splits oversized generators into reference-sized units.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.break-gens</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">reference_units</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_json_path_or_mapping&gt;</span>
+<span class="w">  </span><span class="nt">drop_capacity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">  </span><span class="nt">break_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">category</span>
+<span class="w">  </span><span class="nt">skip_categories</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">storage</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">include_regions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">p1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">p2</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">include_generators</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">generator_name</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">include_technologies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">coal-new</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">reference_units</span></code>, <code class="docutils literal notranslate"><span class="pre">drop_capacity_threshold</span></code>, <code class="docutils literal notranslate"><span class="pre">break_category</span></code>, <code class="docutils literal notranslate"><span class="pre">skip_categories</span></code>, <code class="docutils literal notranslate"><span class="pre">include_regions</span></code>, <code class="docutils literal notranslate"><span class="pre">include_generators</span></code>, and <code class="docutils literal notranslate"><span class="pre">include_technologies</span></code> are supported. Multiple include filters use OR behavior.</p>
+</section>
+<section id="r2x-reeds-add-pcm-defaults">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-pcm-defaults</span></code><a class="headerlink" href="#r2x-reeds-add-pcm-defaults" title="Link to this heading">¶</a></h3>
+<p>Fills or overrides generator fields from PCM defaults.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-pcm-defaults</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pcm_defaults_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_pcm_defaults.json&gt;</span>
+<span class="w">  </span><span class="nt">pcm_defaults_dict</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_inline_mapping&gt;</span>
+<span class="w">  </span><span class="nt">pcm_defaults_override</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+</section>
+<section id="r2x-reeds-add-emission-cap">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-emission-cap</span></code><a class="headerlink" href="#r2x-reeds-add-emission-cap" title="Link to this heading">¶</a></h3>
+<p>Adds an annual CO2 constraint and optional precombustion emissions.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-emission-cap</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">emission_cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000000</span>
+<span class="w">  </span><span class="nt">co2_cap_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_co2_cap.csv&gt;</span>
+<span class="w">  </span><span class="nt">switches_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_switches.csv&gt;</span>
+<span class="w">  </span><span class="nt">emission_rates_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_emission_rates.csv&gt;</span>
+<span class="w">  </span><span class="nt">default_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tonne</span>
+</pre></div>
+</div>
+</section>
+<section id="r2x-reeds-add-electrolyzer-load">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-electrolyzer-load</span></code><a class="headerlink" href="#r2x-reeds-add-electrolyzer-load" title="Link to this heading">¶</a></h3>
+<p>Adds legacy electrolyzer load and hydrogen fuel-price time series.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-electrolyzer-load</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${weather_year}</span>
+<span class="w">  </span><span class="nt">electrolyzer_load_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_load.csv&gt;</span>
+<span class="w">  </span><span class="nt">h2_fuel_price_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_h2_price.csv&gt;</span>
+<span class="w">  </span><span class="nt">hour_map_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_hour_map.csv&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="r2x-reeds-add-purchaser-load">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-purchaser-load</span></code><a class="headerlink" href="#r2x-reeds-add-purchaser-load" title="Link to this heading">¶</a></h3>
+<p>Adds hydrogen-production and data-center demand.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-purchaser-load</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+<span class="w">  </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${weather_year}</span>
+<span class="w">  </span><span class="nt">hydrogen_production_capacity_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_cap.csv&gt;</span>
+<span class="w">  </span><span class="nt">consume_characteristics_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_consume_char.csv&gt;</span>
+<span class="w">  </span><span class="nt">hydrogen_production_load_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_prod_load.csv&gt;</span>
+<span class="w">  </span><span class="nt">hydrogen_production_annual_load_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_prod_load_ann.csv&gt;</span>
+<span class="w">  </span><span class="nt">loadsite_op_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;optional_loadsite_op.csv&gt;</span>
+<span class="w">  </span><span class="nt">hour_map_myr_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_hmap_myr.csv&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="r2x-reeds-add-ccs-credit">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-ccs-credit</span></code><a class="headerlink" href="#r2x-reeds-add-ccs-credit" title="Link to this heading">¶</a></h3>
+<p>Applies CCS incentives using three input files:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-ccs-credit</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">co2_incentive_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_co2_incentive.csv&gt;</span>
+<span class="w">  </span><span class="nt">emission_capture_rate_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_capture_rate.csv&gt;</span>
+<span class="w">  </span><span class="nt">upgrade_link_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_upgrade_link.csv&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="r2x-reeds-add-imports">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-imports</span></code><a class="headerlink" href="#r2x-reeds-add-imports" title="Link to this heading">¶</a></h3>
+<p>Adds Canadian import time series.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-imports</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+<span class="w">  </span><span class="nt">weather_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${weather_year}</span>
+<span class="w">  </span><span class="nt">canada_imports_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${reeds_run}/inputs_case/can_imports.csv</span><span class="w"> </span><span class="c1"># specific path (for fast lookup)</span>
+<span class="w">  </span><span class="nt">canada_szn_frac_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${reeds_run}/inputs_case/rep/can_imports_szn_frac.csv</span><span class="w"> </span><span class="c1"># specific path (for fast lookup)</span>
+<span class="w">  </span><span class="nt">hour_map_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${reeds_run}/inputs_case/rep/hmap_myr.csv</span><span class="w"> </span><span class="c1"># specific path (for fast lookup)</span>
+</pre></div>
+</div>
+</section>
+<section id="r2x-reeds-add-optimal-siting">
+<h3><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-optimal-siting</span></code><a class="headerlink" href="#r2x-reeds-add-optimal-siting" title="Link to this heading">¶</a></h3>
+<p>Applies loadsite increments to existing demand profiles.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">r2x-reeds.add-optimal-siting</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">loadsite_op_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_loadsite_op.csv&gt;</span>
+<span class="w">  </span><span class="nt">hour_map_myr_fpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_hmap_myr.csv&gt;</span>
+<span class="w">  </span><span class="nt">solve_year</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${solve_year}</span>
+</pre></div>
+</div>
+<p>The parser must have attached demand time series before this modifier runs.</p>
+</section>
+</section>
+<section id="output-configuration">
+<h2>Output Configuration<a class="headerlink" href="#output-configuration" title="Link to this heading">¶</a></h2>
+<p>For PLEXOS, set <code class="docutils literal notranslate"><span class="pre">model_name</span></code>, <code class="docutils literal notranslate"><span class="pre">horizon_year</span></code>, <code class="docutils literal notranslate"><span class="pre">template</span></code>, and <code class="docutils literal notranslate"><span class="pre">output_path</span></code>. The exporter supports PLEXOS 9.0 through 12.0. For Sienna, set <code class="docutils literal notranslate"><span class="pre">model_year</span></code>, <code class="docutils literal notranslate"><span class="pre">system_name</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path</span></code>, <code class="docutils literal notranslate"><span class="pre">system_base_power</span></code>, and <code class="docutils literal notranslate"><span class="pre">scenario</span></code>.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="reeds-to-x-script.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">ReEDS to X with Python Scripts</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="purchaser-load.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Add Purchaser Load Transform</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Alliance for Sustainable Energy LLC, All rights reserved.
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/NREL/r2x-core" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">ReEDS to X with the CLI</a><ul>
+<li><a class="reference internal" href="#install-plugins">Install Plugins</a></li>
+<li><a class="reference internal" href="#reeds-to-plexos-pipeline">ReEDS to PLEXOS Pipeline</a></li>
+<li><a class="reference internal" href="#run-and-inspect">Run and Inspect</a></li>
+<li><a class="reference internal" href="#reeds-to-sienna-pipeline">ReEDS to Sienna Pipeline</a></li>
+<li><a class="reference internal" href="#parser-capabilities">Parser Capabilities</a></li>
+<li><a class="reference internal" href="#system-modifiers">System Modifiers</a><ul>
+<li><a class="reference internal" href="#r2x-reeds-break-gens"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.break-gens</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-pcm-defaults"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-pcm-defaults</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-emission-cap"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-emission-cap</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-electrolyzer-load"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-electrolyzer-load</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-purchaser-load"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-purchaser-load</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-ccs-credit"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-ccs-credit</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-imports"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-imports</span></code></a></li>
+<li><a class="reference internal" href="#r2x-reeds-add-optimal-siting"><code class="docutils literal notranslate"><span class="pre">r2x-reeds.add-optimal-siting</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#output-configuration">Output Configuration</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=f539c95a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=3a0c56fd"></script>
+    </body>
+</html>
