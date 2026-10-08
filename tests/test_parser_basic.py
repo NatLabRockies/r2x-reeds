@@ -241,42 +241,52 @@ def test_read_data_file_uses_store_for_non_outputs_dataset(reeds_run_path: Path)
     assert "region_id" in df.columns
 
 
-def test_read_existing_capacity_with_domain_marked_technology_column(tmp_path: Path) -> None:
-    """Existing capacity inputs use GAMS' domain-marked '*i' technology column."""
+@pytest.mark.parametrize("technology_column", ["i", "*i"])
+def test_read_existing_capacity_with_technology_column(tmp_path: Path, technology_column: str) -> None:
+    """Existing capacity inputs support plain and domain-marked technology columns."""
     import json
 
     from r2x_core import DataFile, DataStore
+    from r2x_reeds.data_readers import register_gams_header_readers
 
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
-    (inputs_case / "capnonrsc.csv").write_text("*i,r,value\nsolar,p1,100.0\n")
+    (inputs_case / "capnonrsc.csv").write_text(f"{technology_column},r,value\nsolar,p1,100.0\n")
 
     mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
     records = json.loads(mapping_path.read_text())
     record = next(item for item in records if item["name"] == "existing_capacity")
     store = DataStore(path=tmp_path)
     store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    register_gams_header_readers(store)
 
     result = store.read_data("existing_capacity")
 
     assert result.collect().to_dicts() == [{"technology": "solar", "region": "p1", "capacity": 100.0}]
 
 
-def test_read_existing_transmission_capacity_with_r_column(tmp_path: Path) -> None:
-    """Initial transmission capacity inputs use 'r' as the from-region column."""
+@pytest.mark.parametrize("from_region_column", ["r", "*r"])
+def test_read_existing_transmission_capacity_with_region_column(
+    tmp_path: Path, from_region_column: str
+) -> None:
+    """Initial transmission capacity inputs support plain and domain-marked regions."""
     import json
 
     from r2x_core import DataFile, DataStore
+    from r2x_reeds.data_readers import register_gams_header_readers
 
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
-    (inputs_case / "trancap_init_energy.csv").write_text("r,rr,trtype,MW\np1,p2,AC,10.7\n")
+    (inputs_case / "trancap_init_energy.csv").write_text(
+        f"{from_region_column},rr,trtype,MW\np1,p2,AC,10.7\n"
+    )
 
     mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
     records = json.loads(mapping_path.read_text())
     record = next(item for item in records if item["name"] == "existing_transmission_capacity")
     store = DataStore(path=tmp_path)
     store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    register_gams_header_readers(store)
 
     result = store.read_data("existing_transmission_capacity")
 
@@ -285,21 +295,24 @@ def test_read_existing_transmission_capacity_with_r_column(tmp_path: Path) -> No
     ]
 
 
-def test_read_renewable_supply_curves_with_domain_marked_technology_column(tmp_path: Path) -> None:
-    """Renewable supply curves use GAMS' domain-marked '*i' technology column."""
+@pytest.mark.parametrize("technology_column", ["i", "*i"])
+def test_read_renewable_supply_curves_with_technology_column(tmp_path: Path, technology_column: str) -> None:
+    """Renewable supply curves support plain and domain-marked technology columns."""
     import json
 
     from r2x_core import DataFile, DataStore
+    from r2x_reeds.data_readers import register_gams_header_readers
 
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
-    (inputs_case / "caprsc.csv").write_text("*i,r,value\nupv,p1,10.0\n")
+    (inputs_case / "caprsc.csv").write_text(f"{technology_column},r,value\nupv,p1,10.0\n")
 
     mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
     records = json.loads(mapping_path.read_text())
     record = next(item for item in records if item["name"] == "renewable_supply_curves")
     store = DataStore(path=tmp_path)
     store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    register_gams_header_readers(store)
 
     result = store.read_data("renewable_supply_curves")
 
