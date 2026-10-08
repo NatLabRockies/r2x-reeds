@@ -32,7 +32,7 @@ from r2x_core import (
 )
 from r2x_core.processors import apply_processing
 
-from .data_readers import register_modeled_years_reader
+from .data_readers import register_gams_header_readers, register_modeled_years_reader
 from .enum_mappings import RESERVE_TYPE_MAP
 from .getters import (
     build_generator_name,
@@ -305,9 +305,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
     @classmethod
     def from_context(cls, ctx: PluginContext[ReEDSConfig]) -> Self:
-        """Create the parser and install the reader for ReEDS' dynamic year columns."""
+        """Create the parser and install custom ReEDS data readers."""
         parser = cast(Self, super().from_context(ctx))
         if ctx.store is not None:
+            register_gams_header_readers(ctx.store)
             register_modeled_years_reader(ctx.store)
         return parser
 

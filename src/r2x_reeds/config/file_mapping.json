@@ -27,7 +27,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "*i": "technology",
+        "i": "technology",
         "r": "region",
         "value": "capacity"
       }
@@ -510,7 +510,7 @@
     },
     "proc_spec": {
       "column_mapping": {
-        "*i": "technology",
+        "i": "technology",
         "r": "region",
         "value": "capacity"
       }
