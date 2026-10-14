@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -15,9 +16,9 @@ _GAMS_HEADER_DATASETS = (
 )
 
 
-def _read_gams_header_csv(fpath: Path) -> pl.LazyFrame:
+def read_gams_header_csv(fpath: Path, /, **kwargs: Any) -> pl.LazyFrame:
     """Read a ReEDS CSV with or without GAMS' leading header marker."""
-    frame = pl.scan_csv(fpath)
+    frame = pl.scan_csv(fpath, **kwargs)
     columns = frame.collect_schema().names()
     if not columns or not columns[0].startswith("*"):
         return frame
@@ -26,13 +27,18 @@ def _read_gams_header_csv(fpath: Path) -> pl.LazyFrame:
 
 
 def register_gams_header_readers(store: DataStore, /) -> None:
-    """Normalize optional GAMS header markers for compatible ReEDS inputs."""
+    """Normalize single-row CSV headers, preserving explicit reader overrides."""
     for name in _GAMS_HEADER_DATASETS:
         if name not in store:
             continue
 
+        reader = store[name].reader
+        if reader is not None and (reader.function is not None or reader.header_rows > 1):
+            continue
+
+        reader = reader if reader is not None else ReaderConfig(kwargs={})
         data_file = store[name].model_copy(
-            update={"reader": ReaderConfig(kwargs={}, function=_read_gams_header_csv)}
+            update={"reader": reader.model_copy(update={"function": read_gams_header_csv})}
         )
         store.add_data([data_file], overwrite=True)
 
