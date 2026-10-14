@@ -39,7 +39,8 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run prek
-        run: uv run prek run --show-diff-on-failure --color=always --all-files --stage pre-commit
+        # Branch protection applies to local commits, not CI checkouts of main.
+        run: uv run prek run --show-diff-on-failure --color=always --all-files --stage pre-commit --skip no-commit-to-branch
 
 
   pytest:
