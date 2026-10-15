@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
+import polars as pl
+from loguru import logger
+
 from r2x_core import Err, Ok, PluginContext, Result
+from r2x_core.exceptions import ReaderError
 from r2x_core.getters import getter
 from r2x_reeds.enum_mappings import (
     map_emission_source,
@@ -16,12 +21,113 @@ from r2x_reeds.models.base import FromTo_ToFrom
 from r2x_reeds.models.components import ReEDSInterface, ReEDSRegion, ReEDSReserveRegion
 from r2x_reeds.models.enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
 from r2x_reeds.parser_utils import tech_matches_category
+from r2x_reeds.plugin_config import ReEDSConfig
 from r2x_reeds.row_utils import get_row_field
 
 
 def _reeds_getter(func):
     """Decorator to register a function as a ReEDS-specific getter."""
     return getter(func)
+
+
+def _fom_rule_dataset(
+    name: str, *, context: PluginContext[ReEDSConfig], year: int | None = None
+) -> pl.DataFrame:
+    """Reuse configured source tables within one parser rule context."""
+    cache: dict[tuple[str, int | None], pl.DataFrame] = context.metadata.setdefault("fom_datasets", {})
+    key = (name, year)
+    if key not in cache:
+        if context.store is None:
+            msg = "FOM rules require the parser context store"
+            raise ValueError(msg)
+        frame = context.store.read_data(name, placeholders={"solve_year": year} if year is not None else None)
+        if not isinstance(frame, pl.LazyFrame):
+            msg = f"Required FOM dataset {name!r} is unavailable"
+            raise ValueError(msg)
+        cache[key] = frame.collect()
+    return cache[key]
+
+
+@_reeds_getter
+def get_fom_cost(
+    row: SimpleNamespace, *, context: PluginContext[ReEDSConfig]
+) -> Result[float | None, Exception]:
+    """Apply ReEDS FOM source precedence to the configured rule's joined row."""
+    try:
+        technology = str(get_row_field(row, "technology"))
+        region = str(get_row_field(row, "region"))
+        vintage = str(get_row_field(row, "vintage") or "")
+        row_year = get_row_field(row, "year")
+        year = int(row_year) if row_year is not None else context.config.primary_solve_year
+        value = get_row_field(row, "fom_cost")
+        if get_row_field(row, "distpv") == "yes":
+            value = get_row_field(row, "hintage_fom_cost")
+            if value is None:
+                return Err(
+                    ValueError(
+                        f"Missing distributed-PV hintage FOM for {technology}/{vintage}/{region}/{year}"
+                    )
+                )
+        regional = get_row_field(row, "hydro_fom_cost")
+        if regional:
+            value = regional
+        target = get_row_field(row, "target_technology")
+        if target is not None:
+            switches = dict(_fom_rule_dataset("fom_switches", context=context).iter_rows())
+            if switches.get("gsw_upgrades") != "1":
+                return Err(ValueError("Active generator upgrades require GSw_Upgrades=1"))
+            target_year = int(switches["gsw_upgradechar_year"]) if vintage.startswith("init") else year
+            target_costs = _fom_rule_dataset("cost_fom", context=context, year=target_year).filter(
+                pl.col("technology") == target
+            )
+            if target_costs.is_empty():
+                return Err(ValueError(f"Missing upgrade target FOM for {technology}: target {target}"))
+            value = float(target_costs["fom_cost"][0])
+            if vintage.startswith("init"):
+                hydro = _fom_rule_dataset("fom_hydro", context=context).filter(
+                    (pl.col("technology") == target) & (pl.col("region") == region)
+                )
+                if not hydro.is_empty():
+                    value += float(hydro["hydro_fom_cost"][0])
+                unitspec = _fom_rule_dataset("fom_unitspec_upgrades", context=context)
+                subsets = _fom_rule_dataset("fom_technology_subsets", context=context)
+                is_ccs = not subsets.filter(
+                    (pl.col("technology") == target) & (pl.col("ccs") == "yes")
+                ).is_empty()
+                if (
+                    switches.get("gsw_upgradefom_nems") == "1"
+                    and technology in unitspec["technology"].to_list()
+                    and is_ccs
+                ):
+                    history = _fom_rule_dataset("fom_hintage", context=context).filter(
+                        (pl.col("technology") == get_row_field(row, "source_technology"))
+                        & (pl.col("vintage") == vintage)
+                        & (pl.col("region") == region)
+                    )
+                    current = history.filter(pl.col("year") == year)["ccs_retrofit_fom"].drop_nulls()
+                    retrofit = float(current[0]) if len(current) else None
+                    if not retrofit:
+                        eligible = history.filter(
+                            (pl.col("year") == int(switches["gsw_upgradeyear"]))
+                            & (pl.col("hintage_capacity") > 0)
+                        )
+                        prior = history.filter(
+                            (pl.col("year") < year) & (pl.col("ccs_retrofit_fom") != 0)
+                        ).sort("year")
+                        if not eligible.is_empty() and not prior.is_empty():
+                            retrofit = float(prior["ccs_retrofit_fom"][-1])
+                    if retrofit:
+                        value = retrofit
+        if get_row_field(row, "psh") == "yes":
+            value = float(_fom_rule_dataset("fom_scalars", context=context)["value"][0])
+        if value is None:
+            unknown: set[str] = context.metadata.setdefault("unknown_fom_technologies", set())
+            if technology not in unknown:
+                logger.warning("Fixed O&M is unknown for technology {}", technology)
+                unknown.add(technology)
+        return Ok(float(value) if value is not None else None)
+    except (OSError, ValueError, KeyError, ReaderError, pl.exceptions.PolarsError) as exc:
+        return Err(ValueError(f"Fixed O&M source data: {exc}"))
 
 
 def _get_region_by_name(system: Any, region_name: str) -> ReEDSRegion:

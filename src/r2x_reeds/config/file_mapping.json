@@ -640,12 +640,12 @@
       "unpivot_on": [],
       "column_mapping": {
         "variable": "region",
-        "value": "fom_cost"
+        "value": "hydro_fom_cost"
       },
       "column_schema": {
         "technology": "string",
         "region": "string",
-        "fom_cost": "float"
+        "hydro_fom_cost": "float"
       }
     }
   },
@@ -844,8 +844,8 @@
         "bin": "vintage",
         "r": "region",
         "yr": "year",
-        "cap": "capacity",
-        "wfom": "fom_cost",
+        "cap": "hintage_capacity",
+        "wfom": "hintage_fom_cost",
         "wccs_retro_fom": "ccs_retrofit_fom"
       },
       "column_schema": {
@@ -853,9 +853,9 @@
         "vintage": "string",
         "region": "string",
         "year": "int",
-        "capacity": "float",
-        "fom_cost": "float",
-        "ccs_retrofit_fom": "float"
+        "ccs_retrofit_fom": "float",
+        "hintage_fom_cost": "float",
+        "hintage_capacity": "float"
       },
       "scale": {
         "ccs_retrofit_fom": 1000
@@ -865,8 +865,8 @@
         "vintage",
         "region",
         "year",
-        "capacity",
-        "fom_cost",
+        "hintage_capacity",
+        "hintage_fom_cost",
         "ccs_retrofit_fom"
       ]
     }

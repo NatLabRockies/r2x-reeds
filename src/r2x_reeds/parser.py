@@ -33,9 +33,12 @@ from r2x_core import (
 from r2x_core.exceptions import ReaderError
 from r2x_core.processors import apply_processing
 
-from .data_readers import register_gams_header_readers, register_modeled_years_reader
+from .data_readers import (
+    configure_fom_processing,
+    register_gams_header_readers,
+    register_modeled_years_reader,
+)
 from .enum_mappings import RESERVE_TYPE_MAP
-from .fixed_om import collect_fom_dataset, configure_fom_processing, prepare_fixed_om
 from .getters import (
     build_generator_name,
     build_load_name,
@@ -688,7 +691,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             if dataset_name in {"fom_upgrade_links", "fom_unitspec_upgrades"}:
                 # Empty GAMS sets are valid, but core must still validate their required files.
                 try:
-                    collect_fom_dataset(self.store, dataset_name)
+                    self.store.read_data(dataset_name).collect()
                 except (OSError, ValueError, ReaderError, pl.exceptions.PolarsError) as exc:
                     return Err(f"{dataset_name}: {exc}")
                 continue
@@ -2331,15 +2334,13 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Load and preprocess generator-related datasets."""
         logger.trace("Preparing generator datasets with excluded techs: {}", self._excluded_techs)
         capacity_data = self.read_data_file("online_capacity")
-        if capacity_data is None:
-            return Err("No capacity data found for fixed O&M resolution")
-        fixed_om = prepare_fixed_om(
-            capacity_data.filter(~pl.col("technology").is_in(self._excluded_techs)),
-            store=self.store,
-            solve_year=self.config.primary_solve_year,
-        )
-        if fixed_om.is_err():
-            return Err(str(fixed_om.err()))
+        upgrade_links = self.read_data_file("fom_upgrade_links")
+        switches = self.read_data_file("fom_switches").collect()
+        if dict(switches.iter_rows()).get("gsw_watermain") == "1":
+            water_links = self.read_data_file("fom_water_upgrade_links")
+            if water_links is None:
+                return Err("Required FOM dataset 'fom_water_upgrade_links' is unavailable")
+            upgrade_links = pl.concat([upgrade_links, water_links])
         fuel_price = self.read_data_file("fuel_price")
         biofuel = self.read_data_file("biofuel_price")
         fuel_map = self.read_data_file("fuel_tech_map")
@@ -2362,7 +2363,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "fuel_tech_map": fuel_map,
                 "heat_rate": self.read_data_file("heat_rate"),
                 "cost_vom": self.read_data_file("cost_vom"),
-                "cost_fom": fixed_om.ok(),
+                "cost_fom": self.read_data_file("cost_fom"),
+                "fom_hydro": self.read_data_file("fom_hydro"),
+                "fom_hintage": self.read_data_file("fom_hintage"),
+                "fom_technology_subsets": self.read_data_file("fom_technology_subsets"),
+                "fom_upgrade_links": upgrade_links,
                 "forced_outages": self.read_data_file("forced_outages"),
                 "planned_outages": self.read_data_file("planned_outages"),
                 "startcost": self.read_data_file("startcost"),

@@ -1,4 +1,4 @@
-"""Source precedence and validation through the public FOM preparation API."""
+"""FOM source precedence through configured core datasets and ReEDS component rules."""
 
 import json
 from dataclasses import dataclass
@@ -6,13 +6,74 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from rust_ok import Err, Ok, Result
 
-from r2x_core import DataFile, DataStore, TabularProcessing
+from r2x_core import DataFile, DataStore, Rule, System, TabularProcessing
+from r2x_core.exceptions import ReaderError
+from r2x_core.utils import build_component_kwargs
 from r2x_reeds import ReEDSConfig
-from r2x_reeds.fixed_om import configure_fom_processing, prepare_fixed_om
-from r2x_reeds.parser_utils import aggregate_variable_generators
+from r2x_reeds.data_readers import configure_fom_processing
+from r2x_reeds.models.components import ReEDSRegion
+from r2x_reeds.parser_utils import aggregate_variable_generators, prepare_generator_inputs
+from r2x_reeds.rules_helper import create_parser_context
 
 pytestmark = pytest.mark.unit
+
+
+def evaluate_fom_rule(
+    capacity_data: pl.LazyFrame, *, store: DataStore, solve_year: int
+) -> Result[pl.LazyFrame, str]:
+    """Exercise the shipped dataset mappings, generator joins, and component rule."""
+    config = ReEDSConfig(solve_year=solve_year, weather_year=2012)
+    assets = config.load_config()
+    system = System(name="FOM rules")
+    for region in capacity_data.select("region").unique().collect()["region"]:
+        system.add_component(ReEDSRegion(name=region))
+    context = create_parser_context(system, config, assets["defaults"], store=store)
+    record = next(rule for rule in assets["parser_rules"] if rule["name"] == "base_generator")
+    rule = Rule.from_records([record])[0]
+    try:
+        optional_data = {}
+        for name in ("cost_fom", "fom_hydro", "fom_hintage", "fom_technology_subsets", "fom_upgrade_links"):
+            frame = store.read_data(name, placeholders={"solve_year": solve_year})
+            if not isinstance(frame, pl.LazyFrame):
+                return Err(f"Required FOM dataset {name!r} is unavailable")
+            if name == "cost_fom" and frame.collect().is_empty():
+                return Err(f"cost_fom: no FOM rows for solve year {solve_year}")
+            optional_data[name] = frame
+        # Mirror required-file validation before the normal row-to-component rule.
+        for name in ("fom_unitspec_upgrades", "fom_scalars", "fom_switches"):
+            store.read_data(name).collect()
+        switches = dict(store.read_data("fom_switches").collect().iter_rows())
+        if switches.get("gsw_watermain") == "1":
+            water = store.read_data("fom_water_upgrade_links")
+            if water is None:
+                return Err("Required FOM dataset 'fom_water_upgrade_links' is unavailable")
+            optional_data["fom_upgrade_links"] = pl.concat([optional_data["fom_upgrade_links"], water])
+        if "capacity" not in capacity_data.collect_schema().names():
+            capacity_data = capacity_data.with_columns(pl.lit(100.0).alias("capacity"))
+        prepared = prepare_generator_inputs(
+            capacity_data.with_columns(pl.lit("OTHER").alias("fuel_type")),
+            optional_data=optional_data,
+            excluded_technologies=[],
+            technology_categories=assets["defaults"]["tech_categories"],
+        )
+        if prepared.is_err():
+            return Err(str(prepared.err()))
+        groups = prepared.ok()
+        assert groups is not None
+        rows = pl.concat(list(groups), how="diagonal_relaxed")
+        costs: list[float | None] = []
+        for row in rows.iter_rows(named=True):
+            result = build_component_kwargs(row, rule=rule, context=context)
+            if result.is_err():
+                return Err(str(result.err()))
+            fields = result.ok()
+            assert fields is not None
+            costs.append(fields.get("fom_cost"))
+        return Ok(rows.with_columns(pl.Series("fom_cost", costs, dtype=pl.Float64)).lazy())
+    except (OSError, ValueError, KeyError, ReaderError, pl.exceptions.PolarsError) as exc:
+        return Err(str(exc))
 
 
 @pytest.mark.parametrize("costs,expected", [([10.0, 30.0], 25.0), ([10.0, None], None)])
@@ -103,7 +164,7 @@ def test_source_precedence(
     capacity = pl.LazyFrame(
         {"technology": [technology], "vintage": [vintage], "region": [region], "year": [2032]}
     )
-    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    result = evaluate_fom_rule(capacity, store=fom_case.store, solve_year=2032)
     assert result.is_ok(), result
     costs = result.ok()
     assert costs is not None
@@ -124,7 +185,7 @@ def test_initial_upgrades_use_characteristic_year_or_extended_unit_cost(
     capacity = pl.LazyFrame(
         {"technology": ["coalolduns_coal-ccs_mod"], "vintage": ["init-1"], "region": ["p1"], "year": [2032]}
     )
-    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    result = evaluate_fom_rule(capacity, store=fom_case.store, solve_year=2032)
     assert result.is_ok(), result
     costs = result.ok()
     assert costs is not None
@@ -149,7 +210,7 @@ def test_missing_required_sources_fail(fom_case: FOMCase, filename: str) -> None
     capacity = pl.LazyFrame(
         {"technology": ["coalolduns_coal-ccs_mod"], "vintage": ["init-1"], "region": ["p1"], "year": [2032]}
     )
-    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    result = evaluate_fom_rule(capacity, store=fom_case.store, solve_year=2032)
     assert result.is_err()
     assert filename in str(result.err())
 
@@ -191,7 +252,7 @@ def test_invalid_or_incomplete_sources_fail(
     capacity = pl.LazyFrame(
         {"technology": [technology], "vintage": ["init-1"], "region": ["p1"], "year": [year]}
     )
-    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=year)
+    result = evaluate_fom_rule(capacity, store=fom_case.store, solve_year=year)
     assert result.is_err()
     assert error in str(result.err())
 
@@ -200,7 +261,7 @@ def test_invalid_or_incomplete_sources_fail(
     "dataset,columns",
     [
         ("cost_fom", ["technology", "year", "fom_cost"]),
-        ("fom_hydro", ["technology", "region", "fom_cost"]),
+        ("fom_hydro", ["technology", "region", "hydro_fom_cost"]),
         ("fom_scalars", ["parameter", "value"]),
         ("fom_switches", ["parameter", "value"]),
         ("fom_technology_subsets", ["technology", "psh", "distpv", "ccs"]),
@@ -208,7 +269,15 @@ def test_invalid_or_incomplete_sources_fail(
         ("fom_unitspec_upgrades", ["technology"]),
         (
             "fom_hintage",
-            ["technology", "vintage", "region", "year", "capacity", "fom_cost", "ccs_retrofit_fom"],
+            [
+                "technology",
+                "vintage",
+                "region",
+                "year",
+                "hintage_capacity",
+                "hintage_fom_cost",
+                "ccs_retrofit_fom",
+            ],
         ),
     ],
 )
@@ -224,8 +293,8 @@ def test_core_configuration_reads_and_processes_fom_sources(
         assert frame.schema["fom_cost"] == pl.Float64
     if dataset == "fom_hydro":
         assert frame.to_dicts() == [
-            {"technology": "hyded", "region": "p1", "fom_cost": 42000.0},
-            {"technology": "hyded", "region": "p2", "fom_cost": 0.0},
+            {"technology": "hyded", "region": "p1", "hydro_fom_cost": 42000.0},
+            {"technology": "hyded", "region": "p2", "hydro_fom_cost": 0.0},
         ]
     if dataset == "fom_hintage":
         assert frame.filter((pl.col("technology") == "coalolduns") & (pl.col("year") == 2032))[
@@ -242,7 +311,7 @@ def test_fom_resolution_uses_the_context_store_source_override(fom_case: FOMCase
     capacity = pl.LazyFrame(
         {"technology": ["pumped-hydro-flex"], "vintage": ["init-1"], "region": ["p1"], "year": [2032]}
     )
-    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    result = evaluate_fom_rule(capacity, store=fom_case.store, solve_year=2032)
     assert result.is_ok(), result
     frame = result.ok()
     assert frame is not None
@@ -268,7 +337,7 @@ def test_core_hydro_unpivot_uses_the_configured_run_region_columns(fom_case: FOM
     )
     configure_fom_processing(fom_case.store)
     frame = fom_case.store.read_data("fom_hydro").collect()
-    assert frame.to_dicts() == [{"technology": "hyded", "region": "z999", "fom_cost": 888.0}]
+    assert frame.to_dicts() == [{"technology": "hyded", "region": "z999", "hydro_fom_cost": 888.0}]
 
 
 def test_empty_upgrade_sets_are_valid_configured_inputs(fom_case: FOMCase) -> None:
@@ -277,7 +346,7 @@ def test_empty_upgrade_sets_are_valid_configured_inputs(fom_case: FOMCase) -> No
     capacity = pl.LazyFrame(
         {"technology": ["gas-cc"], "vintage": ["init-1"], "region": ["p1"], "year": [2032]}
     )
-    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    result = evaluate_fom_rule(capacity, store=fom_case.store, solve_year=2032)
     assert result.is_ok(), result
     frame = result.ok()
     assert frame is not None

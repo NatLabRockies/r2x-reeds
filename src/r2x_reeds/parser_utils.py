@@ -24,6 +24,10 @@ if TYPE_CHECKING:
 # Columns that can be aggregated from the model.
 AGG_COLUMNS = [
     "fom_cost",
+    "hydro_fom_cost",
+    "hintage_fom_cost",
+    "psh",
+    "distpv",
     "heat_rate",
     "forced_outage_rate",
     "planned_outage_rate",
@@ -413,13 +417,13 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
         - Fixed O&M capacity-weighted, preserving unknown rates
         - Other fields averaged
     """
-    first_fields = {"resource_class", "fuel_type"}
+    first_fields = {"resource_class", "fuel_type", "psh", "distpv"}
     agg_exprs = [pl.col("capacity").sum()]
 
     for col in AGG_COLUMNS:
         if col not in df.columns:
             agg_exprs.append(pl.lit(None).alias(col))
-        elif col == "fom_cost":
+        elif col in {"fom_cost", "hydro_fom_cost", "hintage_fom_cost"}:
             unknown_cost = (pl.col(col).is_null() & (pl.col("capacity") > 0)).any()
             agg_exprs.append(
                 pl.when(unknown_cost | (pl.col("capacity").sum() <= 0))
