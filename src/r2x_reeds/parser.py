@@ -34,6 +34,7 @@ from r2x_core.processors import apply_processing
 
 from .data_readers import register_gams_header_readers, register_modeled_years_reader
 from .enum_mappings import RESERVE_TYPE_MAP
+from .fixed_om import prepare_fixed_om
 from .getters import (
     build_generator_name,
     build_load_name,
@@ -2321,6 +2322,15 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Load and preprocess generator-related datasets."""
         logger.trace("Preparing generator datasets with excluded techs: {}", self._excluded_techs)
         capacity_data = self.read_data_file("online_capacity")
+        if capacity_data is None:
+            return Err("No capacity data found for fixed O&M resolution")
+        fixed_om = prepare_fixed_om(
+            capacity_data.filter(~pl.col("technology").is_in(self._excluded_techs)),
+            store=self.store,
+            solve_year=self.config.primary_solve_year,
+        )
+        if fixed_om.is_err():
+            return Err(str(fixed_om.err()))
         fuel_price = self.read_data_file("fuel_price")
         biofuel = self.read_data_file("biofuel_price")
         fuel_map = self.read_data_file("fuel_tech_map")
@@ -2343,7 +2353,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "fuel_tech_map": fuel_map,
                 "heat_rate": self.read_data_file("heat_rate"),
                 "cost_vom": self.read_data_file("cost_vom"),
-                "cost_fom": self.read_data_file("cost_fom"),
+                "cost_fom": fixed_om.ok(),
                 "forced_outages": self.read_data_file("forced_outages"),
                 "planned_outages": self.read_data_file("planned_outages"),
                 "startcost": self.read_data_file("startcost"),

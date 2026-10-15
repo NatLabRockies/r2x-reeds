@@ -117,7 +117,7 @@ class ReEDSGenerator(HasUnits, ReEDSComponent):
         NonNegativeFloat | None,
         Unit("$/MW/year"),
         Field(
-            description="Technology-year fixed O&M in 2004$/MW/year from processed ReEDS plant characteristics"
+            description="Fixed O&M in 2004$/MW/year from ReEDS plant, regional hydro, storage, or upgrade inputs"
         ),
     ] = None
     capital_cost: Annotated[PositiveFloat | None, Unit("$/MW"), Field(description="Capital cost")] = None

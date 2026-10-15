@@ -586,9 +586,9 @@
     "name": "cost_fom",
     "fpath": "inputs_case/plantcharout.csv",
     "info": {
-      "description": "Technology-year fixed O&M from processed plant characteristics in 2004$/MW-year",
+      "description": "Technology-year fixed O&M from processed plant characteristics in 2004$/MW/year",
       "is_input": true,
-      "is_optional": true,
+      "is_optional": false,
       "units": "2004$/MW/year"
     },
     "proc_spec": {

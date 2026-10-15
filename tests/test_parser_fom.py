@@ -3,6 +3,7 @@
 import shutil
 from pathlib import Path
 
+import polars as pl
 import pytest
 
 from r2x_core import DataStore, PluginContext
@@ -10,6 +11,29 @@ from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models.components import ReEDSGenerator
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize("source", ["missing", "empty", "wrong-year"])
+def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
+    reeds_run_path: Path, tmp_path: Path, source: str
+) -> None:
+    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
+    path = tmp_path / "inputs_case" / "plantcharout.csv"
+    path.write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
+    if source == "missing":
+        path.unlink()
+    elif source == "empty":
+        path.write_text("*i,t,variable,value\n")
+    else:
+        path.write_text("*i,t,variable,value\nGas-CC,2029,fom,20081\n")
+
+    result = parser.on_validate()
+
+    assert result.is_err()
+    assert "cost_fom" in str(result.err())
 
 
 @pytest.mark.parametrize("marker", ["", "*"])
@@ -67,3 +91,58 @@ def test_generators_receive_solve_year_fixed_om(reeds_run_path: Path, tmp_path: 
     unmatched = [generator for generator in generators if generator.technology == "gas-ct"]
     assert unmatched
     assert all(generator.fom_cost is None for generator in unmatched)
+
+
+def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
+    reeds_run_path: Path, tmp_path: Path
+) -> None:
+    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
+    inputs = tmp_path / "inputs_case"
+    (inputs / "plantcharout.csv").write_text(
+        "*i,t,variable,value\n"
+        "Gas-CC,2032,fom,20081\n"
+        "coal-ccs_mod,2028,fom,45000\n"
+        "coal-ccs_mod,2032,fom,46000\n"
+    )
+    hydro = pl.read_csv(inputs / "hyd_fom.csv")
+    hydro.with_columns(pl.lit(42000.0).alias(column) for column in hydro.columns if column != "i").write_csv(
+        inputs / "hyd_fom.csv"
+    )
+    (inputs / "scalars.csv").write_text("cost_fom_psh,13030,2004$/MW-year\n")
+    hintage = pl.read_csv(inputs / "hintage_data.csv")
+    retrofit = pl.DataFrame(
+        {
+            "TECH": ["CoalOldUns"],
+            "bin": ["init-1"],
+            "r": ["p1"],
+            "yr": [2032],
+            "cap": [100.0],
+            "wFOM": [50000.0],
+            "wCCS_Retro_FOM": [55.0],
+        }
+    )
+    pl.concat([hintage, retrofit], how="diagonal_relaxed").write_csv(inputs / "hintage_data.csv")
+    (inputs / "upgrade_link.csv").write_text(
+        "*TO,FROM,DELTA\nCoalOldUns_Coal-CCS_mod,CoalOldUns,coal-ccs_mod\n"
+    )
+    with (tmp_path / "outputs" / "cap_ivrt.csv").open("a") as file:
+        file.write("CoalOldUns_Coal-CCS_mod,init-1,p1,2032,100\n")
+        file.write("CoalOldUns_Coal-CCS_mod,new1,p1,2032,100\n")
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
+    ctx = PluginContext(config=config, store=store)
+    result = ReEDSParser.from_context(ctx).run(ctx=ctx)
+    assert result.system is not None
+    generators = list(result.system.get_components(ReEDSGenerator))
+    expected = {"hyded": 42000.0, "pumped-hydro": 13030.0, "distpv": 0.0}
+    for technology, cost in expected.items():
+        matched = [generator for generator in generators if generator.technology == technology]
+        if technology == "distpv":
+            matched = [generator for generator in matched if generator.region.name == "p1"]
+        assert matched, technology
+        assert all(generator.fom_cost == cost for generator in matched), technology
+    upgrades = [generator for generator in generators if generator.technology == "coalolduns_coal-ccs_mod"]
+    assert {generator.vintage: generator.fom_cost for generator in upgrades} == {
+        "init-1": 55000.0,
+        "new1": 46000.0,
+    }
