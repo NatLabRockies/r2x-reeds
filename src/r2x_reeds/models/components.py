@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from infrasys import SupplementalAttribute
-from pydantic import Field, PositiveFloat
+from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from r2x_core.units import HasUnits, Unit
 
@@ -113,7 +113,13 @@ class ReEDSGenerator(HasUnits, ReEDSComponent):
     planned_outage_rate: Annotated[UnitFloat | None, Field(description="Planned outage rate")] = None
     max_age: Annotated[int | None, Unit("years"), Field(description="Maximum age")] = None
     vom_cost: Annotated[PositiveFloat | None, Unit("$/MWh"), Field(description="Variable O&M")] = None
-    fom_cost: Annotated[PositiveFloat | None, Unit("$/MW/year"), Field(description="Fixed O&M")] = None
+    fom_cost: Annotated[
+        NonNegativeFloat | None,
+        Unit("$/MW/year"),
+        Field(
+            description="Technology-year fixed O&M in 2004$/MW/year from processed ReEDS plant characteristics"
+        ),
+    ] = None
     capital_cost: Annotated[PositiveFloat | None, Unit("$/MW"), Field(description="Capital cost")] = None
     vintage: Annotated[str | None, Field(description="Vintage bin identifier")] = None
     retirement_year: Annotated[int | None, Field(description="Planned retirement year")] = None

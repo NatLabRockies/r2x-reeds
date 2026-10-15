@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 # Columns that can be aggregated from the model.
 AGG_COLUMNS = [
+    "fom_cost",
     "heat_rate",
     "forced_outage_rate",
     "planned_outage_rate",

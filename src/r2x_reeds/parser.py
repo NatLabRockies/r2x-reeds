@@ -2343,6 +2343,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "fuel_tech_map": fuel_map,
                 "heat_rate": self.read_data_file("heat_rate"),
                 "cost_vom": self.read_data_file("cost_vom"),
+                "cost_fom": self.read_data_file("cost_fom"),
                 "forced_outages": self.read_data_file("forced_outages"),
                 "planned_outages": self.read_data_file("planned_outages"),
                 "startcost": self.read_data_file("startcost"),

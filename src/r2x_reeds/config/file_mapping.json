@@ -583,6 +583,29 @@
     }
   },
   {
+    "name": "cost_fom",
+    "fpath": "inputs_case/plantcharout.csv",
+    "info": {
+      "description": "Technology-year fixed O&M from processed plant characteristics in 2004$/MW-year",
+      "is_input": true,
+      "is_optional": true,
+      "units": "2004$/MW/year"
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_mapping": {
+        "i": "technology",
+        "t": "year",
+        "value": "fom_cost"
+      },
+      "filter_by": {
+        "year": "{solve_year}",
+        "variable": "fom"
+      },
+      "select_columns": ["technology", "year", "fom_cost"]
+    }
+  },
+  {
     "name": "cost_vom",
     "fpath": "outputs/outputs.h5",
     "info": {
