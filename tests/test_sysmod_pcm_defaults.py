@@ -171,3 +171,24 @@ def test_pcm_defaults_ramp_rate_is_multiplied_hydro() -> None:
     _run_pcm_defaults(system, pcm_defaults_dict={"hydro": {"ramp_rate": 0.3}})
 
     assert generator.ramp_rate == pytest.approx(100.0 * 0.3)
+
+
+@pytest.mark.parametrize("capacity", [100.0, 320.0])
+@pytest.mark.parametrize(
+    ("startup_cost", "override", "expected"),
+    [(None, False, 79.0), (None, True, 79.0), (68.0, False, 68.0), (68.0, True, 79.0)],
+)
+def test_pcm_defaults_preserve_startup_cost_per_mw(
+    capacity: float, startup_cost: float | None, override: bool, expected: float
+) -> None:
+    system, generator = _build_thermal_generator(category="gas-cc")
+    generator.capacity = capacity
+    generator.startup_cost = startup_cost
+
+    _run_pcm_defaults(
+        system,
+        pcm_defaults_dict={"gas-cc": {"startup_cost": 79.0}},
+        pcm_defaults_override=override,
+    )
+
+    assert generator.startup_cost == expected

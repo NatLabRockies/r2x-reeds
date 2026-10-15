@@ -53,6 +53,8 @@ def add_pcm_defaults(
     Notes
     -----
     The current implementation of this plugin matches the ReEDSGenerator category field.
+    Startup costs remain in dollars per MW through defaults and generator splitting.
+    Exporters convert this coefficient using the final generator capacity.
     """
     logger.info("Augmenting generators attributes with PCM defaults.")
 
@@ -82,7 +84,7 @@ def add_pcm_defaults(
             return Err(str(exc))
 
     # Fields that need to be multiplied by generator capacity
-    needs_multiplication = {"startup_cost", "ramp_rate"}
+    needs_multiplication = {"ramp_rate"}
 
     # Fields that should be processed first (for dependency ordering)
     fields_weight = {"capacity": 1}  # Updated from active_power_limits
