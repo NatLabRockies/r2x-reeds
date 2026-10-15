@@ -10,7 +10,6 @@ import polars as pl
 from r2x_core import DataStore, ReaderConfig
 
 _GAMS_HEADER_DATASETS = (
-    "cost_fom",
     "existing_capacity",
     "existing_transmission_capacity",
     "renewable_supply_curves",

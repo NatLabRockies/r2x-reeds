@@ -30,11 +30,12 @@ from r2x_core import (
     System,
     create_component,
 )
+from r2x_core.exceptions import ReaderError
 from r2x_core.processors import apply_processing
 
 from .data_readers import register_gams_header_readers, register_modeled_years_reader
 from .enum_mappings import RESERVE_TYPE_MAP
-from .fixed_om import prepare_fixed_om
+from .fixed_om import collect_fom_dataset, configure_fom_processing, prepare_fixed_om
 from .getters import (
     build_generator_name,
     build_load_name,
@@ -311,6 +312,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if ctx.store is not None:
             register_gams_header_readers(ctx.store)
             register_modeled_years_reader(ctx.store)
+            configure_fom_processing(ctx.store)
         return parser
 
     def _truncate_and_cast_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
@@ -683,6 +685,13 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         logger.trace("Validating presence of {} required datasets", len(required_inputs))
         for dataset_name in required_inputs:
+            if dataset_name in {"fom_upgrade_links", "fom_unitspec_upgrades"}:
+                # Empty GAMS sets are valid, but core must still validate their required files.
+                try:
+                    collect_fom_dataset(self.store, dataset_name)
+                except (OSError, ValueError, ReaderError, pl.exceptions.PolarsError) as exc:
+                    return Err(f"{dataset_name}: {exc}")
+                continue
             if dataset_name == "hour_map":
                 # hour_map can be synthesized in-memory when the source file is unavailable.
                 continue

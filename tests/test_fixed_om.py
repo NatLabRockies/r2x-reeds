@@ -7,10 +7,9 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from r2x_core import DataFile, DataStore
+from r2x_core import DataFile, DataStore, TabularProcessing
 from r2x_reeds import ReEDSConfig
-from r2x_reeds.data_readers import register_gams_header_readers
-from r2x_reeds.fixed_om import prepare_fixed_om
+from r2x_reeds.fixed_om import configure_fom_processing, prepare_fixed_om
 from r2x_reeds.parser_utils import aggregate_variable_generators
 
 pytestmark = pytest.mark.unit
@@ -74,10 +73,14 @@ def fom_case(tmp_path: Path) -> FOMCase:
         "CoalOldUns,init-1,p1,2032,100,50000,55\n"
     )
     config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    record = next(item for item in json.loads(config.fmap_path.read_text()) if item["name"] == "cost_fom")
+    records = [
+        item
+        for item in json.loads(config.fmap_path.read_text())
+        if item["name"] == "cost_fom" or item["name"].startswith("fom_")
+    ]
     store = DataStore(path=tmp_path)
-    store.add_data(DataFile.from_records([record], folder_path=tmp_path))
-    register_gams_header_readers(store)
+    store.add_data(DataFile.from_records(records, folder_path=tmp_path))
+    configure_fom_processing(store)
     return FOMCase(store=store, inputs=inputs)
 
 
@@ -155,11 +158,11 @@ def test_missing_required_sources_fail(fom_case: FOMCase, filename: str) -> None
     "filename,content,technology,year,error",
     [
         ("plantcharout.csv", "*i,t,variable,value\nGas-CC,2029,fom,10\n", "gas-cc", 2032, "no FOM rows"),
-        ("hyd_fom.csv", "technology,p1\nhydED,42000\n", "hyded", 2032, "missing FOM columns"),
-        ("scalars.csv", "cost_fom_psh\n", "pumped-hydro-flex", 2032, "parameter and value"),
+        ("hyd_fom.csv", "technology,p1\nhydED,42000\n", "hyded", 2032, "fom_hydro"),
+        ("scalars.csv", "cost_fom_psh\n", "pumped-hydro-flex", 2032, "fom_scalars"),
         (
             "hintage_data.csv",
-            "TECH,bin,r,yr,cap,wFOM\ndistpv,init-1,p1,2029,100,0\n",
+            "TECH,bin,r,yr,cap,wFOM,wCCS_Retro_FOM\ndistpv,init-1,p1,2029,100,0,0\n",
             "distpv",
             2032,
             "distributed-PV",
@@ -178,6 +181,7 @@ def test_missing_required_sources_fail(fom_case: FOMCase, filename: str) -> None
             2032,
             "GSw_Upgrades=1",
         ),
+        ("switches.csv", "GSw_WaterMain,1\n", "gas-cc", 2032, "fom_water_upgrade_links"),
     ],
 )
 def test_invalid_or_incomplete_sources_fail(
@@ -190,3 +194,104 @@ def test_invalid_or_incomplete_sources_fail(
     result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=year)
     assert result.is_err()
     assert error in str(result.err())
+
+
+@pytest.mark.parametrize(
+    "dataset,columns",
+    [
+        ("cost_fom", ["technology", "year", "fom_cost"]),
+        ("fom_hydro", ["technology", "region", "fom_cost"]),
+        ("fom_scalars", ["parameter", "value"]),
+        ("fom_switches", ["parameter", "value"]),
+        ("fom_technology_subsets", ["technology", "psh", "distpv", "ccs"]),
+        ("fom_upgrade_links", ["technology", "source_technology", "target_technology"]),
+        ("fom_unitspec_upgrades", ["technology"]),
+        (
+            "fom_hintage",
+            ["technology", "vintage", "region", "year", "capacity", "fom_cost", "ccs_retrofit_fom"],
+        ),
+    ],
+)
+def test_core_configuration_reads_and_processes_fom_sources(
+    fom_case: FOMCase, dataset: str, columns: list[str]
+) -> None:
+    data_file = fom_case.store[dataset]
+    assert data_file.reader is None or data_file.reader.function is None
+    frame = fom_case.store.read_data(dataset, placeholders={"solve_year": 2032}).collect()
+    assert frame.columns == columns
+    assert not frame.is_empty()
+    if "fom_cost" in frame.columns:
+        assert frame.schema["fom_cost"] == pl.Float64
+    if dataset == "fom_hydro":
+        assert frame.to_dicts() == [
+            {"technology": "hyded", "region": "p1", "fom_cost": 42000.0},
+            {"technology": "hyded", "region": "p2", "fom_cost": 0.0},
+        ]
+    if dataset == "fom_hintage":
+        assert frame.filter((pl.col("technology") == "coalolduns") & (pl.col("year") == 2032))[
+            "ccs_retrofit_fom"
+        ].to_list() == [55000.0]
+
+
+def test_fom_resolution_uses_the_context_store_source_override(fom_case: FOMCase, tmp_path: Path) -> None:
+    alternate = tmp_path / "alternate-scalars.csv"
+    alternate.write_text("cost_fom_psh,777,2004$/MW/year\n")
+    fom_case.store.add_data(
+        [fom_case.store["fom_scalars"].model_copy(update={"fpath": alternate})], overwrite=True
+    )
+    capacity = pl.LazyFrame(
+        {"technology": ["pumped-hydro-flex"], "vintage": ["init-1"], "region": ["p1"], "year": [2032]}
+    )
+    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    assert result.is_ok(), result
+    frame = result.ok()
+    assert frame is not None
+    assert frame.collect()["fom_cost"].to_list() == [777.0]
+
+
+def test_core_hydro_unpivot_uses_the_configured_run_region_columns(fom_case: FOMCase, tmp_path: Path) -> None:
+    alternate = tmp_path / "alternate-hydro.csv"
+    alternate.write_text("*i,z999\nhydED,888\n")
+    data_file = fom_case.store["fom_hydro"]
+    processing = data_file.proc_spec
+    assert isinstance(processing, TabularProcessing)
+    fom_case.store.add_data(
+        [
+            data_file.model_copy(
+                update={
+                    "fpath": alternate,
+                    "proc_spec": processing.model_copy(update={"unpivot_on": []}),
+                }
+            )
+        ],
+        overwrite=True,
+    )
+    configure_fom_processing(fom_case.store)
+    frame = fom_case.store.read_data("fom_hydro").collect()
+    assert frame.to_dicts() == [{"technology": "hyded", "region": "z999", "fom_cost": 888.0}]
+
+
+def test_empty_upgrade_sets_are_valid_configured_inputs(fom_case: FOMCase) -> None:
+    (fom_case.inputs / "upgrade_link.csv").write_text("*TO,FROM,DELTA\n")
+    (fom_case.inputs / "unitspec_upgrades.csv").write_text("*i\n")
+    capacity = pl.LazyFrame(
+        {"technology": ["gas-cc"], "vintage": ["init-1"], "region": ["p1"], "year": [2032]}
+    )
+    result = prepare_fixed_om(capacity, store=fom_case.store, solve_year=2032)
+    assert result.is_ok(), result
+    frame = result.ok()
+    assert frame is not None
+    assert frame.collect()["fom_cost"].to_list() == [20081.0]
+
+
+def test_hydro_configuration_requires_region_columns(fom_case: FOMCase) -> None:
+    (fom_case.inputs / "hyd_fom.csv").write_text("*i\nhydED\n")
+    data_file = fom_case.store["fom_hydro"]
+    processing = data_file.proc_spec
+    assert isinstance(processing, TabularProcessing)
+    fom_case.store.add_data(
+        [data_file.model_copy(update={"proc_spec": processing.model_copy(update={"unpivot_on": []})})],
+        overwrite=True,
+    )
+    with pytest.raises(ValueError, match="no region columns"):
+        configure_fom_processing(fom_case.store)

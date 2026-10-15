@@ -10,7 +10,7 @@ from r2x_reeds.data_readers import register_gams_header_readers
 
 
 @pytest.mark.parametrize(
-    "name", ["cost_fom", "existing_capacity", "existing_transmission_capacity", "renewable_supply_curves"]
+    "name", ["existing_capacity", "existing_transmission_capacity", "renewable_supply_curves"]
 )
 @pytest.mark.parametrize("marker", ["", "*"])
 def test_gams_header_reader_preserves_csv_options(tmp_path: Path, name: str, marker: str) -> None:
@@ -36,7 +36,7 @@ def test_gams_header_reader_preserves_csv_options(tmp_path: Path, name: str, mar
 
 
 @pytest.mark.parametrize(
-    "name", ["cost_fom", "existing_capacity", "existing_transmission_capacity", "renewable_supply_curves"]
+    "name", ["existing_capacity", "existing_transmission_capacity", "renewable_supply_curves"]
 )
 def test_gams_header_registration_preserves_custom_reader(tmp_path: Path, name: str) -> None:
     """An explicit reader keeps control of its output and keyword arguments."""

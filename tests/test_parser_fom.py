@@ -13,6 +13,36 @@ from r2x_reeds.models.components import ReEDSGenerator
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.parametrize(
+    "dataset,header",
+    [
+        ("fom_upgrade_links", "*TO,FROM,DELTA\n"),
+        ("fom_unitspec_upgrades", "*i\n"),
+    ],
+)
+@pytest.mark.parametrize("missing", [False, True])
+def test_required_fom_sets_may_be_empty_but_must_exist(
+    reeds_run_path: Path, tmp_path: Path, dataset: str, header: str, missing: bool
+) -> None:
+    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
+    path = store[dataset].fpath
+    assert path is not None
+    path = path if path.is_absolute() else tmp_path / path
+    if missing:
+        path.unlink()
+    else:
+        path.write_text(header)
+    result = parser.on_validate()
+    if missing:
+        assert result.is_err()
+        assert dataset in str(result.err())
+    else:
+        assert result.is_ok(), result
+
+
 @pytest.mark.parametrize("source", ["missing", "empty", "wrong-year"])
 def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
     reeds_run_path: Path, tmp_path: Path, source: str
