@@ -49,3 +49,20 @@ Source: [sysmod modules](https://github.com/NatLabRockies/r2x-reeds/tree/ebb6953
 `r2x_reeds.upgrader`. The helper returns `Result[None, str]` and is intended for
 parser-context integration. See [upgrader](/r2x-reeds/reference/upgrader/) before
 using it because upgrade steps can change run files.
+
+## Saving and inspection contracts
+
+`System.to_json(fname, overwrite=False, indent=None, data=None)` writes an
+Infrasys component graph and companion time-series storage when a path is given.
+Existing files raise `FileExistsError` unless overwrite is enabled.
+`System.from_json(path)` reconstructs the graph; recorded model classes must be
+importable and companion storage must remain available.
+`system.get_components(ComponentType)` iterates components of that type;
+`system.get_time_series(component, name="...")` selects an attached series.
+An absent profile or incompatible serialization is a loading/query error, not a
+signal to fabricate replacement data.
+
+Use the [saved-system guide](/r2x-reeds/how-to/inspect-system/) for executed Python
+and CLI queries, and [Infrasys source/API](https://github.com/NatLabRockies/infrasys/blob/main/src/infrasys/system.py)
+for additional storage options. The examples use a path and make no claims about
+stdout-only serialization or loading native target-format JSON.

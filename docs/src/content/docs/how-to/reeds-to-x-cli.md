@@ -2,7 +2,8 @@
 title: Parse ReEDS with r2x-cli
 ---
 
-Use a parser-only pipeline to check a ReEDS run before adding target translation
+Use a parser-only pipeline to check the [Pacific fixture tutorial](/r2x-reeds/tutorials/parse-run/)
+run before adding target translation
 packages. [Install the CLI plugin](/r2x-reeds/how-to/install/#cli-runtime) first.
 These commands follow r2x-cli 0.1.15; inspect your installed CLI's help when using
 another version.
@@ -10,7 +11,9 @@ another version.
 ## Define the pipeline
 
 Use a working copy of the ReEDS run because parser upgrades can modify its files.
-Save `reeds-parser-pipeline.yaml` in your workspace and replace the path and years:
+After extracting the fixture as shown in the tutorial, save
+`reeds-parser-pipeline.yaml` in the repository root. For your own run, replace the
+path and years with selections present in its data:
 
 ```yaml
 pipelines:
@@ -18,8 +21,8 @@ pipelines:
     - reeds-parser
 config:
   reeds-parser:
-    path: /path/to/reeds_run
-    solve_year: 2030
+    path: tutorial-inputs/test_Pacific
+    solve_year: 2032
     weather_year: 2012
     case_name: example
 ```
@@ -38,7 +41,11 @@ r2x run reeds-parser-pipeline.yaml parse --dry-run
 ```
 
 Expect a `parse` pipeline containing `reeds-parser`. Dry run verifies pipeline
-resolution, not the contents of the input data. Execute and save a portable artifact:
+resolution, not the contents of the input data. Create a separate output directory, then execute and save a portable artifact:
+
+```bash
+mkdir -p outputs
+```
 
 ```bash
 r2x run reeds-parser-pipeline.yaml parse --zip -o outputs/reeds-system.zip
@@ -71,8 +78,8 @@ pipelines:
     - break-gens
 config:
   reeds-parser:
-    path: /path/to/reeds_run
-    solve_year: 2030
+    path: tutorial-inputs/test_Pacific
+    solve_year: 2032
     weather_year: 2012
   break-gens:
     drop_capacity_threshold: 5

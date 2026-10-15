@@ -42,3 +42,19 @@ inputs before adding transforms or target plugins.
 Stop the chain and report `result.unwrap_err()` instead of silently continuing with
 the old system. Recheck input paths, expected columns and required profiles against
 the [transform reference](/r2x-reeds/reference/transforms/).
+
+## Saved system loads but profile queries fail
+
+**Symptom:** component queries work, but the expected hourly series is unavailable.
+First check that the JSON's generated time-series directory was copied with it.
+Then run the named-load inspection in the [saved-system guide](/r2x-reeds/how-to/inspect-system/).
+Compare the profile name, length, timestamp and resolution with the tutorial.
+A native target-format JSON is not an Infrasys checkpoint; use that target's parser.
+
+## Wrong counts after changing inputs or options
+
+Tutorial totals are fixture-specific. Recheck the selected solve/weather year,
+scenario and enabled modifiers/profile options before treating a different total
+as a parser defect. Use a fresh working copy and rerun the documented baseline.
+If the baseline differs, record the package revision and the first failing input
+or inspection check so the mismatch can be reproduced.

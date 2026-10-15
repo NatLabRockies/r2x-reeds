@@ -12,27 +12,21 @@ separate target packages.
 
 ## Quick start
 
-Use Python 3.11–3.13 in a uv project:
+Use Python 3.11–3.13 and uv. From a source checkout:
 
 ```bash
-uv add r2x-reeds
-uv run python -c "from r2x_reeds import ReEDSConfig; print(ReEDSConfig(solve_year=2030, weather_year=2012).primary_solve_year)"
-# 2030
+uv sync --locked --no-dev
 ```
 
-Follow [parse a ReEDS run](docs/src/content/docs/tutorials/parse-run.md) to build
-and inspect a system from your own data. Use a working copy of the run because
-parser upgrade steps can modify input files.
+Follow [parse, modify and reload a ReEDS fixture](docs/src/content/docs/tutorials/parse-run.md)
+to unpack the public Pacific sample, build a system, inspect an hourly profile,
+split generators and reload the saved result. The verified fixture has 11 regions,
+292 generators before splitting and 673 afterward.
 
-For r2x-cli users, install into its managed environment:
-
-```bash
-r2x install r2x-reeds
-r2x list r2x-reeds
-```
-
-See the [CLI parser pipeline](docs/src/content/docs/how-to/reeds-to-x-cli.md) for
-configuration and artifact verification.
+For CLI workflows, [install the plugin](docs/src/content/docs/how-to/install.md)
+and use the [parser pipeline](docs/src/content/docs/how-to/reeds-to-x-cli.md).
+[Saved-system inspection](docs/src/content/docs/how-to/inspect-system.md) covers
+both Python and `r2x read`. Parser upgrades can modify input files; use a working copy.
 
 ## Documentation
 

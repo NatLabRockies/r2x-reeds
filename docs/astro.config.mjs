@@ -1,5 +1,6 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import mermaid from "astro-mermaid";
 import { unified } from "@astrojs/markdown-remark";
 
 export default defineConfig({
@@ -8,6 +9,14 @@ export default defineConfig({
   base: "/r2x-reeds/",
   markdown: { processor: unified() },
   integrations: [
+    mermaid({
+      enableLog: false,
+      mermaidConfig: {
+        theme: "base",
+        fontFamily: "system-ui, sans-serif",
+        flowchart: { curve: "basis" },
+      },
+    }),
     starlight({
       title: "r2x-reeds",
       logo: {
@@ -45,6 +54,10 @@ export default defineConfig({
         {
           label: "How-to guides",
           items: [
+            {
+              label: "Inspect a saved system",
+              link: "/how-to/inspect-system/",
+            },
             {
               label: "Install",
               link: "/how-to/install/",

@@ -4,6 +4,25 @@ title: Configuration Reference
 
 ## ReEDSConfig
 
+| Package field           | Type                  | Default  | Interpretation                                                 |
+| ----------------------- | --------------------- | -------- | -------------------------------------------------------------- |
+| `solve_year`            | `int` or `list[int]`  | required | Capacity/investment selection                                  |
+| `weather_year`          | `int` or `list[int]`  | required | Profile input selection                                        |
+| `case_name`             | `str` or `None`       | `None`   | Optional case label                                            |
+| `scenario`              | `str`                 | `"base"` | Scenario label                                                 |
+| `excluded_techs`        | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
+| `use_degraded_capacity` | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
+
+`primary_solve_year` and `primary_weather_year` return the first value when a list
+is supplied. The CLI tutorial uses scalar years so downstream plugins receive one
+selection. Config validation is not proof that the input run contains that year;
+the parser validates mapped data during its lifecycle.
+
+The CLI's `path` locates the data store. It is **not** a `ReEDSConfig` field in
+Python: pass it to `DataStore.from_plugin_config(config, path=run_path)` instead.
+See the [tested parsing tutorial](/r2x-reeds/tutorials/parse-run/) for the complete
+context construction and [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/plugin_config.py).
+
 `ReEDSConfig` is the parser configuration model.
 
 Key fields:

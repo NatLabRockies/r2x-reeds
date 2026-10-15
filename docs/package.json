@@ -10,7 +10,9 @@
   "dependencies": {
     "@astrojs/starlight": "^0.42.6",
     "astro": "^7.3.8",
-    "@astrojs/markdown-remark": "^7.3.0"
+    "@astrojs/markdown-remark": "^7.3.0",
+    "astro-mermaid": "^2.1.0",
+    "mermaid": "^11.15.0"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -18,6 +20,9 @@
   "overrides": {
     "@expressive-code/core": {
       "postcss-nested": "7.0.2"
+    },
+    "mermaid": {
+      "katex": "0.18.2"
     }
   }
 }
