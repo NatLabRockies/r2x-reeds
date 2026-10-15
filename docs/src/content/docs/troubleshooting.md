@@ -5,7 +5,7 @@ title: Troubleshooting
 ## Import or Python compatibility failure
 
 Use Python 3.11–3.13. Verify the environment with
-`uv run python -c "import r2x_reeds; print(r2x_reeds.__version__)"`.
+`python -m pip show r2x-reeds` in the activated environment.
 A Python project environment and r2x-cli's managed runtime are separate; run
 `r2x python show` and `r2x list r2x-reeds` when the CLI cannot discover the plugin.
 

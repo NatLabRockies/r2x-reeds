@@ -7,6 +7,8 @@ read ReEDS data, inspect an hourly demand profile, split aggregated generators
 into reference-sized units, and reload the result with Infrasys-compatible APIs.
 No licensed target-model software or external ReEDS run is needed for this fixture.
 
+The [ReEDS model](https://github.com/ReEDS-Model/ReEDS) produces the capacity-expansion runs consumed here. `r2x-reeds` parses those results and applies optional system modifiers; it does not solve the ReEDS model.
+
 ## What you will build
 
 ```mermaid
@@ -21,41 +23,73 @@ flowchart TD
 The saved artifact contains ReEDS components, not a PLEXOS or Sienna export.
 Target conversion is a later step performed by [R2X translation plugins](https://github.com/NatLabRockies/R2X).
 
-## Prepare a source checkout
+## Install the published package
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), Git and Python
-3.11–3.13. The package depends on [r2x-core](https://github.com/NatLabRockies/r2x-core),
-which supplies contexts and data stores, and [Infrasys](https://github.com/NatLabRockies/infrasys),
-which manages components and time-series storage. `uv sync` installs those dependencies.
+Use Python 3.11–3.13. The macOS/Linux commands below show Python 3.12; substitute
+your supported interpreter name if needed. No Git checkout is required to install
+the library or follow this example.
 
-Clone a disposable checkout so the public fixture and installed source agree:
-
-```bash
-git clone https://github.com/NatLabRockies/r2x-reeds.git
-```
-
-Enter it and install the locked environment:
+Create an empty workspace and an isolated environment:
 
 ```bash
-cd r2x-reeds
-uv sync --locked --no-dev
+mkdir reeds-example
+cd reeds-example
+python3.12 -m venv .venv
 ```
 
-Extract the fixture into a working directory. The parser can upgrade run files,
-so keep the archive unchanged. The extracted run uses roughly 62 MB:
+Activate it before installing so the package and inspection scripts use the same
+Python environment:
 
 ```bash
-uv run python -m zipfile -e tests/data/test_Pacific.zip tutorial-inputs
+source .venv/bin/activate
 ```
 
-Check the run root before proceeding:
+Install the published package and check which version was selected:
+
+```bash
+python -m pip install r2x-reeds
+python -m pip show r2x-reeds
+```
+
+This tutorial was tested with PyPI `r2x-reeds` 0.9.3 and `r2x-core` 0.9.0.
+[r2x-core](https://github.com/NatLabRockies/r2x-core) and
+[Infrasys](https://github.com/NatLabRockies/infrasys) are installed as dependencies;
+you do not need to clone either project. See [installation](/r2x-reeds/how-to/install/)
+for the separate r2x-cli managed-environment path and contributor source installs.
+
+## Download sample data separately
+
+The test fixture is repository data, not an installed package resource. Download
+the archive from the verified revision below; the pinned URL keeps the expected
+counts tied to the same data even when main changes. This is a **data download**,
+not a source installation. `curl` is needed for this step.
+
+```bash
+mkdir -p inputs
+```
+
+```bash
+curl -fL \
+  https://raw.githubusercontent.com/NatLabRockies/r2x-reeds/ebb69534188c7b94933c36a534d84a651114e2f9/tests/data/test_Pacific.zip \
+  -o inputs/test_Pacific.zip
+```
+
+The archive is about 30 MB and extracts to roughly 62 MB. The parser can upgrade
+run files, so preserve the downloaded archive and work on the extracted copy:
+
+```bash
+python -m zipfile -e inputs/test_Pacific.zip tutorial-inputs
+```
+
+Check the run root:
 
 ```bash
 ls tutorial-inputs/test_Pacific
 ```
 
 Expect `meta.csv`, `inputs_case/` and `outputs/`. Run the remaining commands from
-the repository root; `path` must point to this run root, not just `outputs/`.
+`reeds-example/` with the environment active. The data-store path must point to
+this run root, not just `outputs/`.
 
 ## Parse the selected solve and weather years
 
@@ -89,7 +123,7 @@ that context. See [the API contract](/r2x-reeds/reference/python-api/).
 Run the script:
 
 ```bash
-uv run python parse_reeds.py
+python parse_reeds.py
 # Regions: 11
 # Generators before: 292
 ```
@@ -184,5 +218,5 @@ or [ReEDS to Sienna](https://natlabrockies.github.io/R2X/how-to/reeds-to-sienna/
 Those workflows add a translator and target exporter after the parser; the
 serialized ReEDS JSON above is not either target's native format.
 
-This tutorial was executed with the package's locked r2x-core 0.9.0 environment.
+This tutorial was executed with the published r2x-reeds 0.9.3 package and r2x-core 0.9.0.
 The count/profile/reload checks apply to this fixture revision and selected years.

@@ -54,6 +54,7 @@ export default defineConfig({
         {
           label: "How-to guides",
           items: [
+            { label: "Prepare a PCM handoff", link: "/how-to/pcm-handoff/" },
             {
               label: "Inspect a saved system",
               link: "/how-to/inspect-system/",

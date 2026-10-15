@@ -27,7 +27,7 @@ print("Generators before:", before)
 print("Generators after:", len(list(system.get_components(ReEDSGenerator))))
 ```
 
-Run the script with `uv run python parse_reeds.py`. Counts can remain unchanged if
+Run the script with `python parse_reeds.py` in the activated pip environment. Counts can remain unchanged if
 no eligible generators match; compare names and capacities for the selected technology.
 Multiple `include_*` filters use OR matching. See the [transform reference](/r2x-reeds/reference/transforms/)
 and its source links before selecting additional inputs.

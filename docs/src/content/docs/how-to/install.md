@@ -5,18 +5,22 @@ title: Install r2x-reeds
 Use Python **3.11–3.13** (`>=3.11,<3.14`). Choose the environment that will execute
 your parser; project Python and the CLI's managed Python are separate environments.
 
-## Python project
+## Published Python package
 
-From a project with a `pyproject.toml`:
+Create and activate a virtual environment with a supported Python, then install
+from [PyPI](https://pypi.org/project/r2x-reeds/):
 
 ```bash
-uv add r2x-reeds
-uv run python -c "from r2x_reeds import ReEDSConfig; print(ReEDSConfig(solve_year=2030, weather_year=2012).primary_solve_year)"
-# 2030
+python -m pip install r2x-reeds
+python -m pip show r2x-reeds
 ```
 
-Alternatively, in an active virtual environment use `python -m pip install r2x-reeds`.
-This is a library/plugin package, not a standalone command-line executable.
+Follow the [pip-based fixture tutorial](/r2x-reeds/tutorials/parse-run/) for complete
+environment setup and a separate data download. Fixtures are not installed package
+resources. The library has no standalone `r2x-reeds` executable.
+
+For a project already managed with uv, `uv add r2x-reeds` is an alternative.
+Source checkouts are a contributor workflow, not the normal package-install path.
 
 ## CLI runtime
 

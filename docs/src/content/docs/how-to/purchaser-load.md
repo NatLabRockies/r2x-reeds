@@ -2,6 +2,10 @@
 title: Add Purchaser Load Transform
 ---
 
+For installation, follow the [published-package tutorial](/r2x-reeds/tutorials/parse-run/).
+For the complete modifier sequence and alternative load representations, see
+[prepare a PCM handoff](/r2x-reeds/how-to/pcm-handoff/).
+
 Use the `add-purchaser-load` transform to attach purchaser-load consuming technologies after parsing a base ReEDS system.
 
 This transform adds and/or updates:

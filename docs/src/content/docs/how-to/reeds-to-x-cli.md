@@ -12,7 +12,7 @@ another version.
 
 Use a working copy of the ReEDS run because parser upgrades can modify its files.
 After extracting the fixture as shown in the tutorial, save
-`reeds-parser-pipeline.yaml` in the repository root. For your own run, replace the
+`reeds-parser-pipeline.yaml` in the tutorial workspace. For your own run, replace the
 path and years with selections present in its data:
 
 ```yaml

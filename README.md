@@ -6,20 +6,22 @@ ReEDS parser and transforms for the R2X plugin framework. Read ReEDS inputs and
 outputs into an R2X system, then apply optional modifiers before translation by
 separate target packages.
 
+The [ReEDS model](https://github.com/ReEDS-Model/ReEDS) produces the capacity-expansion runs consumed here. `r2x-reeds` parses those results and applies optional system modifiers; it does not solve the ReEDS model.
+
 [Documentation](docs/README.md) · [PyPI](https://pypi.org/project/r2x-reeds/) · [Changelog](CHANGELOG.md)
 
 <br clear="left">
 
 ## Quick start
 
-Use Python 3.11–3.13 and uv. From a source checkout:
+Use Python 3.11–3.13 in an active virtual environment:
 
 ```bash
-uv sync --locked --no-dev
+python -m pip install r2x-reeds
 ```
 
 Follow [parse, modify and reload a ReEDS fixture](docs/src/content/docs/tutorials/parse-run.md)
-to unpack the public Pacific sample, build a system, inspect an hourly profile,
+for environment setup and a separate public Pacific data download, then build a system, inspect an hourly profile,
 split generators and reload the saved result. The verified fixture has 11 regions,
 292 generators before splitting and 673 afterward.
 
@@ -29,6 +31,9 @@ and use the [parser pipeline](docs/src/content/docs/how-to/reeds-to-x-cli.md).
 both Python and `r2x read`. Parser upgrades can modify input files; use a working copy.
 
 ## Documentation
+
+[Prepare a PCM handoff](docs/src/content/docs/how-to/pcm-handoff.md) covers all eight
+registered system modifiers, optional profiles, cost-unit checks and inspection.
 
 - [Tutorials](docs/src/content/docs/tutorials/parse-run.md): parse and inspect a run.
 - [How-to guides](docs/src/content/docs/how-to/reeds-to-x-cli.md): CLI and Python workflows.

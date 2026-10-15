@@ -8,7 +8,7 @@ These are Infrasys serialization, not a native PLEXOS, Sienna or upstream model 
 
 ## Reload in the project environment
 
-Save this as `inspect_saved.py` in the checkout:
+Save this as `inspect_saved.py` in the tutorial workspace:
 
 ```python
 from r2x_core import System
@@ -25,7 +25,7 @@ print(profile.data[:3])
 ```
 
 ```bash
-uv run python inspect_saved.py
+python inspect_saved.py
 ```
 
 For the completed tutorial, expect ReEDSRegion 11; ReEDSGenerator 673, followed by an 8,760-value
@@ -42,10 +42,10 @@ managed environment:
 r2x python show
 ```
 
-From this source checkout, install the package into that CLI environment:
+Install the published package into that CLI environment:
 
 ```bash
-r2x install .
+r2x install r2x-reeds
 ```
 
 Installation changes the CLI managed environment. It is separate from the project's

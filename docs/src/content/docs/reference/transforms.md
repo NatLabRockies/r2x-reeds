@@ -4,6 +4,10 @@ title: Transforms Reference
 
 Transforms are optional post-parse system modifiers exposed under the `r2x.transforms` entry point group.
 
+Follow [prepare a PCM handoff](/r2x-reeds/how-to/pcm-handoff/) for a complete
+modifier inventory, input requirements, ordering choices, cost-unit checks and
+CLI pipeline profiles.
+
 ## Available Transforms
 
 - `add-pcm-defaults`
