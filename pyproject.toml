@@ -62,17 +62,6 @@ dev = [
     "ruff>=0.13.3",
     "ty>=0.0.14",
 ]
-docs = [
-    "autodoc-pydantic",
-    "docstr-coverage>=2.3.2",
-    "furo>=2025.9.25",
-    "ghp-import",
-    "myst-parser",
-    "sphinx>=8.0.0",
-    "sphinx-copybutton",
-    "sphinx-reports",
-    "sphinx-tabs",
-]
 
 [build-system]
 requires = ["uv_build>=0.8.22,<0.13.0"]
