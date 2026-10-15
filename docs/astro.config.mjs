@@ -10,6 +10,12 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "r2x-reeds",
+      logo: {
+        light: "./src/assets/r2x-logo-full-color.svg",
+        dark: "./src/assets/r2x-logo-white.svg",
+        alt: "R2X framework logo",
+        replacesTitle: false,
+      },
       description: "ReEDS parser and transforms for R2X.",
       social: [
         {

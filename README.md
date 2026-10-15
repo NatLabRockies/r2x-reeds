@@ -1,3 +1,5 @@
+<img src="./docs/src/assets/r2x-logo-full-square.svg" alt="R2X framework logo" align="left" width="220" height="220" />
+
 # r2x-reeds
 
 ReEDS parser and transforms for the R2X plugin framework. Read ReEDS inputs and
@@ -5,6 +7,8 @@ outputs into an R2X system, then apply optional modifiers before translation by
 separate target packages.
 
 [Documentation](docs/README.md) · [PyPI](https://pypi.org/project/r2x-reeds/) · [Changelog](CHANGELOG.md)
+
+<br clear="left">
 
 ## Quick start
 

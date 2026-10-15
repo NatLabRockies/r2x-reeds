@@ -26,3 +26,32 @@
   --sl-color-gray-6: #111212;
   --sl-color-black: #111212;
 }
+
+.site-title {
+  font-size: 1rem;
+}
+
+.site-title img {
+  max-height: 2.2rem;
+}
+
+@media (min-width: 50rem) {
+  :root {
+    --sl-nav-height: 8.5rem;
+  }
+
+  .site-title {
+    width: calc(var(--sl-sidebar-width) - 2 * var(--sl-nav-pad-x));
+    max-width: 100%;
+    flex-direction: column;
+    gap: 0.15rem;
+    line-height: 1.25;
+  }
+
+  .site-title img {
+    width: 100%;
+    height: auto;
+    max-height: calc(var(--sl-nav-height) - 2 * var(--sl-nav-pad-y) - 1.4rem);
+    object-fit: contain;
+  }
+}
