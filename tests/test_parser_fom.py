@@ -123,8 +123,11 @@ def test_generators_receive_solve_year_fixed_om(reeds_run_path: Path, tmp_path: 
     assert all(generator.fom_cost is None for generator in unmatched)
 
 
+@pytest.mark.parametrize(
+    "retrofit_mode,initial_cost", [("current", 55000.0), ("disabled", 45000.0), ("carry", 66000.0)]
+)
 def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
-    reeds_run_path: Path, tmp_path: Path
+    reeds_run_path: Path, tmp_path: Path, retrofit_mode: str, initial_cost: float
 ) -> None:
     shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
     inputs = tmp_path / "inputs_case"
@@ -139,16 +142,19 @@ def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
         inputs / "hyd_fom.csv"
     )
     (inputs / "scalars.csv").write_text("cost_fom_psh,13030,2004$/MW-year\n")
+    switches = inputs / "switches.csv"
+    if retrofit_mode == "disabled":
+        switches.write_text(switches.read_text().replace("GSw_UpgradeFOM_Nems,1", "GSw_UpgradeFOM_Nems,0"))
     hintage = pl.read_csv(inputs / "hintage_data.csv")
     retrofit = pl.DataFrame(
         {
-            "TECH": ["CoalOldUns"],
-            "bin": ["init-1"],
-            "r": ["p1"],
-            "yr": [2032],
-            "cap": [100.0],
-            "wFOM": [50000.0],
-            "wCCS_Retro_FOM": [55.0],
+            "TECH": ["CoalOldUns", "CoalOldUns"],
+            "bin": ["init-1", "init-1"],
+            "r": ["p1", "p1"],
+            "yr": [2028, 2032],
+            "cap": [100.0, 100.0],
+            "wFOM": [50000.0, 50000.0],
+            "wCCS_Retro_FOM": [66.0, 0.0 if retrofit_mode == "carry" else 55.0],
         }
     )
     pl.concat([hintage, retrofit], how="diagonal_relaxed").write_csv(inputs / "hintage_data.csv")
@@ -173,6 +179,6 @@ def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
         assert all(generator.fom_cost == cost for generator in matched), technology
     upgrades = [generator for generator in generators if generator.technology == "coalolduns_coal-ccs_mod"]
     assert {generator.vintage: generator.fom_cost for generator in upgrades} == {
-        "init-1": 55000.0,
+        "init-1": initial_cost,
         "new1": 46000.0,
     }

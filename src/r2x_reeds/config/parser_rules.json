@@ -12,11 +12,7 @@
       "planned_outage_rate": "planned_outage_rate",
       "max_age": "maxage_years",
       "vom_cost": "vom_price",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "heat_rate": "heat_rate",
       "fuel_type": "fuel_type",
@@ -34,8 +30,7 @@
       "name": "build_generator_name",
       "region": "lookup_region",
       "storage_duration": "get_storage_duration",
-      "round_trip_efficiency": "get_round_trip_efficiency",
-      "fom_cost": "get_fom_cost"
+      "round_trip_efficiency": "get_round_trip_efficiency"
     },
     "defaults": {
       "category": null,
@@ -43,6 +38,7 @@
       "planned_outage_rate": null,
       "max_age": null,
       "vom_cost": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "is_aggregated": false,
@@ -70,11 +66,7 @@
       "planned_outage_rate": "planned_outage_rate",
       "max_age": "max_age",
       "vom_cost": "vom_cost",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "vintage": "vintage",
       "heat_rate": "heat_rate",
@@ -89,8 +81,7 @@
     "getters": {
       "name": "build_generator_name",
       "region": "lookup_region",
-      "fuel_type": "get_fuel_type",
-      "fom_cost": "get_fom_cost"
+      "fuel_type": "get_fuel_type"
     },
     "defaults": {
       "category": null,
@@ -98,6 +89,7 @@
       "planned_outage_rate": null,
       "max_age": null,
       "vom_cost": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "fuel_type": null,
@@ -122,11 +114,7 @@
       "planned_outage_rate": "planned_outage_rate",
       "max_age": "max_age",
       "vom_cost": "vom_cost",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "vintage": "vintage",
       "resource_class": "resource_class",
@@ -138,8 +126,7 @@
     },
     "getters": {
       "name": "build_generator_name",
-      "region": "lookup_region",
-      "fom_cost": "get_fom_cost"
+      "region": "lookup_region"
     },
     "defaults": {
       "category": null,
@@ -147,6 +134,7 @@
       "planned_outage_rate": null,
       "max_age": null,
       "vom_cost": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "resource_class": null,
@@ -170,11 +158,7 @@
       "planned_outage_rate": "planned_outage_rate",
       "max_age": "max_age",
       "vom_cost": "vom_cost",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "vintage": "vintage",
       "storage_duration": "storage_duration",
@@ -185,8 +169,7 @@
     },
     "getters": {
       "name": "build_generator_name",
-      "region": "lookup_region",
-      "fom_cost": "get_fom_cost"
+      "region": "lookup_region"
     },
     "defaults": {
       "category": null,
@@ -194,6 +177,7 @@
       "planned_outage_rate": null,
       "max_age": null,
       "vom_cost": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "storage_duration": null,
@@ -216,11 +200,7 @@
       "planned_outage_rate": "planned_outage_rate",
       "max_age": "max_age",
       "vom_cost": "vom_cost",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "vintage": "vintage",
       "ramp_rate": "ramp_rate"
@@ -228,8 +208,7 @@
     "getters": {
       "name": "build_generator_name",
       "region": "lookup_region",
-      "is_dispatchable": "compute_is_dispatchable",
-      "fom_cost": "get_fom_cost"
+      "is_dispatchable": "compute_is_dispatchable"
     },
     "defaults": {
       "category": null,
@@ -237,6 +216,7 @@
       "planned_outage_rate": null,
       "max_age": null,
       "vom_cost": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "ramp_rate": null
@@ -257,11 +237,7 @@
       "heat_rate": "heat_rate",
       "max_age": "max_age",
       "vom_cost": "vom_cost",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "vintage": "vintage",
       "electricity_efficiency": "electricity_efficiency",
@@ -269,8 +245,7 @@
     },
     "getters": {
       "name": "build_generator_name",
-      "region": "lookup_region",
-      "fom_cost": "get_fom_cost"
+      "region": "lookup_region"
     },
     "defaults": {
       "category": null,
@@ -280,6 +255,7 @@
       "vom_cost": null,
       "fuel_price": null,
       "heat_rate": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "electricity_efficiency": 1.0,
@@ -301,11 +277,7 @@
       "heat_rate": "heat_rate",
       "max_age": "max_age",
       "vom_cost": "vom_cost",
-      "fom_cost": [
-        "fom_cost",
-        "hydro_fom_cost",
-        "hintage_fom_cost"
-      ],
+      "fom_cost": "fom_cost",
       "capital_cost": "capital_cost",
       "vintage": "vintage",
       "electricity_efficiency": "electricity_efficiency",
@@ -313,8 +285,7 @@
     },
     "getters": {
       "name": "build_generator_name",
-      "region": "lookup_region",
-      "fom_cost": "get_fom_cost"
+      "region": "lookup_region"
     },
     "defaults": {
       "category": null,
@@ -324,6 +295,7 @@
       "vom_cost": null,
       "fuel_price": null,
       "heat_rate": null,
+      "fom_cost": null,
       "capital_cost": null,
       "vintage": null,
       "electricity_efficiency": 1.0,

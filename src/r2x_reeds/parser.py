@@ -2336,7 +2336,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         capacity_data = self.read_data_file("online_capacity")
         upgrade_links = self.read_data_file("fom_upgrade_links")
         switches = self.read_data_file("fom_switches").collect()
-        if dict(switches.iter_rows()).get("gsw_watermain") == "1":
+        switch_values = dict(switches.iter_rows())
+        if switch_values.get("gsw_watermain") == "1":
             water_links = self.read_data_file("fom_water_upgrade_links")
             if water_links is None:
                 return Err("Required FOM dataset 'fom_water_upgrade_links' is unavailable")
@@ -2368,6 +2369,13 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "fom_hintage": self.read_data_file("fom_hintage"),
                 "fom_technology_subsets": self.read_data_file("fom_technology_subsets"),
                 "fom_upgrade_links": upgrade_links,
+                "fom_switches": switches.lazy(),
+                "fom_scalars": self.read_data_file("fom_scalars"),
+                "fom_unitspec_upgrades": self.read_data_file("fom_unitspec_upgrades"),
+                "fom_upgrade_characteristics": self.store.read_data(
+                    "cost_fom",
+                    placeholders={"solve_year": int(switch_values["gsw_upgradechar_year"])},
+                ),
                 "forced_outages": self.read_data_file("forced_outages"),
                 "planned_outages": self.read_data_file("planned_outages"),
                 "startcost": self.read_data_file("startcost"),
