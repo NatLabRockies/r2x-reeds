@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.3](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.2...v0.9.3) (2026-10-15)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** skip local branch guard in CI hook runs ([#115](https://github.com/NatLabRockies/r2x-reeds/issues/115)) ([2c9ca7a](https://github.com/NatLabRockies/r2x-reeds/commit/2c9ca7aa6ed096a78dd2b3c111c67d8aff698fd1))
+* **pcm:** preserve startup cost coefficients per MW ([#114](https://github.com/NatLabRockies/r2x-reeds/issues/114)) ([70387ec](https://github.com/NatLabRockies/r2x-reeds/commit/70387ecfd4684955303ac106d87b6f4c6bd6c2be))
+* support legacy ReEDS CSV headers ([#113](https://github.com/NatLabRockies/r2x-reeds/issues/113)) ([aed95e4](https://github.com/NatLabRockies/r2x-reeds/commit/aed95e49ca4b35da40bf06d95cbc1178a4ddfc83))
+
+
+### 📦 Build
+
+* **deps-dev:** bump ruff from 0.16.6 to 0.16.7 ([#105](https://github.com/NatLabRockies/r2x-reeds/issues/105)) ([19e49bb](https://github.com/NatLabRockies/r2x-reeds/commit/19e49bb4791345bbab7fbfe57e260e3e8942faf5))
+* **deps-dev:** update uv-build requirement ([#106](https://github.com/NatLabRockies/r2x-reeds/issues/106)) ([b0f906c](https://github.com/NatLabRockies/r2x-reeds/commit/b0f906cc4183137f92d4de5b69a49aa9011dae98))
+* **deps:** bump codecov/codecov-action from 7.0.0 to 7.1.1 ([#107](https://github.com/NatLabRockies/r2x-reeds/issues/107)) ([3680381](https://github.com/NatLabRockies/r2x-reeds/commit/3680381e1afc64ef6728d488a362bd9079e04c89))
+
 ## [0.9.2](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.1...v0.9.2) (2026-10-06)
 
 
