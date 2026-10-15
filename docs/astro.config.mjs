@@ -54,10 +54,6 @@ export default defineConfig({
           label: "Tutorials",
           items: [
             {
-              label: "Introduction",
-              link: "/",
-            },
-            {
               label: "Parse a ReEDS run",
               link: "/tutorials/parse-run/",
             },
@@ -88,10 +84,6 @@ export default defineConfig({
         {
           label: "Reference",
           items: [
-            {
-              label: "Overview",
-              link: "/reference/",
-            },
             {
               label: "Python API",
               link: "/reference/python-api/",
@@ -128,19 +120,7 @@ export default defineConfig({
             },
           ],
         },
-        {
-          label: "Changelog",
-          items: [
-            {
-              label: "Release history",
-              link: "/changelog/",
-            },
-            {
-              label: "Documentation versions",
-              link: "/versions/",
-            },
-          ],
-        },
+        { label: "Changelog", link: "/changelog/" },
         {
           label: "Contributors",
           items: [

@@ -1,5 +1,5 @@
 ---
-title: Documentation versions
+title: Match documentation to installed source
 ---
 
 These pages describe **main** at [ebb6953](https://github.com/NatLabRockies/r2x-reeds/tree/ebb69534188c7b94933c36a534d84a651114e2f9).
