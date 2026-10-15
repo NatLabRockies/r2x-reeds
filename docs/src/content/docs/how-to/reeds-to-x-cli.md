@@ -4,7 +4,7 @@ title: Parse ReEDS with r2x-cli
 
 Use a parser-only pipeline to check the [Pacific fixture tutorial](/r2x-reeds/tutorials/parse-run/)
 run before adding target translation
-packages. [Install the CLI plugin](/r2x-reeds/how-to/install/#cli-runtime) first.
+packages. [Install the CLI plugin](/r2x-reeds/getting-started/installation/#cli-runtime) first.
 These commands follow r2x-cli 0.1.15; inspect your installed CLI's help when using
 another version.
 

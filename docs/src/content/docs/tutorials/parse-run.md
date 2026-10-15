@@ -23,39 +23,13 @@ flowchart TD
 The saved artifact contains ReEDS components, not a PLEXOS or Sienna export.
 Target conversion is a later step performed by [R2X translation plugins](https://github.com/NatLabRockies/R2X).
 
-## Install the published package
+## Before you start
 
-Use Python 3.11–3.13. The macOS/Linux commands below show Python 3.12; substitute
-your supported interpreter name if needed. No Git checkout is required to install
-the library or follow this example.
-
-Create an empty workspace and an isolated environment:
-
-```bash
-mkdir reeds-example
-cd reeds-example
-python3.12 -m venv .venv
-```
-
-Activate it before installing so the package and inspection scripts use the same
-Python environment:
-
-```bash
-source .venv/bin/activate
-```
-
-Install the published package and check which version was selected:
-
-```bash
-python -m pip install r2x-reeds
-python -m pip show r2x-reeds
-```
-
-This tutorial was tested with PyPI `r2x-reeds` 0.9.3 and `r2x-core` 0.9.0.
-[r2x-core](https://github.com/NatLabRockies/r2x-core) and
-[Infrasys](https://github.com/NatLabRockies/infrasys) are installed as dependencies;
-you do not need to clone either project. See [installation](/r2x-reeds/how-to/install/)
-for the separate r2x-cli managed-environment path and contributor source installs.
+Complete [installation](/r2x-reeds/getting-started/installation/),
+[environment setup](/r2x-reeds/getting-started/environment/) and
+[verification](/r2x-reeds/getting-started/verify/). Keep that environment active and
+work in your empty `reeds-example` directory. This tutorial was tested with the
+published `r2x-reeds` 0.9.3 and `r2x-core` 0.9.0. No source checkout is required.
 
 ## Download sample data separately
 

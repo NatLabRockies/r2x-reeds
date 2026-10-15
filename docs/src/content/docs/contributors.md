@@ -2,6 +2,16 @@
 title: Contributors
 ---
 
+## Source checkout
+
+Source installation is for contributors. Normal users should follow
+[published installation](/r2x-reeds/getting-started/installation/).
+
+```bash
+git clone https://github.com/NatLabRockies/r2x-reeds.git
+cd r2x-reeds
+```
+
 Install locked project dependencies from the repository root:
 
 ```bash

@@ -1,5 +1,5 @@
 ---
-title: Install r2x-reeds
+title: Installation
 ---
 
 Use Python **3.11–3.13** (`>=3.11,<3.14`). Choose the environment that will execute
@@ -7,7 +7,7 @@ your parser; project Python and the CLI's managed Python are separate environmen
 
 ## Published Python package
 
-Create and activate a virtual environment with a supported Python, then install
+Follow [environment setup](/r2x-reeds/getting-started/environment/) to create and activate a virtual environment, then install
 from [PyPI](https://pypi.org/project/r2x-reeds/):
 
 ```bash
@@ -15,8 +15,7 @@ python -m pip install r2x-reeds
 python -m pip show r2x-reeds
 ```
 
-Follow the [pip-based fixture tutorial](/r2x-reeds/tutorials/parse-run/) for complete
-environment setup and a separate data download. Fixtures are not installed package
+Follow the [fixture tutorial](/r2x-reeds/tutorials/parse-run/) for the separate data download. Fixtures are not installed package
 resources. The library has no standalone `r2x-reeds` executable.
 
 For a project already managed with uv, `uv add r2x-reeds` is an alternative.
@@ -39,13 +38,4 @@ If the CLI reports missing managed Python, use `r2x python install` before insta
 plugins. The list should include `reeds-parser` and the transform entry points.
 See [CLI pipeline](/r2x-reeds/how-to/reeds-to-x-cli/) for a minimal run.
 
-## Source checkout
-
-```bash
-git clone https://github.com/NatLabRockies/r2x-reeds.git
-cd r2x-reeds
-uv sync --locked --all-groups
-```
-
-Verify with `uv run --locked python -c "import r2x_reeds; print(r2x_reeds.__version__)"`.
-See [documentation versions](/r2x-reeds/versions/) when comparing older releases.
+Continue with [verify installation](/r2x-reeds/getting-started/verify/). For contributor source checkouts, see [development setup](/r2x-reeds/contributors/#source-checkout).

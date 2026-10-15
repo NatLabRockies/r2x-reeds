@@ -25,12 +25,14 @@ for environment setup and a separate public Pacific data download, then build a 
 split generators and reload the saved result. The verified fixture has 11 regions,
 292 generators before splitting and 673 afterward.
 
-For CLI workflows, [install the plugin](docs/src/content/docs/how-to/install.md)
+For CLI workflows, [install the plugin](docs/src/content/docs/getting-started/installation.md)
 and use the [parser pipeline](docs/src/content/docs/how-to/reeds-to-x-cli.md).
 [Saved-system inspection](docs/src/content/docs/how-to/inspect-system.md) covers
 both Python and `r2x read`. Parser upgrades can modify input files; use a working copy.
 
 ## Documentation
+
+- [Getting started](docs/src/content/docs/getting-started/installation.md): installation, environment and verification.
 
 [Prepare a PCM handoff](docs/src/content/docs/how-to/pcm-handoff.md) covers all eight
 registered system modifiers, optional profiles, cost-unit checks and inspection.

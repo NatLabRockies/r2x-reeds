@@ -7,6 +7,7 @@ export default defineConfig({
   outDir: "./_build",
   site: "https://natlabrockies.github.io",
   base: "/r2x-reeds/",
+  redirects: { "/how-to/install/": "/r2x-reeds/getting-started/installation/" },
   markdown: { processor: unified() },
   integrations: [
     mermaid({
@@ -39,6 +40,17 @@ export default defineConfig({
       customCss: ["./src/styles/brand.css"],
       sidebar: [
         {
+          label: "Getting started",
+          items: [
+            { label: "Installation", link: "/getting-started/installation/" },
+            {
+              label: "Environment and inputs",
+              link: "/getting-started/environment/",
+            },
+            { label: "Verify installation", link: "/getting-started/verify/" },
+          ],
+        },
+        {
           label: "Tutorials",
           items: [
             {
@@ -58,10 +70,6 @@ export default defineConfig({
             {
               label: "Inspect a saved system",
               link: "/how-to/inspect-system/",
-            },
-            {
-              label: "Install",
-              link: "/how-to/install/",
             },
             {
               label: "CLI pipeline",

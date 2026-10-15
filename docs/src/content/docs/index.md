@@ -8,7 +8,8 @@ target translation and export are supplied by separate packages.
 
 The [ReEDS model](https://github.com/ReEDS-Model/ReEDS) produces the capacity-expansion runs consumed here. `r2x-reeds` parses those results and applies optional system modifiers; it does not solve the ReEDS model.
 
-Start with [parse a ReEDS run](/r2x-reeds/tutorials/parse-run/). You need an existing
+Begin with [installation](/r2x-reeds/getting-started/installation/) and
+[verify your environment](/r2x-reeds/getting-started/verify/). Start with [parse a ReEDS run](/r2x-reeds/tutorials/parse-run/). You need an existing
 ReEDS run with matching input and output data; this package does not run ReEDS.
 
 | Task                    | Guide                                                                   |
