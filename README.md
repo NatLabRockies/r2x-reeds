@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/NatLabRockies/r2x-reeds/actions/workflows/ci.yaml/badge.svg)](https://github.com/NatLabRockies/r2x-reeds/actions/workflows/ci.yaml) [![PyPI](https://img.shields.io/pypi/v/r2x-reeds?label=PyPI&color=0079c2&logo=pypi)](https://pypi.org/project/r2x-reeds/) [![Last commit](https://img.shields.io/github/last-commit/NatLabRockies/r2x-reeds?style=flat-square)](https://github.com/NatLabRockies/r2x-reeds/commits/main) [![Docs](https://img.shields.io/badge/docs-guides-0079c2?style=flat-square)](docs/README.md)
 <br/>
-[![Python 3.11–3.13](https://img.shields.io/badge/Python-3.11%E2%80%933.13-3776ab?logo=python&logoColor=white)](docs/src/content/docs/getting-started/installation.md) [![Managed with uv](https://img.shields.io/badge/managed%20with-uv-6f42c1)](https://docs.astral.sh/uv/) [![BSD 3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](./LICENSE.txt)
+[![Python 3.11–3.13](https://img.shields.io/badge/Python-3.11--3.13-3776ab?logo=python&logoColor=white)](docs/src/content/docs/getting-started/installation.md) [![Managed with uv](https://img.shields.io/badge/managed%20with-uv-6f42c1)](https://docs.astral.sh/uv/) [![BSD 3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](./LICENSE.txt)
 
 <br clear="left">
 
