@@ -1,6 +1,5 @@
 """Data path fixtures with override capability."""
 
-import gzip
 import shutil
 import zipfile
 from pathlib import Path
@@ -23,11 +22,6 @@ def write_unitspec_upgrades_h5(path: Path, technologies: list[str]) -> None:
         group = h5_file.create_group("unitspec_upgrades")
         group.create_dataset("columns", data=np.asarray(["i"], dtype=string_dtype))
         group.create_dataset("i", data=np.asarray(technologies, dtype=string_dtype))
-
-
-def copy_unitspec_upgrades_h5_fixture(source: Path, destination: Path) -> None:
-    """Decompress the HDF5 set fixture into a temporary ReEDS run."""
-    destination.write_bytes(gzip.decompress(source.read_bytes()))
 
 
 @pytest.fixture(scope="session")
@@ -72,10 +66,6 @@ def reeds_run_path(
     ):
         shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
 
-    copy_unitspec_upgrades_h5_fixture(
-        fixed_om_inputs / "inputs.h5.gz", run_path / "inputs_case" / "inputs.h5"
-    )
-
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
 
@@ -94,9 +84,6 @@ def reeds_run_upgrader(tmp_path_factory, test_data_path: Path, fixed_om_inputs: 
 
     run_path = base_tmp / "test_Upgrader"
     shutil.copyfile(fixed_om_inputs / "plantcharout.csv", run_path / "inputs_case" / "plantcharout.csv")
-    copy_unitspec_upgrades_h5_fixture(
-        fixed_om_inputs / "inputs.h5.gz", run_path / "inputs_case" / "inputs.h5"
-    )
     logger.debug("Unpacked upgrader test data to: {}", run_path)
     return run_path
 
