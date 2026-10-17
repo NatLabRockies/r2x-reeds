@@ -1548,3 +1548,28 @@ def test_expand_loadsite_hourly_exception_path() -> None:
 
     result = expand_loadsite_hourly(loadsite_data, bad_hour_map)
     assert result.is_err()
+
+
+@pytest.mark.parametrize("costs,expected", [([10.0, 30.0], 25.0), ([10.0, None], None)])
+def test_renewable_fom_preserves_annual_cost_and_unknowns(
+    costs: list[float | None], expected: float | None
+) -> None:
+    import polars as pl
+
+    from r2x_reeds.parser_utils import aggregate_variable_generators
+
+    generators = pl.DataFrame(
+        {
+            "technology": ["wind-ons_1", "wind-ons_1"],
+            "region": ["p1", "p1"],
+            "category": ["wind", "wind"],
+            "categories": [["wind"], ["wind"]],
+            "capacity": [100.0, 300.0],
+            "fom_cost": costs,
+        }
+    )
+    result = aggregate_variable_generators(generators)
+    assert result["capacity"].to_list() == [400.0]
+    assert result["fom_cost"].to_list() == [expected]
+    if expected is not None:
+        assert result["capacity"][0] * result["fom_cost"][0] == 10000.0

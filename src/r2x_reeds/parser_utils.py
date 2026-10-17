@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 # Columns that can be aggregated from the model.
 AGG_COLUMNS = [
+    "fom_cost",
     "heat_rate",
     "forced_outage_rate",
     "planned_outage_rate",
@@ -274,7 +275,12 @@ def _prepare_generator_dataset(
         return frame
 
     for name, next_df in optional_data.items():
-        if next_df is None:
+        if next_df is None or name in {
+            "fom_switches",
+            "fom_scalars",
+            "fom_unitspec_upgrades",
+            "fom_upgrade_characteristics",
+        }:
             continue
 
         if name == "fuel_tech_map":
@@ -332,6 +338,173 @@ def _prepare_generator_dataset(
                     )
         except Exception as e:
             return Err(ValidationError(f"Failed to join {name} data: {e}"))
+
+    if optional_data.get("cost_fom") is not None:
+        # Resolve rates before renewable aggregation so capacity * FOM remains annual cost.
+        switches_frame = optional_data["fom_switches"]
+        scalars = optional_data["fom_scalars"]
+        unitspec = optional_data["fom_unitspec_upgrades"]
+        characteristics = optional_data["fom_upgrade_characteristics"]
+        costs = optional_data["cost_fom"]
+        hydro = optional_data["fom_hydro"]
+        history = optional_data["fom_hintage"]
+        subsets = optional_data["fom_technology_subsets"]
+        if any(
+            frame is None
+            for frame in (switches_frame, scalars, unitspec, characteristics, hydro, history, subsets)
+        ):
+            return Err(ValidationError("Required fixed O&M sources are unavailable"))
+        assert switches_frame is not None and scalars is not None and unitspec is not None
+        assert characteristics is not None and costs is not None and hydro is not None
+        assert history is not None and subsets is not None
+        switches = dict(switches_frame.collect().iter_rows())
+        initial = pl.col("vintage").str.starts_with("init")
+        upgraded = pl.col("target_technology").is_not_null()
+        if switches.get("gsw_upgrades") != "1" and df.filter(upgraded).select(pl.len()).collect().item():
+            return Err(ValidationError("Active generator upgrades require GSw_Upgrades=1"))
+        df = (
+            df.join(
+                costs.select(
+                    pl.col("technology").alias("target_technology"),
+                    "year",
+                    pl.col("fom_cost").alias("target_fom"),
+                ),
+                on=["target_technology", "year"],
+                how="left",
+            )
+            .join(
+                characteristics.select(
+                    pl.col("technology").alias("target_technology"),
+                    pl.col("fom_cost").alias("initial_target_fom"),
+                ),
+                on="target_technology",
+                how="left",
+            )
+            .join(
+                hydro.rename({"technology": "target_technology", "hydro_fom_cost": "target_hydro_fom"}),
+                on=["target_technology", "region"],
+                how="left",
+            )
+        )
+        target_cost = (
+            pl.when(initial)
+            .then(pl.col("initial_target_fom") + pl.col("target_hydro_fom").fill_null(0))
+            .otherwise(pl.col("target_fom"))
+        )
+        df = (
+            df.with_columns(
+                pl.when(pl.col("distpv") == "yes")
+                .then(pl.col("hintage_fom_cost"))
+                .otherwise(pl.col("fom_cost"))
+                .alias("fom_cost")
+            )
+            .with_columns(
+                pl.when(pl.col("hydro_fom_cost").fill_null(0) != 0)
+                .then(pl.col("hydro_fom_cost"))
+                .otherwise(pl.col("fom_cost"))
+                .alias("fom_cost")
+            )
+            .with_columns(pl.when(upgraded).then(target_cost).otherwise(pl.col("fom_cost")).alias("fom_cost"))
+        )
+        if switches.get("gsw_upgradefom_nems") == "1":
+            source_keys = ["source_technology", "vintage", "region"]
+            source_history = history.rename({"technology": "source_technology"})
+            eligible = (
+                source_history.filter(
+                    (pl.col("year") == int(switches["gsw_upgradeyear"])) & (pl.col("hintage_capacity") > 0)
+                )
+                .select(source_keys)
+                .unique()
+                .with_columns(pl.lit(True).alias("retrofit_eligible"))
+            )
+            # Each solve-year row uses the last nonzero prior rate only for eligible units.
+            prior = (
+                df.select(*source_keys, "year")
+                .unique()
+                .join(
+                    source_history.select(
+                        *source_keys,
+                        pl.col("year").alias("history_year"),
+                        pl.col("ccs_retrofit_fom").alias("prior_retrofit"),
+                    ),
+                    on=source_keys,
+                    how="left",
+                )
+                .filter((pl.col("history_year") < pl.col("year")) & (pl.col("prior_retrofit") != 0))
+                .sort("history_year")
+                .group_by(*source_keys, "year")
+                .agg(pl.col("prior_retrofit").last())
+            )
+            df = (
+                df.join(
+                    source_history.select(
+                        *source_keys, "year", pl.col("ccs_retrofit_fom").alias("current_retrofit")
+                    ),
+                    on=[*source_keys, "year"],
+                    how="left",
+                )
+                .join(eligible, on=source_keys, how="left")
+                .join(prior, on=[*source_keys, "year"], how="left")
+            )
+            retrofit = (
+                pl.when(pl.col("current_retrofit").fill_null(0) != 0)
+                .then(pl.col("current_retrofit"))
+                .when(pl.col("retrofit_eligible"))
+                .then(pl.col("prior_retrofit"))
+            )
+            units = unitspec.collect()["technology"]
+            ccs = subsets.filter(pl.col("ccs") == "yes").collect()["technology"]
+            df = df.with_columns(
+                pl.when(
+                    initial
+                    & upgraded
+                    & pl.col("technology").is_in(units.implode())
+                    & pl.col("target_technology").is_in(ccs.implode())
+                    & (retrofit.fill_null(0) != 0)
+                )
+                .then(retrofit)
+                .otherwise(pl.col("fom_cost"))
+                .alias("fom_cost")
+            )
+        psh_cost = scalars.collect()["value"][0]
+        df = df.with_columns(
+            pl.when(pl.col("psh") == "yes")
+            .then(pl.lit(psh_cost))
+            .otherwise(pl.col("fom_cost"))
+            .alias("fom_cost")
+        )
+        if (
+            df.filter((upgraded | (pl.col("distpv") == "yes")) & pl.col("fom_cost").is_null())
+            .select(pl.len())
+            .collect()
+            .item()
+        ):
+            return Err(ValidationError("Missing fixed O&M for an upgrade target or distributed-PV hintage"))
+        # Source flags and intermediate rates do not participate in downstream aggregation.
+        df = df.drop(
+            [
+                column
+                for column in df.collect_schema().names()
+                if column
+                in {
+                    "hydro_fom_cost",
+                    "hintage_fom_cost",
+                    "hintage_capacity",
+                    "ccs_retrofit_fom",
+                    "psh",
+                    "distpv",
+                    "ccs",
+                    "source_technology",
+                    "target_technology",
+                    "target_fom",
+                    "initial_target_fom",
+                    "target_hydro_fom",
+                    "current_retrofit",
+                    "retrofit_eligible",
+                    "prior_retrofit",
+                }
+            ]
+        )
 
     collected = df.collect()
     df_out = collected.with_columns(pl.col("technology").str.split("_").list.get(0).alias("technology_base"))
@@ -409,6 +582,7 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
         Aggregated data with one row per tech-region-category combination
         - Capacity summed
         - Specific fields use first() (resource_class, fuel_type)
+        - Fixed O&M capacity-weighted, preserving unknown rates
         - Other fields averaged
     """
     first_fields = {"resource_class", "fuel_type"}
@@ -417,6 +591,14 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
     for col in AGG_COLUMNS:
         if col not in df.columns:
             agg_exprs.append(pl.lit(None).alias(col))
+        elif col == "fom_cost":
+            unknown_cost = (pl.col(col).is_null() & (pl.col("capacity") > 0)).any()
+            agg_exprs.append(
+                pl.when(unknown_cost | (pl.col("capacity").sum() <= 0))
+                .then(pl.lit(None, dtype=pl.Float64))
+                .otherwise((pl.col(col) * pl.col("capacity")).sum() / pl.col("capacity").sum())
+                .alias(col)
+            )
         elif col in first_fields:
             agg_exprs.append(pl.col(col).first())
         else:

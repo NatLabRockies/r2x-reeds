@@ -1,5 +1,6 @@
 """Data path fixtures with override capability."""
 
+import shutil
 import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,13 +14,21 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
+def fixed_om_inputs(test_data_path: Path) -> Path:
+    """Tracked inputs omitted from the reduced run archives."""
+    return test_data_path / "test_Upgrader" / "inputs_case"
+
+
+@pytest.fixture(scope="session")
 def test_data_path() -> Path:
     """Default test data directory."""
     return Path(__file__).parent.parent / "data"
 
 
 @pytest.fixture(scope="session")
-def reeds_run_path(reeds_data_path_override: Path | None, tmp_path_factory, test_data_path: Path) -> Path:
+def reeds_run_path(
+    reeds_data_path_override: Path | None, tmp_path_factory, test_data_path: Path, fixed_om_inputs: Path
+) -> Path:
     """ReEDS run path - uses override if provided, otherwise unpacks test data."""
     if reeds_data_path_override:
         logger.info("Using override ReEDS data path: {}", reeds_data_path_override)
@@ -35,12 +44,23 @@ def reeds_run_path(reeds_data_path_override: Path | None, tmp_path_factory, test
         zip_ref.extractall(base_tmp)
 
     run_path = base_tmp / "test_Pacific"
+    for name in (
+        "plantcharout",
+        "hyd_fom",
+        "scalars",
+        "switches",
+        "hintage_data",
+        "upgrade_link",
+        "unitspec_upgrades",
+        "tech-subset-table",
+    ):
+        shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
 
 
 @pytest.fixture(scope="session")
-def reeds_run_upgrader(tmp_path_factory, test_data_path: Path) -> Path:
+def reeds_run_upgrader(tmp_path_factory, test_data_path: Path, fixed_om_inputs: Path) -> Path:
     """ReEDS upgrader test data - unpacks test_Upgrader.zip."""
     base_tmp = tmp_path_factory.mktemp("reeds_run_upgrader")
     archive_run = test_data_path / "test_Upgrader.zip"
@@ -52,6 +72,7 @@ def reeds_run_upgrader(tmp_path_factory, test_data_path: Path) -> Path:
         zip_ref.extractall(base_tmp)
 
     run_path = base_tmp / "test_Upgrader"
+    shutil.copyfile(fixed_om_inputs / "plantcharout.csv", run_path / "inputs_case" / "plantcharout.csv")
     logger.debug("Unpacked upgrader test data to: {}", run_path)
     return run_path
 

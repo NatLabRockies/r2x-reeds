@@ -7,7 +7,7 @@ from typing import Any
 
 import polars as pl
 
-from r2x_core import DataStore, ReaderConfig
+from r2x_core import DataStore, ReaderConfig, TabularProcessing
 
 _GAMS_HEADER_DATASETS = (
     "existing_capacity",
@@ -64,3 +64,30 @@ def register_modeled_years_reader(store: DataStore, /) -> None:
         }
     )
     store.add_data([data_file], overwrite=True)
+
+
+def configure_fom_processing(store: DataStore) -> None:
+    """Configure core's hydro unpivot from the run's region-column schema."""
+    if "fom_hydro" not in store:
+        return
+    data_file = store["fom_hydro"]
+    processing = data_file.proc_spec
+    if not isinstance(processing, TabularProcessing):
+        msg = "fom_hydro requires TabularProcessing configuration"
+        raise ValueError(msg)
+    if processing.unpivot_on:
+        return
+    raw_frame = store.reader.read_data_file(
+        data_file.model_copy(update={"proc_spec": None}), folder_path=store.folder
+    )
+    if not isinstance(raw_frame, pl.LazyFrame):
+        msg = "fom_hydro must be a tabular dataset"
+        raise ValueError(msg)
+    regions = [column.lower() for column in raw_frame.collect_schema().names() if column != "technology"]
+    if not regions:
+        msg = "fom_hydro has no region columns to unpivot"
+        raise ValueError(msg)
+    configured = data_file.model_copy(
+        update={"proc_spec": processing.model_copy(update={"unpivot_on": regions})}
+    )
+    store.add_data([configured], overwrite=True)

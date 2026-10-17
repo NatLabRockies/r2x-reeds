@@ -583,6 +583,295 @@
     }
   },
   {
+    "name": "cost_fom",
+    "fpath": "inputs_case/plantcharout.csv",
+    "info": {
+      "description": "Technology-year fixed O&M from processed plant characteristics in 2004$/MW/year",
+      "is_input": true,
+      "is_optional": false,
+      "units": "2004$/MW/year"
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "filter_by": {
+        "year": "{solve_year}",
+        "variable": "fom"
+      },
+      "select_columns": [
+        "technology",
+        "year",
+        "fom_cost"
+      ],
+      "column_schema": {
+        "technology": "string",
+        "year": "int",
+        "variable": "string",
+        "fom_cost": "float"
+      }
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "year",
+          "variable",
+          "fom_cost"
+        ]
+      }
+    }
+  },
+  {
+    "name": "fom_hydro",
+    "fpath": "inputs_case/hyd_fom.csv",
+    "info": {
+      "description": "Regional hydro fixed O&M in 2004$/MW/year",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "unpivot_on": [],
+      "column_mapping": {
+        "variable": "region",
+        "value": "hydro_fom_cost"
+      },
+      "column_schema": {
+        "technology": "string",
+        "region": "string",
+        "hydro_fom_cost": "float"
+      }
+    }
+  },
+  {
+    "name": "fom_scalars",
+    "fpath": "inputs_case/scalars.csv",
+    "info": {
+      "description": "Fixed O&M scalar parameters",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {
+        "has_header": false,
+        "new_columns": [
+          "parameter",
+          "value",
+          "description"
+        ],
+        "infer_schema": false
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "value": "float"
+      },
+      "filter_by": {
+        "parameter": "cost_fom_psh"
+      },
+      "select_columns": [
+        "parameter",
+        "value"
+      ]
+    }
+  },
+  {
+    "name": "fom_switches",
+    "fpath": "inputs_case/switches.csv",
+    "info": {
+      "description": "ReEDS switches controlling fixed O&M derivation",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {
+        "has_header": false,
+        "new_columns": [
+          "parameter",
+          "value"
+        ],
+        "infer_schema": false
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "select_columns": [
+        "parameter",
+        "value"
+      ]
+    }
+  },
+  {
+    "name": "fom_technology_subsets",
+    "fpath": "inputs_case/tech-subset-table.csv",
+    "info": {
+      "description": "Technology membership for fixed O&M family assignments",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "psh": "string",
+        "distpv": "string",
+        "ccs": "string"
+      },
+      "select_columns": [
+        "technology",
+        "psh",
+        "distpv",
+        "ccs"
+      ]
+    }
+  },
+  {
+    "name": "fom_upgrade_links",
+    "fpath": "inputs_case/upgrade_link.csv",
+    "info": {
+      "description": "Upgrade source and target technologies",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "source_technology",
+          "target_technology"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "source_technology": "string",
+        "target_technology": "string"
+      },
+      "select_columns": [
+        "technology",
+        "source_technology",
+        "target_technology"
+      ]
+    }
+  },
+  {
+    "name": "fom_water_upgrade_links",
+    "fpath": "inputs_case/upgradelink_water.csv",
+    "info": {
+      "description": "Cooling-specific upgrade source and target technologies",
+      "is_input": true,
+      "is_optional": true
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "source_technology",
+          "target_technology"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "source_technology": "string",
+        "target_technology": "string"
+      },
+      "select_columns": [
+        "technology",
+        "source_technology",
+        "target_technology"
+      ]
+    }
+  },
+  {
+    "name": "fom_unitspec_upgrades",
+    "fpath": "inputs_case/unitspec_upgrades.csv",
+    "info": {
+      "description": "Upgrade technologies with unit-specific costs",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string"
+      },
+      "select_columns": [
+        "technology"
+      ]
+    }
+  },
+  {
+    "name": "fom_hintage",
+    "fpath": "inputs_case/hintage_data.csv",
+    "info": {
+      "description": "Distributed PV and unit-specific CCS retrofit fixed O&M in 2004$/MW/year",
+      "is_input": true,
+      "is_optional": false
+    },
+    "reader": {
+      "kwargs": {}
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_mapping": {
+        "tech": "technology",
+        "bin": "vintage",
+        "r": "region",
+        "yr": "year",
+        "cap": "hintage_capacity",
+        "wfom": "hintage_fom_cost",
+        "wccs_retro_fom": "ccs_retrofit_fom"
+      },
+      "column_schema": {
+        "technology": "string",
+        "vintage": "string",
+        "region": "string",
+        "year": "int",
+        "ccs_retrofit_fom": "float",
+        "hintage_fom_cost": "float",
+        "hintage_capacity": "float"
+      },
+      "scale": {
+        "ccs_retrofit_fom": 1000
+      },
+      "select_columns": [
+        "technology",
+        "vintage",
+        "region",
+        "year",
+        "hintage_capacity",
+        "hintage_fom_cost",
+        "ccs_retrofit_fom"
+      ]
+    }
+  },
+  {
     "name": "cost_vom",
     "fpath": "outputs/outputs.h5",
     "info": {
