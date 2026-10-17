@@ -445,3 +445,9 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,data,macos,windows,linux,visualstudiocode,git,node
+
+# Documentation build artifacts
+docs/node_modules/
+docs/.astro/
+docs/dist/
+docs/_build/
