@@ -63,7 +63,7 @@ Then run the aggregate checks in that environment:
 uv run prek run --all-files --hook-stage pre-push
 ```
 
-A successful run reports passing checks; hooks can update formatting.
+A successful run reports passing checks. Hooks can update formatting.
 
 See [contributors](docs/src/content/docs/contributors.md) for targeted checks and
 [documentation build instructions](docs/README.md) for the Astro/Starlight site.
