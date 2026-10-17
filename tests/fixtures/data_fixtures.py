@@ -66,9 +66,7 @@ def reeds_run_path(
     ):
         shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
 
-    unitspec_path = fixed_om_inputs / "unitspec_upgrades.csv"
-    unitspec_upgrades = [line.strip() for line in unitspec_path.read_text().splitlines()[1:] if line.strip()]
-    write_unitspec_upgrades_h5(run_path / "inputs_case" / "inputs.h5", unitspec_upgrades)
+    shutil.copyfile(fixed_om_inputs / "inputs.h5", run_path / "inputs_case" / "inputs.h5")
 
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
@@ -88,9 +86,7 @@ def reeds_run_upgrader(tmp_path_factory, test_data_path: Path, fixed_om_inputs: 
 
     run_path = base_tmp / "test_Upgrader"
     shutil.copyfile(fixed_om_inputs / "plantcharout.csv", run_path / "inputs_case" / "plantcharout.csv")
-    unitspec_path = fixed_om_inputs / "unitspec_upgrades.csv"
-    unitspec_upgrades = [line.strip() for line in unitspec_path.read_text().splitlines()[1:] if line.strip()]
-    write_unitspec_upgrades_h5(run_path / "inputs_case" / "inputs.h5", unitspec_upgrades)
+    shutil.copyfile(fixed_om_inputs / "inputs.h5", run_path / "inputs_case" / "inputs.h5")
     logger.debug("Unpacked upgrader test data to: {}", run_path)
     return run_path
 
