@@ -1,6 +1,14 @@
-<img src="./docs/src/assets/r2x-logo-full-square.svg" alt="R2X framework logo" align="left" width="220" height="220" />
+<img src="./docs/src/assets/r2x-logo-full-square.svg" alt="R2X framework logo" align="left" width="220px" height="220px" hspace="10"/>
+<img align="left" alt="" width="0" height="220px" hspace="10"/>
 
-# r2x-reeds
+#### r2x-reeds
+<p><small>ReEDS parser and transforms for model interoperability.</small></p>
+
+[![CI](https://github.com/NatLabRockies/r2x-reeds/actions/workflows/ci.yaml/badge.svg)](https://github.com/NatLabRockies/r2x-reeds/actions/workflows/ci.yaml) [![PyPI](https://img.shields.io/pypi/v/r2x-reeds?label=PyPI&color=0079c2&logo=pypi)](https://pypi.org/project/r2x-reeds/) [![Last commit](https://img.shields.io/github/last-commit/NatLabRockies/r2x-reeds?style=flat-square)](https://github.com/NatLabRockies/r2x-reeds/commits/main) [![Docs](https://img.shields.io/badge/docs-guides-0079c2?style=flat-square)](docs/README.md)
+<br/>
+[![Python 3.11–3.13](https://img.shields.io/badge/Python-3.11--3.13-3776ab?logo=python&logoColor=white)](docs/src/content/docs/getting-started/installation.md) [![Managed with uv](https://img.shields.io/badge/managed%20with-uv-6f42c1)](https://docs.astral.sh/uv/) [![BSD 3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](./LICENSE.txt)
+
+<br clear="left">
 
 ReEDS parser and transforms for the R2X plugin framework. Read ReEDS inputs and
 outputs into an R2X system, then apply optional modifiers before translation by
@@ -8,11 +16,9 @@ separate target packages.
 
 The [ReEDS model](https://github.com/ReEDS-Model/ReEDS) produces the capacity-expansion runs consumed here. `r2x-reeds` parses those results and applies optional system modifiers; it does not solve the ReEDS model.
 
-[Documentation](docs/README.md) · [PyPI](https://pypi.org/project/r2x-reeds/) · [Changelog](CHANGELOG.md)
+## Quick Start
 
-<br clear="left">
-
-## Quick start
+### Install
 
 Use Python 3.11–3.13 in an active virtual environment:
 
@@ -33,10 +39,8 @@ both Python and `r2x read`. Parser upgrades can modify input files; use a workin
 ## Documentation
 
 - [Getting started](docs/src/content/docs/getting-started/installation.md): installation, environment and verification.
-
-[Prepare a PCM handoff](docs/src/content/docs/how-to/pcm-handoff.md) covers all eight
-registered system modifiers, optional profiles, cost-unit checks and inspection.
-
+- [System modifiers](docs/src/content/docs/getting-started/system-modifiers.md): all available sysmods, prerequisites and next steps.
+- [Prepare a PCM handoff](docs/src/content/docs/how-to/pcm-handoff.md): modifier recipes, optional profiles, cost-unit checks and inspection.
 - [Tutorials](docs/src/content/docs/tutorials/parse-run.md): parse and inspect a run.
 - [How-to guides](docs/src/content/docs/how-to/reeds-to-x-cli.md): CLI and Python workflows.
 - [Reference/API](docs/src/content/docs/reference/python-api.md): public imports and source links.
@@ -47,10 +51,19 @@ registered system modifiers, optional profiles, cost-unit checks and inspection.
 
 ## Development
 
+From the repository root, install the development dependencies with `uv`:
+
 ```bash
 uv sync --locked --all-groups
+```
+
+Then run the aggregate checks in that environment:
+
+```bash
 uv run prek run --all-files --hook-stage pre-push
 ```
+
+A successful run reports passing checks. Hooks can update formatting.
 
 See [contributors](docs/src/content/docs/contributors.md) for targeted checks and
 [documentation build instructions](docs/README.md) for the Astro/Starlight site.

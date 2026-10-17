@@ -16,6 +16,7 @@ ReEDS run with matching input and output data; this package does not run ReEDS.
 | ----------------------- | ----------------------------------------------------------------------- |
 | Learn the parser        | [Tutorial](/r2x-reeds/tutorials/parse-run/)                             |
 | Use the CLI             | [Parser pipeline](/r2x-reeds/how-to/reeds-to-x-cli/)                    |
+| Choose system modifiers | [Available sysmods](/r2x-reeds/getting-started/system-modifiers/) |
 | Add purchaser demand    | [Purchaser load](/r2x-reeds/how-to/purchaser-load/)                     |
 | Look up fields and APIs | [Reference](/r2x-reeds/reference/)                                      |
 | Understand data flow    | [Explanation](/r2x-reeds/explanation/architecture/)                     |

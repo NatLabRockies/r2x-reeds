@@ -48,6 +48,10 @@ export default defineConfig({
               link: "/getting-started/environment/",
             },
             { label: "Verify installation", link: "/getting-started/verify/" },
+            {
+              label: "System modifiers",
+              link: "/getting-started/system-modifiers/",
+            },
           ],
         },
         {
