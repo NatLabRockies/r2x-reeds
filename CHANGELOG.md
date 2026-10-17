@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.4](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.3...v0.9.4) (2026-10-17)
+
+
+### 🐛 Bug Fixes
+
+* **parser:** load fixed O&M from ReEDS input sources ([#119](https://github.com/NatLabRockies/r2x-reeds/issues/119)) ([1f10927](https://github.com/NatLabRockies/r2x-reeds/commit/1f109276c25d264dae76cbcd3ebe775a31a25019))
+
+
+### 📚 Documentation
+
+* align ReEDS guides with R2X documentation ([#117](https://github.com/NatLabRockies/r2x-reeds/issues/117)) ([1a2c295](https://github.com/NatLabRockies/r2x-reeds/commit/1a2c295bade8dafba4d28ca8c6bcdeca37c1f31e))
+
+
+### 📦 Build
+
+* **deps-dev:** bump prek from 0.5.2 to 0.5.5 ([#122](https://github.com/NatLabRockies/r2x-reeds/issues/122)) ([d68239a](https://github.com/NatLabRockies/r2x-reeds/commit/d68239acd376a8d806e942af3a035d9251b1e52a))
+* **deps-dev:** bump pytest-mock from 3.15.1 to 3.16.0 ([#121](https://github.com/NatLabRockies/r2x-reeds/issues/121)) ([89c1b87](https://github.com/NatLabRockies/r2x-reeds/commit/89c1b878d1000beb8bfc6391e843732a64e3cf05))
+* **deps:** bump actions/download-artifact from 8.0.1 to 8.0.2 ([#123](https://github.com/NatLabRockies/r2x-reeds/issues/123)) ([6c2071f](https://github.com/NatLabRockies/r2x-reeds/commit/6c2071f6690488f6e1b0c22f5efe6f1a8bd55fd7))
+* **deps:** bump actions/upload-artifact from 7.0.1 to 7.0.2 ([#120](https://github.com/NatLabRockies/r2x-reeds/issues/120)) ([eb3697f](https://github.com/NatLabRockies/r2x-reeds/commit/eb3697f90849dc318c5413346209572157380284))
+
 ## [0.9.3](https://github.com/NatLabRockies/r2x-reeds/compare/v0.9.2...v0.9.3) (2026-10-15)
 
 
