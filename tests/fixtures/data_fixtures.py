@@ -5,12 +5,23 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import h5py
+import numpy as np
 import pytest
 from loguru import logger
 
 if TYPE_CHECKING:
     from r2x_core import DataStore
     from r2x_reeds import ReEDSConfig, ReEDSParser
+
+
+def write_unitspec_upgrades_h5(path: Path, technologies: list[str]) -> None:
+    """Write the ReEDS inputs.h5 layout for unitspec_upgrades."""
+    string_dtype = h5py.string_dtype(encoding="utf-8")
+    with h5py.File(path, mode="w") as h5_file:
+        group = h5_file.create_group("unitspec_upgrades")
+        group.create_dataset("columns", data=np.asarray(["i"], dtype=string_dtype))
+        group.create_dataset("i", data=np.asarray(technologies, dtype=string_dtype))
 
 
 @pytest.fixture(scope="session")
@@ -51,10 +62,14 @@ def reeds_run_path(
         "switches",
         "hintage_data",
         "upgrade_link",
-        "unitspec_upgrades",
         "tech-subset-table",
     ):
         shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
+
+    unitspec_path = fixed_om_inputs / "unitspec_upgrades.csv"
+    unitspec_upgrades = [line.strip() for line in unitspec_path.read_text().splitlines()[1:] if line.strip()]
+    write_unitspec_upgrades_h5(run_path / "inputs_case" / "inputs.h5", unitspec_upgrades)
+
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
 
@@ -73,6 +88,9 @@ def reeds_run_upgrader(tmp_path_factory, test_data_path: Path, fixed_om_inputs: 
 
     run_path = base_tmp / "test_Upgrader"
     shutil.copyfile(fixed_om_inputs / "plantcharout.csv", run_path / "inputs_case" / "plantcharout.csv")
+    unitspec_path = fixed_om_inputs / "unitspec_upgrades.csv"
+    unitspec_upgrades = [line.strip() for line in unitspec_path.read_text().splitlines()[1:] if line.strip()]
+    write_unitspec_upgrades_h5(run_path / "inputs_case" / "inputs.h5", unitspec_upgrades)
     logger.debug("Unpacked upgrader test data to: {}", run_path)
     return run_path
 

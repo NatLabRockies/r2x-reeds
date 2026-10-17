@@ -692,7 +692,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 # Empty GAMS sets are valid, but core must still validate their required files.
                 try:
                     self.store.read_data(dataset_name).collect()
-                except (OSError, ValueError, ReaderError, pl.exceptions.PolarsError) as exc:
+                except (OSError, ValueError, KeyError, ReaderError, pl.exceptions.PolarsError) as exc:
                     return Err(f"{dataset_name}: {exc}")
                 continue
             if dataset_name == "hour_map":
