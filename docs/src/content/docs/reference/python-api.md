@@ -2,8 +2,11 @@
 title: Python API
 ---
 
-This reference describes the public surface at main revision
-[ebb6953](https://github.com/NatLabRockies/r2x-reeds/tree/ebb69534188c7b94933c36a534d84a651114e2f9).
+This reference describes the public Python contracts. Expand Python API in the
+left navigation for each exported object, configuration model and modifier.
+Member links open exact fields and methods. On smaller screens, open the Menu
+button to access the same tree. Generated pages link to the source revision used
+for the build and distinguish declared fields from inherited contracts.
 
 ## Parser and configuration
 
@@ -18,8 +21,8 @@ from `r2x_core`, then call `ReEDSParser.from_context(context).run()`.
 for `None`. A failing lifecycle hook stops the run through the core plugin error
 mechanism. The hooks themselves return `rust_ok.Result`, not the context.
 
-Source: [parser](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/parser.py),
-[config](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/plugin_config.py).
+Source: [parser](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/parser.py),
+[config](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/plugin_config.py).
 
 ## Components and enumerations
 
@@ -29,8 +32,8 @@ and interfaces, reserves, emissions and resource supply-curve classes.
 Use `system.get_components(ComponentType)` to inspect a type.
 Enums include `EmissionType`, `ReserveType` and `ReserveDirection`.
 
-The [public export list](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/__init__.py)
-is authoritative for root imports. See [component definitions](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/models/components.py)
+The [public export list](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/__init__.py)
+is authoritative for root imports. See [component definitions](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/models/components.py)
 for constructor fields, units and validation; this page does not claim to generate
 all inherited model signatures.
 
@@ -40,7 +43,7 @@ Each modifier takes `(system, config)` and returns `Result[System, str]`.
 Use the [transform reference](/r2x-reeds/reference/transforms/) for module imports.
 Check `is_err()` and report `unwrap_err()` before calling `unwrap()`.
 
-Source: [sysmod modules](https://github.com/NatLabRockies/r2x-reeds/tree/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/sysmod).
+Source: [sysmod modules](https://github.com/NatLabRockies/r2x-reeds/tree/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/sysmod).
 
 ## Upgrader
 
@@ -66,3 +69,18 @@ Use the [saved-system guide](/r2x-reeds/how-to/inspect-system/) for executed Pyt
 and CLI queries, and [Infrasys source/API](https://github.com/NatLabRockies/infrasys/blob/main/src/infrasys/system.py)
 for additional storage options. The examples use a path and make no claims about
 stdout-only serialization or loading native target-format JSON.
+
+## Public member catalog
+
+Start with [ReEDSConfig](/r2x-reeds/reference/api/reedsconfig/) and
+[ReEDSParser](/r2x-reeds/reference/api/reedsparser/). Inspect
+[ReEDSGenerator](/r2x-reeds/reference/api/reedsgenerator/),
+[ReEDSDemand](/r2x-reeds/reference/api/reedsdemand/) and
+[ReEDSRegion](/r2x-reeds/reference/api/reedsregion/) for source-system fields.
+The navigation also includes all eight modifier functions and their config models,
+[ReEDSUpgrader](/r2x-reeds/reference/api/reedsupgrader/) and public enums/types.
+
+Use [Getting Started](/r2x-reeds/getting-started/system-modifiers/) to choose a
+modifier. The [transform reference](/r2x-reeds/reference/transforms/) defines its
+configuration contract, while [PCM handoff](/r2x-reeds/how-to/pcm-handoff/) explains
+how to apply and check it.

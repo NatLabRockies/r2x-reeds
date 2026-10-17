@@ -28,8 +28,7 @@ Target conversion is a later step performed by [R2X translation plugins](https:/
 Complete [installation](/r2x-reeds/getting-started/installation/),
 [environment setup](/r2x-reeds/getting-started/environment/) and
 [verification](/r2x-reeds/getting-started/verify/). Keep that environment active and
-work in your empty `reeds-example` directory. This tutorial was tested with the
-published `r2x-reeds` 0.9.3 and `r2x-core` 0.9.0. No source checkout is required.
+work in your empty `reeds-example` directory. This tutorial uses the public `r2x-reeds` 0.9.3 and `r2x-core` 0.9 APIs. No source checkout is required.
 
 ## Download sample data separately
 
@@ -65,28 +64,43 @@ Expect `meta.csv`, `inputs_case/` and `outputs/`. Run the remaining commands fro
 `reeds-example/` with the environment active. The data-store path must point to
 this run root, not just `outputs/`.
 
+Current parser builds also read operating-cost inputs omitted from the reduced
+Pacific archive. From `reeds-example/`, download these seven small CSVs from the
+same verified source used by the parser tests. This updates only the extracted
+working copy:
+
+```bash
+(for dataset in plantcharout hyd_fom scalars switches hintage_data upgrade_link tech-subset-table; do
+  curl -fL "https://raw.githubusercontent.com/NatLabRockies/r2x-reeds/86db7099fd409cff64f96e51b09a32a010b13cf5/tests/data/test_Upgrader/inputs_case/${dataset}.csv" -o "tutorial-inputs/test_Pacific/inputs_case/${dataset}.csv" || exit 1
+done)
+```
+
+Expect seven successful downloads. These files supply FOM and technology inputs.
+Keep them with the extracted run before parsing.
+
 ## Parse the selected solve and weather years
 
-Save this as `parse_reeds.py`:
+Open `python` in the tutorial workspace and enter the following console statements.
+Continue in the same session for the later sections:
 
-```python
-from pathlib import Path
-from r2x_core import DataStore, PluginContext
-from r2x_reeds import ReEDSConfig, ReEDSParser, ReEDSRegion, ReEDSGenerator
-
-run_path = Path("tutorial-inputs/test_Pacific")
-config = ReEDSConfig(
-    solve_year=2032,
-    weather_year=2012,
-    case_name="Pacific-2032",
-)
-store = DataStore.from_plugin_config(config, path=run_path)
-context = PluginContext(config=config, store=store)
-system = ReEDSParser.from_context(context).run().system
-if system is None:
-    raise RuntimeError("Parser returned no system")
-print("Regions:", len(list(system.get_components(ReEDSRegion))))
-print("Generators before:", len(list(system.get_components(ReEDSGenerator))))
+```python doctest
+>>> from pathlib import Path
+>>> from r2x_core import DataStore, PluginContext
+>>> from r2x_reeds import ReEDSConfig, ReEDSParser, ReEDSRegion, ReEDSGenerator
+>>> run_path = Path("tutorial-inputs/test_Pacific")
+>>> config = ReEDSConfig(
+...     solve_year=2032,
+...     weather_year=2012,
+...     case_name="Pacific-2032",
+... )
+>>> store = DataStore.from_plugin_config(config, path=run_path)
+>>> context = PluginContext(config=config, store=store)
+>>> system = ReEDSParser.from_context(context).run().system
+>>> if system is None:
+...     raise RuntimeError("Parser returned no system")
+...
+>>> assert len(list(system.get_components(ReEDSRegion))) == 11
+>>> assert len(list(system.get_components(ReEDSGenerator))) == 292
 ```
 
 `solve_year` selects the investment/capacity snapshot; `weather_year` selects
@@ -94,13 +108,7 @@ profile data. These are different choices. The context ties configuration and
 its mapped input datasets together; `run()` executes the lifecycle and returns
 that context. See [the API contract](/r2x-reeds/reference/python-api/).
 
-Run the script:
-
-```bash
-python parse_reeds.py
-# Regions: 11
-# Generators before: 292
-```
+The console checks below verify the expected fixture counts.
 
 These counts describe the checked-in fixture, not an arbitrary ReEDS case.
 For a real run, choose years present in that run and compare its region names
@@ -109,23 +117,23 @@ explains missing-data and year errors.
 
 ## Inspect a demand profile
 
-Append this to the script:
+Continue in the same Python session:
 
-```python
-from r2x_reeds import ReEDSDemand
-
-load = next(system.get_components(ReEDSDemand))
-profile = system.list_time_series(load)[0]
-print("Demand:", load.name)
-print("Series:", profile.name)
-print("Hours:", len(profile.data))
-print("Start:", profile.initial_timestamp)
-print("Resolution:", profile.resolution)
-print("First values:", profile.data[:3])
-assert len(profile.data) == 8760
+```python doctest
+>>> from r2x_reeds import ReEDSDemand
+>>> load = next(system.get_components(ReEDSDemand))
+>>> profile = system.list_time_series(load)[0]
+>>> from datetime import datetime, timedelta
+>>> from numpy.testing import assert_allclose
+>>> assert load.name == "p1_load"
+>>> assert profile.name == "max_active_power"
+>>> assert profile.initial_timestamp == datetime(2012, 1, 1)
+>>> assert profile.resolution == timedelta(hours=1)
+>>> assert_allclose(profile.data[:3], [7662.1055, 7358.9473, 7142.1055], rtol=1e-6)
+>>> assert len(profile.data) == 8760
 ```
 
-Run the same command again. Expect demand `p1_load`, series `max_active_power`,
+Expect demand `p1_load`, series `max_active_power`,
 8,760 values, a start of `2012-01-01 00:00:00`, and one-hour resolution.
 The first three values are approximately `7662.1055`, `7358.9473`, `7142.1055`.
 A correct component count alone would not catch a wrong weather year or profile
@@ -134,19 +142,19 @@ resolution; inspect both the graph and the attached time series.
 ## Apply an explicit modifier
 
 ReEDS investment blocks are aggregated units. `break_generators` can split them
-using the package's reference sizes. Append:
+using the package's reference sizes. Continue in the same Python session:
 
-```python
-from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
-
-result = break_generators(system, BreakGensConfig(drop_capacity_threshold=5))
-if result.is_err():
-    raise RuntimeError(result.unwrap_err())
-system = result.unwrap()
-print("Generators after:", len(list(system.get_components(ReEDSGenerator))))
+```python doctest
+>>> from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
+>>> result = break_generators(system, BreakGensConfig(drop_capacity_threshold=5))
+>>> if result.is_err():
+...     raise RuntimeError(result.unwrap_err())
+...
+>>> system = result.unwrap()
+>>> assert len(list(system.get_components(ReEDSGenerator))) == 673
 ```
 
-Re-run the script. The fixture now has **673 generators**, while its regions stay
+The fixture now has 673 generators, while its regions stay
 at 11. `drop_capacity_threshold` controls small remainders in MW; splitting is a
 modeling choice, not a requirement for every target. The function mutates the
 system and returns a `Result`; check failure before continuing. For targeted
@@ -155,23 +163,21 @@ and [transform configuration](/r2x-reeds/reference/transforms/).
 
 ## Save and reload the modified system
 
-Append this final block:
+Continue in the same Python session:
 
-```python
-from r2x_core import System
-
-output = Path("outputs/pacific-system.json")
-output.parent.mkdir(parents=True, exist_ok=True)
-system.to_json(output, overwrite=True)
-restored = System.from_json(output)
-print("Reloaded regions:", len(list(restored.get_components(ReEDSRegion))))
-print("Reloaded generators:", len(list(restored.get_components(ReEDSGenerator))))
-assert len(list(restored.get_components(ReEDSGenerator))) == 673
+```python doctest
+>>> from r2x_core import System
+>>> output = Path("outputs/pacific-system.json")
+>>> output.parent.mkdir(parents=True, exist_ok=True)
+>>> system.to_json(output, overwrite=True)
+>>> restored = System.from_json(output)
+>>> assert len(list(restored.get_components(ReEDSRegion))) == 11
+>>> assert len(list(restored.get_components(ReEDSGenerator))) == 673
 ```
 
 `overwrite=True` deliberately replaces this tutorial output when you rerun the
 script. Use a fresh path or leave overwrite disabled for production snapshots.
-Expect `Reloaded regions: 11` and `Reloaded generators: 673`.
+The assertions verify 11 reloaded regions and 673 reloaded generators.
 
 ```bash
 ls outputs
@@ -192,5 +198,7 @@ or [ReEDS to Sienna](https://natlabrockies.github.io/R2X/how-to/reeds-to-sienna/
 Those workflows add a translator and target exporter after the parser; the
 serialized ReEDS JSON above is not either target's native format.
 
-This tutorial was executed with the published r2x-reeds 0.9.3 package and r2x-core 0.9.0.
-The count/profile/reload checks apply to this fixture revision and selected years.
+The documentation tests execute these console assertions against the current
+source and its locked dependencies. The count/profile/reload checks apply to
+this fixture revision and selected years. Published package versions can differ
+from current source, especially in optional input upgrades and operating-cost fields.

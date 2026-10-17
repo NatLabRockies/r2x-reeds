@@ -47,7 +47,7 @@ with the saved output. The examples below use one solve year and one weather yea
 | `add-ccs-credit`        | `CCSCreditConfig`, `sysmod.ccs_credit`         | Apply capture incentives to eligible generators             |
 | `add-emission-cap`      | `EmissionCapConfig`, `sysmod.emission_cap`     | Record an annual CO2 limit and optional precombustion rates |
 
-The Python module prefix is `r2x_reeds.`. See [registered entry points](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/pyproject.toml)
+The Python module prefix is `r2x_reeds.`. See [registered entry points](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/pyproject.toml)
 and [public fields/source links](/r2x-reeds/reference/transforms/#configuration-fields-and-source).
 All eight config models allow omitted file paths, but several plugins then return
 success without changing anything. **Operational input requirements below are
@@ -386,35 +386,30 @@ external files and validating each modifier's effect on a checkpoint copy.
 
 ## Inspect before handing off
 
-Save this as `inspect_pcm.py`. The CLI supplies the loaded system as `sys`:
+After running `pcm-base`, open Python in the tutorial workspace to create a
+repeatable inspection script. It checks the documented 50 $/MW example policy.
+The CLI supplies its loaded system as `sys`:
 
-```python
-from importlib.metadata import version
-from r2x_reeds import ReEDSGenerator, ReEDSThermalGenerator, ReEDSDemand
-
-print("r2x-reeds:", version("r2x-reeds"))
-print("r2x-core:", version("r2x-core"))
-generators = list(sys.get_components(ReEDSGenerator))
-print("Generators:", len(generators))
-print("Total capacity MW:", sum(item.capacity for item in generators))
-matched = [
-    item for item in sys.get_components(ReEDSThermalGenerator)
-    if item.technology == "gas-cc"
-]
-print("gas-cc startup coefficients:", sorted({item.startup_cost for item in matched}))
-assert matched
-assert all(item.startup_cost == 50.0 for item in matched)
-for load in sys.get_components(ReEDSDemand):
-    for profile in sys.list_time_series(load):
-        print(load.name, profile.name, len(profile.data), profile.initial_timestamp)
+```python doctest
+>>> from pathlib import Path
+>>> inspection = """from r2x_reeds import ReEDSGenerator, ReEDSThermalGenerator, ReEDSDemand
+... assert len(list(sys.get_components(ReEDSGenerator))) == 673
+... matched = [g for g in sys.get_components(ReEDSThermalGenerator) if g.technology == "gas-cc"]
+... assert matched
+... assert all(g.startup_cost == 50.0 for g in matched)
+... for load in sys.get_components(ReEDSDemand):
+...     for profile in sys.list_time_series(load):
+...         assert len(profile.data) == 8760
+... print("Verified 673 generators, 50 $/MW startup coefficients and hourly profiles")
+... """
+>>> _ = Path("inspect_pcm.py").write_text(inspection)
 ```
 
 ```bash
 r2x read outputs/pcm-prepared.zip --zip --exec inspect_pcm.py
 ```
 
-For the baseline fixture, expect 673 generators and `gas-cc startup coefficients:
-[50.0]`. Record total MW and inspect load lengths/timestamps. The coefficient is
+For the baseline fixture, expect `Verified 673 generators, 50 $/MW startup coefficients and hourly profiles`. Record total MW and inspect load lengths/timestamps. The coefficient is
 still $/MW on the final units. Your own policy inputs should replace these
 fixture-specific assertions. Use [saved-system inspection](/r2x-reeds/how-to/inspect-system/)
 for direct Infrasys loading and profile values.

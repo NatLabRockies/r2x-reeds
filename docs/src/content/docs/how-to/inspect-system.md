@@ -8,24 +8,23 @@ These are Infrasys serialization, not a native PLEXOS, Sienna or upstream model 
 
 ## Reload in the project environment
 
-Save this as `inspect_saved.py` in the tutorial workspace:
+Open `python` in the tutorial workspace after completing the tutorial:
 
-```python
-from r2x_core import System
-from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
-
-system = System.from_json("outputs/pacific-system.json")
-for component_type in (ReEDSRegion, ReEDSGenerator):
-    print(component_type.__name__, len(list(system.get_components(component_type))))
-load = next(item for item in system.get_components(ReEDSDemand) if item.name == "p1_load")
-profile = system.get_time_series(load, name="max_active_power")
-print(profile.name, len(profile.data))
-print(profile.initial_timestamp, profile.resolution)
-print(profile.data[:3])
-```
-
-```bash
-python inspect_saved.py
+```python doctest
+>>> from r2x_core import System
+>>> from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
+>>> system = System.from_json("outputs/pacific-system.json")
+>>> assert len(list(system.get_components(ReEDSRegion))) == 11
+>>> assert len(list(system.get_components(ReEDSGenerator))) == 673
+>>> load = next(item for item in system.get_components(ReEDSDemand) if item.name == "p1_load")
+>>> profile = system.get_time_series(load, name="max_active_power")
+>>> assert profile.name == "max_active_power"
+>>> assert len(profile.data) == 8760
+>>> from datetime import datetime, timedelta
+>>> from numpy.testing import assert_allclose
+>>> assert profile.initial_timestamp == datetime(2012, 1, 1)
+>>> assert profile.resolution == timedelta(hours=1)
+>>> assert_allclose(profile.data[:3], [7662.1055, 7358.9473, 7142.1055], rtol=1e-6)
 ```
 
 For the completed tutorial, expect ReEDSRegion 11; ReEDSGenerator 673, followed by an 8,760-value
@@ -53,16 +52,22 @@ Installation changes the CLI managed environment. It is separate from the projec
 matching package must be importable when loading them. Keep compatible Infrasys
 and r2x-core versions with the environment that wrote the artifact.
 
-Save this as `inspect_cli.py`. `r2x read` supplies the loaded system as `sys`:
+For a repeatable CLI check, create `inspect_cli.py` in the same Python session.
+The script uses `sys`, the system supplied by `r2x read`:
 
-```python
-from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
-
-print("ReEDSRegion:", len(list(sys.get_components(ReEDSRegion))))
-print("ReEDSGenerator:", len(list(sys.get_components(ReEDSGenerator))))
-load = next(item for item in sys.get_components(ReEDSDemand) if item.name == "p1_load")
-for profile in sys.list_time_series(load):
-    print(profile.name, len(profile.data), profile.data[:3])
+```python doctest
+>>> from pathlib import Path
+>>> inspection = """from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
+... assert len(list(sys.get_components(ReEDSRegion))) == 11
+... assert len(list(sys.get_components(ReEDSGenerator))) == 673
+... load = next(item for item in sys.get_components(ReEDSDemand) if item.name == "p1_load")
+... profile = sys.get_time_series(load, name="max_active_power")
+... assert len(profile.data) == 8760
+... print("Verified 11 regions, 673 generators and 8760 demand samples")
+... """
+>>> _ = Path("inspect_cli.py").write_text(inspection)
+>>> exec(inspection, {"sys": system})
+Verified 11 regions, 673 generators and 8760 demand samples
 ```
 
 Run a repeatable inspection, without opening an interactive prompt:
@@ -71,7 +76,7 @@ Run a repeatable inspection, without opening an interactive prompt:
 r2x read outputs/pacific-system.json --exec inspect_cli.py
 ```
 
-Expect the same counts and profile values as the Python loader. Omit `--exec` for
+Expect `Verified 11 regions, 673 generators and 8760 demand samples`. Omit `--exec` for
 an interactive session; type `exit()` to leave it. The first read may install
 CLI runtime dependencies. The JSON inspection command was executed with r2x-cli
 0.1.15 in an isolated Python 3.12 environment containing the package's locked dependencies.
