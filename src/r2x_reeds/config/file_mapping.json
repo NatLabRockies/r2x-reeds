@@ -616,7 +616,8 @@
           "year",
           "variable",
           "fom_cost"
-        ]
+        ],
+        "infer_schema": false
       }
     }
   },
@@ -803,7 +804,7 @@
   },
   {
     "name": "fom_unitspec_upgrades",
-    "fpath": "inputs_case/unitspec_upgrades.csv",
+    "fpath": "inputs_case/inputs.h5",
     "info": {
       "description": "Upgrade technologies with unit-specific costs",
       "is_input": true,
@@ -811,13 +812,16 @@
     },
     "reader": {
       "kwargs": {
-        "new_columns": [
-          "technology"
-        ]
+        "group_key": "unitspec_upgrades",
+        "columns_as_datasets": true,
+        "columns_key": "columns"
       }
     },
     "proc_spec": {
       "lowercase": true,
+      "column_mapping": {
+        "i": "technology"
+      },
       "column_schema": {
         "technology": "string"
       },

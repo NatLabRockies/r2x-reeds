@@ -3,12 +3,14 @@
 import shutil
 from pathlib import Path
 
+import h5py
 import polars as pl
 import pytest
 
 from r2x_core import DataStore, PluginContext
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models.components import ReEDSGenerator
+from tests.fixtures.data_fixtures import write_unitspec_upgrades_h5
 
 pytestmark = pytest.mark.integration
 
@@ -28,19 +30,61 @@ def test_required_fom_sets_may_be_empty_but_must_exist(
     config = ReEDSConfig(solve_year=2032, weather_year=2012)
     store = DataStore.from_plugin_config(config, path=tmp_path)
     parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
-    path = store[dataset].fpath
-    assert path is not None
-    path = path if path.is_absolute() else tmp_path / path
-    if missing:
-        path.unlink()
+    if dataset == "fom_unitspec_upgrades":
+        path = tmp_path / "inputs_case" / "inputs.h5"
+        if missing:
+            path.unlink()
+        else:
+            write_unitspec_upgrades_h5(path, [])
     else:
-        path.write_text(header)
+        path = store[dataset].fpath
+        assert path is not None
+        path = path if path.is_absolute() else tmp_path / path
+        if missing:
+            path.unlink()
+        else:
+            path.write_text(header)
     result = parser.on_validate()
     if missing:
         assert result.is_err()
         assert dataset in str(result.err())
     else:
         assert result.is_ok(), result
+
+
+def test_fom_unitspec_upgrades_reads_the_required_hdf5_set_without_a_csv(
+    reeds_run_path: Path, tmp_path: Path
+) -> None:
+    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
+    inputs = tmp_path / "inputs_case"
+    assert not (inputs / "unitspec_upgrades.csv").exists()
+    h5_path = inputs / "inputs.h5"
+    with h5py.File(h5_path, mode="r") as h5_file:
+        expected = [value.decode("utf-8").lower() for value in h5_file["unitspec_upgrades/i"][()]]
+
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
+
+    data = parser.read_data_file("fom_unitspec_upgrades").collect()
+
+    assert data.columns == ["technology"]
+    assert data["technology"].to_list() == expected
+    assert expected
+
+
+def test_fom_unitspec_upgrades_requires_its_hdf5_group(reeds_run_path: Path, tmp_path: Path) -> None:
+    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
+    with h5py.File(tmp_path / "inputs_case" / "inputs.h5", mode="w") as h5_file:
+        h5_file.create_group("unrelated_set")
+
+    result = parser.on_validate()
+
+    assert result.is_err()
+    assert "fom_unitspec_upgrades" in str(result.err())
 
 
 @pytest.mark.parametrize("source", ["missing", "empty", "wrong-year"])
@@ -64,6 +108,26 @@ def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
 
     assert result.is_err()
     assert "cost_fom" in str(result.err())
+
+
+def test_fixed_om_parses_fractional_values_after_the_schema_inference_window(
+    reeds_run_path: Path, tmp_path: Path
+) -> None:
+    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
+    inputs = tmp_path / "inputs_case"
+    plantcharout = inputs / "plantcharout.csv"
+    plantcharout.write_text(
+        "*i,t,variable,value\n"
+        + "".join(f"tech_{index},2032,fom,{index}\n" for index in range(100))
+        + "fractional-tech,2032,fom,1.2861\n"
+    )
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
+    ReEDSParser.from_context(PluginContext(config=config, store=store))
+
+    costs = store.read_data("cost_fom", placeholders={"solve_year": 2032}).collect()
+
+    assert costs.filter(pl.col("technology") == "fractional-tech")["fom_cost"].item() == pytest.approx(1.2861)
 
 
 @pytest.mark.parametrize("marker", ["", "*"])
