@@ -53,7 +53,7 @@ uv run pytest tests/test_docs_examples.py tests/test_docs_api.py --no-cov
 The console runner collects `python doctest` fences, keeps sequential blocks in
 one page namespace, checks expected output and assertions, and rejects empty
 collection or skipped examples. It runs the Pacific tutorial once in a temporary
-workspace with the same seven supplemental operating-cost inputs documented for
+workspace with the same eight supplemental operating-cost and technology inputs documented for
 users. Other pages reload the checked tutorial snapshot. The PCM inspection
 script uses the guide's explicit 50 $/MW baseline policy. External production-only
 policy profiles still require the user's reviewed data.

@@ -33,4 +33,26 @@ def test_generated_api_members() -> None:
                 result = doctest.DocTestRunner().run(test)
                 assert result.attempted == 2 and result.failed == 0
             if fragment:
-                assert f"### {fragment}" in text, member
+                assert f"### {member['label']}" in text, member
+
+
+def test_enum_values_and_access_contracts() -> None:
+    """Check actual enum inventories and property/classmethod declarations."""
+    from r2x_reeds import EmissionType, ReserveDirection, ReserveType
+
+    navigation = json.loads((ROOT / "docs/src/generated/api-sidebar.json").read_text())
+    fragments = json.loads((ROOT / "docs/public/api-fragments.json").read_text())
+    for enum in (EmissionType, ReserveType, ReserveDirection):
+        group = next(item for item in navigation if item["label"] == enum.__name__)
+        targets = {item["label"]: item["link"] for item in group["items"]}
+        page = ROOT / "docs/src/content/docs/reference/api" / f"{enum.__name__.lower()}.md"
+        for name, value in enum.__members__.items():
+            assert name in targets
+            assert repr(value.value) in page.read_text()
+            assert targets[name].endswith("#" + name.lower())
+            assert fragments[f"{enum.__module__}.{enum.__name__}.{name}"] == "/r2x-reeds" + targets[name]
+    config = (ROOT / "docs/src/content/docs/reference/api/reedsconfig.md").read_text()
+    parser = (ROOT / "docs/src/content/docs/reference/api/reedsparser.md").read_text()
+    assert "@property\nprimary_solve_year(" in config
+    assert "@property\nprimary_weather_year(" in config
+    assert "@classmethod\nfrom_context(" in parser

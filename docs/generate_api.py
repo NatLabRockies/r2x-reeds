@@ -86,6 +86,25 @@ def generate() -> None:
             bases = ", ".join(base_links)
             lines.append(f"Bases: {bases}. Inherited contracts remain defined by the base classes.\n")
             fields = [child for child in node.body if isinstance(child, ast.AnnAssign)]
+            enum_values = [
+                child
+                for child in node.body
+                if isinstance(child, ast.Assign)
+                and any(
+                    ast.unparse(parent) in {"Enum", "StrEnum", "IntEnum", "Flag", "IntFlag"}
+                    for parent in node.bases
+                )
+                and all(
+                    isinstance(target, ast.Name) and not target.id.startswith("_") for target in child.targets
+                )
+            ]
+            if enum_values:
+                lines.append("## Enum values\n")
+            for value in enum_values:
+                for target in value.targets:
+                    value_name = ast.unparse(target)
+                    lines += [f"### {value_name}\n", f"```text\n{ast.unparse(value)}\n```\n"]
+                    members.append({"label": value_name, "link": route + "#" + value_name.lower()})
             methods = [
                 child
                 for child in node.body
@@ -102,10 +121,11 @@ def generate() -> None:
             if methods:
                 lines.append("## Declared methods and properties\n")
             for method in methods:
+                decorators = "".join(f"@{ast.unparse(item)}\n" for item in method.decorator_list)
                 lines += [
                     f"### {method.name}\n",
                     f"[Source]({base}/{path.relative_to(ROOT)}#L{method.lineno})\n",
-                    f"```text\n{method.name}({ast.unparse(method.args)}) -> {ast.unparse(method.returns) if method.returns else 'unspecified'}\n```\n",
+                    f"```text\n{decorators}{method.name}({ast.unparse(method.args)}) -> {ast.unparse(method.returns) if method.returns else 'unspecified'}\n```\n",
                 ]
                 if method_doc := ast.get_docstring(method):
                     lines.append(method_doc.split("\n\n")[0] + "\n")

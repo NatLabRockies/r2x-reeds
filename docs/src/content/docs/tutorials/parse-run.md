@@ -43,7 +43,7 @@ mkdir -p inputs
 
 ```bash
 curl -fL \
-  https://raw.githubusercontent.com/NatLabRockies/r2x-reeds/ebb69534188c7b94933c36a534d84a651114e2f9/tests/data/test_Pacific.zip \
+  https://raw.githubusercontent.com/NatLabRockies/r2x-reeds/86db7099fd409cff64f96e51b09a32a010b13cf5/tests/data/test_Pacific.zip \
   -o inputs/test_Pacific.zip
 ```
 
@@ -65,17 +65,19 @@ Expect `meta.csv`, `inputs_case/` and `outputs/`. Run the remaining commands fro
 this run root, not just `outputs/`.
 
 Current parser builds also read operating-cost inputs omitted from the reduced
-Pacific archive. From `reeds-example/`, download these seven small CSVs from the
+Pacific archive. From `reeds-example/`, download these eight small CSVs from the
 same verified source used by the parser tests. This updates only the extracted
 working copy:
 
 ```bash
-(for dataset in plantcharout hyd_fom scalars switches hintage_data upgrade_link tech-subset-table; do
+(for dataset in plantcharout hyd_fom scalars switches hintage_data upgrade_link tech-subset-table unitspec_upgrades; do
   curl -fL "https://raw.githubusercontent.com/NatLabRockies/r2x-reeds/86db7099fd409cff64f96e51b09a32a010b13cf5/tests/data/test_Upgrader/inputs_case/${dataset}.csv" -o "tutorial-inputs/test_Pacific/inputs_case/${dataset}.csv" || exit 1
 done)
 ```
 
-Expect seven successful downloads. These files supply FOM and technology inputs.
+Expect eight successful downloads. These files supply FOM and technology inputs.
+Keep both `unitspec_upgrades.csv` and `inputs.h5` with the run. They contain the
+same technology set, and parser versions can select different mapped formats.
 Keep them with the extracted run before parsing.
 
 ## Parse the selected solve and weather years

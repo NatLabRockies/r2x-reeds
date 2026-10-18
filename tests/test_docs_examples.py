@@ -36,12 +36,13 @@ def run_console(path: Path, namespace: dict[str, Any]) -> dict[str, Any]:
 
 @pytest.fixture(scope="session")
 def tutorial_console(
-    reeds_run_path: Path, tmp_path_factory: pytest.TempPathFactory
+    reeds_run_path: Path, fixed_om_inputs: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> tuple[Path, dict[str, Any]]:
     """Run the actual tutorial once, including parse, profile checks, split and reload."""
     workspace = tmp_path_factory.mktemp("docs-console")
     run = workspace / "tutorial-inputs/test_Pacific"
     shutil.copytree(reeds_run_path, run)
+    shutil.copyfile(fixed_om_inputs / "unitspec_upgrades.csv", run / "inputs_case/unitspec_upgrades.csv")
     with chdir(workspace):
         namespace = run_console(TUTORIAL, {})
     return workspace, namespace
@@ -101,3 +102,16 @@ def test_parser_docstring(
     result = doctest.DocTestRunner().run(test)
     assert result.attempted >= 8
     assert result.failed == 0
+
+
+def test_tutorial_pins_the_current_fixture_archive() -> None:
+    """The published ZIP must be the same tracked archive used by console tests."""
+    import subprocess
+
+    revision = "86db7099fd409cff64f96e51b09a32a010b13cf5"
+    archive = "tests/data/test_Pacific.zip"
+    root = DOCS.parents[3]
+    expected = "c610f6045df78ec21d61733dcae23ef4c01155be"
+    actual = subprocess.check_output(["git", "hash-object", archive], cwd=root, text=True).strip()
+    assert actual == expected
+    assert f"/{revision}/{archive}" in TUTORIAL.read_text()
