@@ -36,13 +36,12 @@ def run_console(path: Path, namespace: dict[str, Any]) -> dict[str, Any]:
 
 @pytest.fixture(scope="session")
 def tutorial_console(
-    reeds_run_path: Path, fixed_om_inputs: Path, tmp_path_factory: pytest.TempPathFactory
+    reeds_run_path: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> tuple[Path, dict[str, Any]]:
     """Run the actual tutorial once, including parse, profile checks, split and reload."""
     workspace = tmp_path_factory.mktemp("docs-console")
     run = workspace / "tutorial-inputs/test_Pacific"
     shutil.copytree(reeds_run_path, run)
-    shutil.copyfile(fixed_om_inputs / "unitspec_upgrades.csv", run / "inputs_case/unitspec_upgrades.csv")
     with chdir(workspace):
         namespace = run_console(TUTORIAL, {})
     return workspace, namespace
@@ -115,3 +114,20 @@ def test_tutorial_pins_the_current_fixture_archive() -> None:
     actual = subprocess.check_output(["git", "hash-object", archive], cwd=root, text=True).strip()
     assert actual == expected
     assert f"/{revision}/{archive}" in TUTORIAL.read_text()
+
+
+def test_tutorial_technology_formats_match(tutorial_console: tuple[Path, dict[str, Any]]) -> None:
+    """The published CSV mapping and current HDF5 mapping must see the same set."""
+    import csv
+
+    import h5py
+
+    workspace, _ = tutorial_console
+    inputs = workspace / "tutorial-inputs/test_Pacific/inputs_case"
+    with h5py.File(inputs / "inputs.h5") as bundle:
+        expected = set(bundle["unitspec_upgrades"]["i"].asstr()[:])
+    with (inputs / "unitspec_upgrades.csv").open(newline="") as stream:
+        rows = list(csv.reader(stream))
+    assert rows[0] == ["*i"]
+    assert {row[0] for row in rows[1:]} == expected
+    assert len(expected) == 7

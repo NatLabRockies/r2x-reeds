@@ -65,20 +65,42 @@ Expect `meta.csv`, `inputs_case/` and `outputs/`. Run the remaining commands fro
 this run root, not just `outputs/`.
 
 Current parser builds also read operating-cost inputs omitted from the reduced
-Pacific archive. From `reeds-example/`, download these eight small CSVs from the
+Pacific archive. From `reeds-example/`, download these seven small CSVs from the
 same verified source used by the parser tests. This updates only the extracted
 working copy:
 
 ```bash
-(for dataset in plantcharout hyd_fom scalars switches hintage_data upgrade_link tech-subset-table unitspec_upgrades; do
+(for dataset in plantcharout hyd_fom scalars switches hintage_data upgrade_link tech-subset-table; do
   curl -fL "https://raw.githubusercontent.com/NatLabRockies/r2x-reeds/86db7099fd409cff64f96e51b09a32a010b13cf5/tests/data/test_Upgrader/inputs_case/${dataset}.csv" -o "tutorial-inputs/test_Pacific/inputs_case/${dataset}.csv" || exit 1
 done)
 ```
 
-Expect eight successful downloads. These files supply FOM and technology inputs.
-Keep both `unitspec_upgrades.csv` and `inputs.h5` with the run. They contain the
-same technology set, and parser versions can select different mapped formats.
+Expect seven successful downloads. These files supply FOM and technology inputs.
 Keep them with the extracted run before parsing.
+
+The archive holds its technology-upgrade set in `inputs.h5`. Some published
+parser mappings also require a CSV form. In the Python session below, derive
+that CSV from the same HDF5 values in the working copy. This keeps the two input
+representations consistent:
+
+```python doctest
+>>> import csv
+>>> import h5py
+>>> from pathlib import Path
+>>> run_path = Path("tutorial-inputs/test_Pacific")
+>>> with h5py.File(run_path / "inputs_case/inputs.h5") as bundle:
+...     technologies = bundle["unitspec_upgrades"]["i"].asstr()[:].tolist()
+...
+>>> assert len(technologies) == 7
+>>> with (run_path / "inputs_case/unitspec_upgrades.csv").open("w", newline="") as output:
+...     writer = csv.writer(output)
+...     _ = writer.writerow(["*i"])
+...     writer.writerows([[name] for name in technologies])
+...
+```
+
+The generated CSV has the same seven technology names as the archive. Keep both
+forms beside the other input tables. Continue in this Python session when parsing.
 
 ## Parse the selected solve and weather years
 
