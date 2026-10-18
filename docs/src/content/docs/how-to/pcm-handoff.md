@@ -405,6 +405,9 @@ The CLI supplies its loaded system as `sys`:
 >>> _ = Path("inspect_pcm.py").write_text(inspection)
 ```
 
+Leave Python with `exit()`, then run the script through the CLI from the tutorial
+workspace in your shell:
+
 ```bash
 r2x read outputs/pcm-prepared.zip --zip --exec inspect_pcm.py
 ```

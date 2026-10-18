@@ -23,7 +23,8 @@ These checks need no ReEDS data and do not change files:
 
 A successful session raises no assertion errors. This checks model construction,
 not that a run contains those years. There is no standalone `r2x-reeds` executable.
-If you chose the CLI installation path, inspect that runtime separately:
+Leave Python with `exit()` before running shell commands. If you chose the CLI
+installation path, inspect that runtime separately:
 
 ```bash
 r2x list r2x-reeds

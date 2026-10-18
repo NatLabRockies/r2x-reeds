@@ -104,8 +104,8 @@ forms beside the other input tables. Continue in this Python session when parsin
 
 ## Parse the selected solve and weather years
 
-Open `python` in the tutorial workspace and enter the following console statements.
-Continue in the same session for the later sections:
+Continue in the same Python session used to prepare the technology CSV. Enter
+the following statements, then keep this session for the later Python sections:
 
 ```python doctest
 >>> from pathlib import Path
@@ -202,6 +202,9 @@ Continue in the same Python session:
 `overwrite=True` deliberately replaces this tutorial output when you rerun the
 script. Use a fresh path or leave overwrite disabled for production snapshots.
 The assertions verify 11 reloaded regions and 673 reloaded generators.
+
+Leave Python with `exit()`, then inspect the output directory from the tutorial
+workspace in your shell:
 
 ```bash
 ls outputs

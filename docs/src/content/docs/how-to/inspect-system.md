@@ -32,6 +32,8 @@ For the completed tutorial, expect ReEDSRegion 11; ReEDSGenerator 673, followed 
 Compare timestamps and first values with the tutorial. For another dataset, replace
 the fixture-specific component name rather than silently selecting an unrelated load.
 
+Leave the Python session with `exit()` before the following shell commands.
+
 ## Inspect with r2x-cli
 
 Install [r2x-cli](https://github.com/NatLabRockies/r2x-cli#install), then inspect its
@@ -52,11 +54,15 @@ Installation changes the CLI managed environment. It is separate from the projec
 matching package must be importable when loading them. Keep compatible Infrasys
 and r2x-core versions with the environment that wrote the artifact.
 
-For a repeatable CLI check, create `inspect_cli.py` in the same Python session.
+For a repeatable CLI check, open `python` again in the tutorial workspace and
+create `inspect_cli.py`. Reload the tutorial artifact in this new session:
 The script uses `sys`, the system supplied by `r2x read`:
 
 ```python doctest
 >>> from pathlib import Path
+>>> from r2x_core import System
+>>> from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
+>>> system = System.from_json("outputs/pacific-system.json")
 >>> inspection = """from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
 ... assert len(list(sys.get_components(ReEDSRegion))) == 11
 ... assert len(list(sys.get_components(ReEDSGenerator))) == 673
@@ -70,7 +76,8 @@ The script uses `sys`, the system supplied by `r2x read`:
 Verified 11 regions, 673 generators and 8760 demand samples
 ```
 
-Run a repeatable inspection, without opening an interactive prompt:
+Leave Python with `exit()`, then run this repeatable inspection from the tutorial
+workspace in your shell:
 
 ```bash
 r2x read outputs/pacific-system.json --exec inspect_cli.py
