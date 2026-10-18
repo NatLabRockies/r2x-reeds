@@ -5,19 +5,32 @@ import importlib.util
 import json
 import re
 from pathlib import Path
-from types import ModuleType
+from typing import Protocol, cast
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class ApiGenerator(Protocol):
+    """The source generator's configurable output paths and entry points."""
+
+    PAGES: Path
+    NAVIGATION: Path
+    FRAGMENTS: Path
+
+    def generate(self) -> None: ...
+
+    def public_names(self) -> list[str]: ...
+
+
 @pytest.fixture(scope="module")
-def generated_api(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
+def generated_api(tmp_path_factory: pytest.TempPathFactory) -> ApiGenerator:
     spec = importlib.util.spec_from_file_location("reeds_docs_api", ROOT / "docs/generate_api.py")
     assert spec is not None and spec.loader is not None
-    generator = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(generator)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    generator = cast(ApiGenerator, module)
     output = tmp_path_factory.mktemp("generated-api")
     generator.PAGES = output / "pages"
     generator.NAVIGATION = output / "sidebar.json"
@@ -26,7 +39,7 @@ def generated_api(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
     return generator
 
 
-def test_generated_api_members(generated_api: ModuleType) -> None:
+def test_generated_api_members(generated_api: ApiGenerator) -> None:
     generator = generated_api
     sidebar = json.loads(generator.NAVIGATION.read_text())
     labels = {entry["label"] for entry in sidebar}
@@ -49,7 +62,7 @@ def test_generated_api_members(generated_api: ModuleType) -> None:
                 assert f"### {member['label']}" in text, member
 
 
-def test_enum_values_and_access_contracts(generated_api: ModuleType) -> None:
+def test_enum_values_and_access_contracts(generated_api: ApiGenerator) -> None:
     """Check actual enum inventories and property/classmethod declarations."""
     from r2x_reeds import EmissionType, ReserveDirection, ReserveType
 
