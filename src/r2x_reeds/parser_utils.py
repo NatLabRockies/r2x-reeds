@@ -3,22 +3,19 @@
 from __future__ import annotations
 
 import calendar
-import importlib
-from collections.abc import Callable, Iterable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, cast
+from collections.abc import Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import polars as pl
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
-from r2x_core import PluginContext, System
+from r2x_core import System
 from r2x_core.exceptions import ValidationError
-from r2x_core.utils import build_component_kwargs
 from r2x_reeds.models.components import ReEDSDemand, ReEDSRegion
 
 if TYPE_CHECKING:
-    from r2x_core.rules import Rule
     from r2x_reeds.models import ReEDSGenerator, ReEDSHydroGenerator
 
 # Columns that can be aggregated from the model.
@@ -166,53 +163,6 @@ def merge_lazy_frames(
         return Ok(merged)
     except Exception as exc:  # pragma: no cover - defensive
         return Err(ValidationError(f"Failed to merge frames on {on}: {exc}"))
-
-
-def get_generator_class(
-    tech: str,
-    technology_categories: dict[str, Any],
-    category_class_mapping: Mapping[str, str | type[ReEDSGenerator]],
-    models_path: Literal["r2x_reeds.models"] = "r2x_reeds.models",
-) -> Result[type[ReEDSGenerator], TypeError]:
-    """Determine the appropriate generator class based on technology category using config mapping.
-
-    Parameters
-    ----------
-    tech : str
-        Technology name
-    technology_categories : dict[str, Any]
-        Technology categories mapping from defaults (for prefix/exact matching)
-    category_class_mapping : dict[str, str]
-        Mapping from category names to generator class names
-
-    Returns
-    -------
-    type[ReEDSGenerator]
-        The appropriate generator class (Thermal, Variable, Storage, Hydro, or Consuming)
-    """
-    categories_result = get_technology_categories(tech, technology_categories)
-
-    if categories_result.is_err():
-        err = categories_result.unwrap_err()
-        return Err(TypeError(str(err)))
-
-    module = importlib.import_module(models_path)
-    categories = categories_result.unwrap()
-
-    for category in categories:
-        class_or_name = category_class_mapping.get(category)
-        if class_or_name is None:
-            continue
-        # If it's already a type, return it directly
-        if isinstance(class_or_name, type):
-            return Ok(class_or_name)
-        # Otherwise it's a string class name, look it up in the module
-        class_name: str = class_or_name
-        if model := getattr(module, class_name, None):
-            return Ok(model)
-
-    logger.error("Technology model not found for {} on {} (categories: {})", tech, models_path, categories)
-    return Err(TypeError(f"Technology model {tech} not found on {models_path} for categories {categories}"))
 
 
 def _prepare_generator_dataset(
@@ -684,119 +634,6 @@ def calculate_reserve_requirement(
         return Err(ValidationError(f"Failed to calculate reserve requirement: {e}"))
 
 
-def _collect_component_kwargs_from_rule(
-    data: pl.DataFrame,
-    *,
-    rule_provider: Rule | Callable[[Mapping[str, Any]], Result[Rule, ValidationError]],
-    parser_context: PluginContext | None,
-    row_identifier_getter: Callable[[Mapping[str, Any]], Result[str, Exception]],
-) -> Result[list[tuple[str, dict[str, Any]]], ValidationError]:
-    """Collect kwargs dictionaries for rule-driven components."""
-
-    errors: list[str] = []
-    collected: list[tuple[str, dict[str, Any]]] = []
-
-    for row in data.iter_rows(named=True):
-        identifier_result = row_identifier_getter(row)
-        identifier_value: str | None
-        match identifier_result:
-            case Ok(identifier) if identifier:
-                identifier_value = identifier
-            case Ok(_):
-                msg = "Missing identifier value"
-                errors.append(msg)
-                logger.error("Failed to derive identifier for row: %s", msg)
-                continue
-            case Err(error):
-                errors.append(str(error))
-                logger.error("Failed to derive identifier from row: %s", error)
-                continue
-            case _:
-                continue
-
-        if isinstance(rule_provider, type):
-            rule_result = Err(ValidationError(f"{identifier_value}: Invalid rule provider type"))
-        elif hasattr(rule_provider, "get_target_types"):
-            rule_result = Ok(cast("Rule", rule_provider))
-        else:
-            # Keep this cast annotation as a string to avoid runtime NameError when Rule
-            # is only imported under TYPE_CHECKING.
-            provider_fn = cast(
-                "Callable[[Mapping[str, Any]], Result[Rule, ValidationError]]",
-                rule_provider,
-            )
-            rule_result = provider_fn(row)
-        if rule_result.is_err():
-            rule_error = rule_result.err()
-            errors.append(f"{identifier_value}: {rule_error}")
-            logger.error("Failed to resolve rule for {}: {}", identifier_value, rule_error)
-            continue
-        selected_rule = rule_result.ok()
-        if selected_rule is None:
-            errors.append(f"{identifier_value}: Rule resolution returned None")
-            logger.error("Failed to resolve rule for %s: returned None", identifier_value)
-            continue
-
-        if parser_context is None:
-            error_msg = "Parser context is required to build component kwargs"
-            errors.append(f"{identifier_value}: {error_msg}")
-            logger.error("Failed to build kwargs for {}: {}", identifier_value, error_msg)
-            continue
-
-        result = build_component_kwargs(row, rule=selected_rule, context=parser_context)
-        if result.is_err():
-            error_value = result.err()
-            errors.append(f"{identifier_value}: {error_value}")
-            logger.error("Failed to build kwargs for {}: {}", identifier_value, error_value)
-            continue
-
-        component_kwargs = result.ok()
-        if component_kwargs is None:
-            error_msg = "Empty kwargs result"
-            errors.append(f"{identifier_value}: {error_msg}")
-            logger.error("Failed to build kwargs for {}: {}", identifier_value, error_msg)
-            continue
-
-        collected.append((identifier_value, component_kwargs))
-
-    if errors:
-        failure_list = "; ".join(errors)
-        return Err(ValidationError(f"Failed to build the following components: {failure_list}"))
-
-    return Ok(collected)
-
-
-def _resolve_generator_rule_from_row(
-    row: Mapping[str, Any],
-    technology_categories: dict[str, Any],
-    category_class_mapping: Mapping[str, str | type[ReEDSGenerator]],
-    rules_by_target: dict[str, list[Rule]],
-) -> Result[Rule, ValidationError]:
-    """Return the parser rule that matches the generator technology."""
-
-    technology = row.get("technology")
-    if technology is None:
-        return Err(ValidationError("Generator row missing technology"))
-
-    class_result = get_generator_class(
-        str(technology),
-        technology_categories,
-        category_class_mapping,
-    )
-    if class_result.is_err():
-        return Err(ValidationError(f"Generator {technology} class lookup failed: {class_result.err()}"))
-
-    generator_class = class_result.ok()
-    if generator_class is None:
-        return Err(ValidationError(f"Generator class not resolved for {technology}"))
-
-    rules = rules_by_target.get(generator_class.__name__, [])
-    if not rules:
-        return Err(ValidationError(f"No parser rule found for {generator_class.__name__}"))
-
-    return Ok(rules[0])
-
-
 def prepare_generator_inputs(
     capacity_data: pl.LazyFrame | None,
     optional_data: Mapping[str, pl.LazyFrame | None],
@@ -842,38 +679,6 @@ def prepare_generator_inputs(
         non_variable_df = non_variable_df.with_columns(pl.lit(False).alias("is_aggregated"))
 
     return Ok((aggregated_variable_df, non_variable_df))
-
-
-def get_rules_by_target(rules: list[Any]) -> Result[dict[str, list[Rule]], ValidationError]:
-    """Group parser rules by their target component types."""
-
-    from collections import defaultdict
-
-    rules_by_target: defaultdict[Any, list[Rule]] = defaultdict(list)
-    for rule in rules:
-        typed_rule = cast("Rule", rule)
-        for target_type in typed_rule.get_target_types():
-            rules_by_target[target_type].append(typed_rule)
-    return Ok(rules_by_target)
-
-
-def get_rule_for_target(
-    rules_by_target: dict[str, list[Rule]],
-    *,
-    target_type: str,
-    name: str | None = None,
-) -> Result[Rule, ValidationError]:
-    """Retrieve a rule for a specific target type, optionally filtering by name."""
-    candidates = rules_by_target.get(target_type, [])
-    if not candidates:
-        return Err(ValidationError(f"No parser rule found for {target_type}"))
-
-    if name is not None:
-        for rule in candidates:
-            if rule.name == name:
-                return Ok(rule)
-
-    return Ok(candidates[0])
 
 
 def filter_generators_by_transmission_region(

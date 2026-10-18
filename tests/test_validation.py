@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.data_fixtures import csv_file_mapping
+
 pytestmark = [pytest.mark.integration]
 
 
@@ -18,6 +20,7 @@ def test_invalid_solve_year_raises_error(reeds_run_path):
         weather_year=[2012],
         scenario="test",
         case_name="test",
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
@@ -39,6 +42,7 @@ def test_invalid_weather_year_raises_error(reeds_run_path):
         weather_year=[2050],
         scenario="test",
         case_name="test",
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
@@ -60,6 +64,7 @@ def test_valid_years_pass_validation(reeds_run_path):
         weather_year=[2012],
         scenario="test",
         case_name="test",
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
     data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
@@ -87,6 +92,7 @@ def test_missing_deprecated_agglevels_file_still_validates(tmp_path: Path, reeds
         weather_year=[2012],
         scenario="test",
         case_name="test",
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
     data_store = DataStore.from_plugin_config(config, path=run_path)

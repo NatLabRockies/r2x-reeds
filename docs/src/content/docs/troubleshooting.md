@@ -27,11 +27,14 @@ and run the [import check](/r2x-reeds/getting-started/verify/) there. Record all
 package versions before investigating API drift; upgrading one dependency blindly
 can make a saved artifact harder to reproduce.
 
-## `Required dataset '…' not found in outputs.h5 or fallback CSV`
+## A configured output file or HDF5 group is missing
 
-This message means neither the mapped HDF5 group nor its supported CSV fallback
-provided the required dataset. A pipeline dry run cannot establish file availability.
-From the tutorial workspace, inspect the run root:
+The packaged `file_mapping.json` explicitly reads output groups from
+`outputs/outputs.h5`; parser reads do not fall back to `outputs/<dataset>.csv`.
+Core selects the reader from the configured file extension, but that does not
+select an alternate source. A pipeline dry run cannot establish file or group
+availability. From the run root, inspect the mapped file and its configured
+reader keys:
 
 ```python
 from pathlib import Path
@@ -42,18 +45,26 @@ for name in ("meta.csv", "inputs_case", "outputs"):
 print(sorted(path.name for path in (root / "outputs").glob("*")))
 ```
 
-False values often mean the parser was pointed at `outputs/` or an extra enclosing
-folder. Pass the root containing all three items to `DataStore.from_plugin_config`.
-If the root is correct, compare the named dataset with the
-[configuration mappings](/r2x-reeds/reference/configuration/) and restore/regenerate
-that actual report from the same completed ReEDS run. Renaming an unrelated CSV
-or creating an empty placeholder does not supply its schema. Rerun the parser alone
-and inspect regions, generators and demand before adding modifiers.
+Pass the root containing `meta.csv`, `inputs_case/` and `outputs/` to
+`DataStore.from_plugin_config`. Then compare the file mapping's path and HDF5
+`group_key`, `data_key` or `columns_key` with the run's actual report. Restore or
+regenerate the mapped report from that completed ReEDS run if it is absent or
+incomplete. Renaming an unrelated CSV or creating an empty placeholder does not
+supply the required schema.
 
-For `Degraded capacity dataset 'cap_deg_ivrt' was not found`, the request came from
-`use_degraded_capacity=True`. Supply degradation-adjusted capacity output, or use
-`False` only if undegraded `cap_ivrt` capacity is the intended modeling choice.
-Verify capacities after rerunning; the choices need not give the same MW.
+If the run provides CSV outputs, select them with a complete `file_mapping`
+asset override. The
+[configuration reference](/r2x-reeds/reference/configuration/) shows how to
+modify the packaged mapping explicitly. Adjust those paths and reader settings
+for the CSV files present in your run. The configured extension selects the
+reader, while the mapping selects the source. Rerun the parser alone and inspect
+regions, generators and demand before adding modifiers.
+
+When `use_degraded_capacity=True`, the parser selects the configured
+`online_capacity_degraded` dataset, packaged as HDF5 group `cap_deg_ivrt`. Verify
+that mapping's file and group exist. Set the flag to `False` only when the
+undegraded `online_capacity` source (`cap_ivrt`) is the intended modeling choice.
+The two capacity series need not have the same MW values.
 
 ## `invalid HDF5 signature` or `file signature not found`
 

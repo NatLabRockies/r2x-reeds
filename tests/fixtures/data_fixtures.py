@@ -1,9 +1,10 @@
 """Data path fixtures with override capability."""
 
+import json
 import shutil
 import zipfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from loguru import logger
@@ -11,6 +12,24 @@ from loguru import logger
 if TYPE_CHECKING:
     from r2x_core import DataStore
     from r2x_reeds import ReEDSConfig, ReEDSParser
+
+
+def package_file_mapping() -> dict[str, Any]:
+    """Load the packaged file mapping for format-specific reader tests."""
+    mapping_path = Path(__file__).parents[2] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
+    mapping: dict[str, Any] = json.loads(mapping_path.read_text())
+    return mapping
+
+
+def csv_file_mapping() -> dict[str, Any]:
+    """Return an explicit CSV mapping for the unpacked ReEDS test archive."""
+    mapping = package_file_mapping()
+    for data_file in mapping["files"]:
+        if data_file["fpath"] == "outputs/outputs.h5":
+            reader = data_file.pop("reader")
+            group_key = reader["kwargs"]["group_key"]
+            data_file["fpath"] = f"outputs/{group_key}.csv"
+    return mapping
 
 
 @pytest.fixture(scope="session")
@@ -87,6 +106,7 @@ def reeds_config(reeds_run_path: Path) -> "ReEDSConfig":
         weather_year=2012,
         case_name="test",
         scenario="base",
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
 
@@ -117,10 +137,7 @@ def example_reeds_config(reeds_config: "ReEDSConfig") -> "ReEDSConfig":
 
 @pytest.fixture(scope="session")
 def example_data_store(data_store: "DataStore") -> "DataStore":
-    """Legacy test store with ReEDS-specific readers explicitly registered."""
-    from r2x_reeds import register_modeled_years_reader
-
-    register_modeled_years_reader(data_store)
+    """Alias for the configured ReEDS data store."""
     return data_store
 
 

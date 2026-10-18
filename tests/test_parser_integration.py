@@ -174,12 +174,14 @@ def loadsite_system(loadsite_run_path):
 
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
+    from tests.fixtures.data_fixtures import csv_file_mapping
 
     config = ReEDSConfig(
         solve_year=2032,
         weather_year=2012,
         case_name="test",
         scenario="base",
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
     store = DataStore.from_plugin_config(config, path=loadsite_run_path)
     ctx = PluginContext(config=config, store=store)

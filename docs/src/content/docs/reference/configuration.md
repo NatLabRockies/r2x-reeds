@@ -49,7 +49,6 @@ Defines package-level parser defaults including:
 
 - `excluded_techs`
 - `tech_categories`
-- `category_class_mapping`
 - reserve defaults (`default_reserve_types`, `reserve_duration`, `reserve_time_frame`, etc.)
 - unit conversion constants
 
@@ -60,21 +59,54 @@ Notable default behavior:
 
 ## file_mapping.json
 
-Defines named datasets and how each is read and normalized.
+Defines physical files and prepared tables in a `{"files": [...], "tables": [...]}`
+envelope. Each physical file entry names a dataset and configures its path,
+optional metadata, reader settings, and `proc_spec`. Reader settings select the
+format-specific behavior, including HDF5 group or dataset keys. Prepared tables
+name a physical base source, explicit left many-to-one joins, and required result
+columns. Table joins do not read other prepared tables.
 
-Each entry includes:
+The packaged mapping reads ReEDS output groups from `outputs/outputs.h5` using
+core's configured HDF5 reader. Core selects the CSV or HDF5 reader from the
+configured file extension. Each read follows the mapping; the parser does not
+keep a run-wide HDF5 handle or dataset cache. Extension-based reader selection
+does not select an alternate source or fall back from HDF5 to CSV. CSV outputs
+must be selected by an explicit complete `file_mapping` asset override.
 
-- `name`: logical dataset name
-- `fpath`: relative file path in the ReEDS run
-- `info`: metadata (`is_input`, `is_optional`, `units`, etc.)
-- optional `reader` settings
-- `proc_spec`: column mapping, filtering, schema, and pivot rules
+For runs whose CSV filenames match the HDF5 group names, start from the complete
+packaged mapping, replace each HDF5 output path, and remove its HDF5-only reader
+settings before constructing the store. This example uses the whole-asset
+`asset_overrides` API from the coordinated r2x-core source. The installed
+r2x-core 0.9.0 package does not provide this API, so ReEDS and r2x-core must be
+released together before using the example with published packages:
 
-Output bundle behavior:
+```python
+import json
+from importlib.resources import files
+from pathlib import Path
 
-- Output datasets that previously pointed to `outputs/*.csv` now point to `outputs/outputs.h5`
-- The parser reads `outputs.h5` once per run and caches dataset groups for reuse
-- For backward compatibility, if `outputs.h5` (or a requested group) is missing, parser read paths fall back to legacy `outputs/<dataset>.csv` when available
+from r2x_core import DataStore
+from r2x_reeds import ReEDSConfig
+
+mapping = json.loads(
+    files("r2x_reeds").joinpath("config", "file_mapping.json").read_text()
+)
+for entry in mapping["files"]:
+    if entry["fpath"] == "outputs/outputs.h5":
+        hdf5_reader = entry.pop("reader")
+        entry["fpath"] = f"outputs/{hdf5_reader['kwargs']['group_key']}.csv"
+
+config = ReEDSConfig(
+    solve_year=2030,
+    weather_year=2012,
+    asset_overrides={"file_mapping": mapping},
+)
+store = DataStore.from_plugin_config(config, path=Path("path/to/reeds-run"))
+```
+
+This example assumes one CSV named for each configured HDF5 group. Adjust paths
+and reader settings to match the files actually present. Asset overrides replace
+the full mapping, so retain the complete `files` and `tables` envelope.
 
 Examples of purchaser-load related datasets:
 
@@ -86,20 +118,38 @@ Examples of purchaser-load related datasets:
 
 ## parser_rules.json
 
-Maps normalized rows to component constructor fields.
+Uses the core `RulePlan` envelope. `mappings` define reusable field mappings
+for policy-prepared records. `rules` add an explicit typed source and target.
+`execution` names ordered Rule stages, such as `regions` before
+`transmission`. The core validates names, references, datasets, target models,
+and mapped fields before the parser mutates a `System`.
 
-Important sections:
+A dataset-backed Rule has an explicit source and target:
 
-- Generator families (`ReEDSThermalGenerator`, `ReEDSVariableGenerator`, `ReEDSStorage`, `ReEDSHydroGenerator`)
-- Load and transmission components
-- Reserve and emissions components
-- Consuming technology rules (`ReEDSConsumingTechnology`, `ReEDSElectrolyzerDemand`)
+```json
+{
+  "name": "region",
+  "source": {"kind": "dataset", "dataset": "hierarchy"},
+  "target": {
+    "kind": "component",
+    "component_types": ["ReEDSRegion"]
+  },
+  "field_map": {"state": "state"},
+  "getters": {"name": "build_region_name"}
+}
+```
 
-Rule fields include:
+The root object contains `mappings`, `mapping_selections`, `rules`, `execution`,
+and optional `required_stages`, `required_rules`, and `required_datasets`. A
+mapping selection declares an explicit priority and maps each category key to a
+named mapping. The core validates the selection before execution. A required
+dataset must be registered and must not be marked optional in `file_mapping.json`.
+There is no list-root compatibility form.
 
-- `field_map`
-- `getters`
-- `defaults`
+Rule mappings use `field_map`, `getters`, `defaults`, and `filter`. Dataset
+sources name either a physical file or a prepared table from `file_mapping.json`.
+The current ReEDS plan declares region, transmission, and emission stages; other
+policy-prepared families continue to use named mappings until their migration.
 
 ## Runtime Placeholder Substitution
 

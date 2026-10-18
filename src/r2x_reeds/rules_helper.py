@@ -33,10 +33,8 @@ def create_parser_context(
     """
     return PluginContext(
         system=system,
+        target_system=system,
         store=store,
         config=config,
-        metadata={
-            "tech_categories": defaults.get("tech_categories", {}),
-            "category_class_mapping": defaults.get("category_class_mapping", {}),
-        },
+        metadata={"tech_categories": defaults.get("tech_categories", {})},
     )

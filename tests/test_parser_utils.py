@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 import pytest
 
 pytestmark = [pytest.mark.unit]
@@ -94,41 +92,6 @@ def test_merge_lazy_frames_success() -> None:
     assert merged_df.shape[0] == 2
     assert merged_df.filter(pl.col("other").is_not_null()).shape[0] == 1
     assert merged_df["other"][0] == "x"
-
-
-def test_get_generator_class_success_and_failure() -> None:
-    from r2x_reeds import parser_utils
-    from r2x_reeds.models import ReEDSThermalGenerator
-
-    technology_categories = {"thermal": {"prefixes": ["coal"]}}
-    mapping = {"thermal": "ReEDSThermalGenerator"}
-
-    found = parser_utils.get_generator_class("coal", technology_categories, mapping)
-    assert found.is_ok()
-    assert found.ok() is ReEDSThermalGenerator
-
-    missing = parser_utils.get_generator_class("unknown", {}, mapping)
-    assert missing.is_err()
-    assert isinstance(missing.err(), TypeError)
-
-
-def test_get_generator_class_hydrogen_combustion_defaults(reeds_config) -> None:
-    """H2 combustion technologies use the thermal generator model."""
-    from r2x_reeds import parser_utils
-    from r2x_reeds.models import ReEDSThermalGenerator
-
-    defaults = reeds_config.load_config()["defaults"]
-    technology_categories = defaults["tech_categories"]
-    for technology in ("h2-cc", "h2-ct"):
-        categories = parser_utils.get_technology_categories(technology, technology_categories)
-        assert categories.unwrap() == ["thermal"]
-
-        result = parser_utils.get_generator_class(
-            technology,
-            technology_categories,
-            defaults["category_class_mapping"],
-        )
-        assert result.unwrap() is ReEDSThermalGenerator
 
 
 def test_hydro_operating_mode_defaults(reeds_config) -> None:
@@ -425,32 +388,6 @@ def test_calculate_reserve_requirement_nonzero_and_zero():
     assert zero_result.err().args[0] == "Reserve requirement is zero"
 
 
-def test_get_rules_by_target_and_rule_selection():
-    class DummyRule:
-        def __init__(self, name: str, target_types: list[str]):
-            self.name = name
-            self._target_types = target_types
-
-        def get_target_types(self) -> list[str]:
-            return self._target_types
-
-    rule_a = DummyRule("r1", ["A", "B"])
-    rule_b = DummyRule("r2", ["B"])
-    from r2x_reeds import parser_utils
-
-    rules_by_target = parser_utils.get_rules_by_target([rule_a, rule_b]).unwrap()  # type: ignore[arg-type]
-    assert len(rules_by_target["B"]) == 2
-
-    selected = parser_utils.get_rule_for_target(rules_by_target, target_type="B", name="r2").unwrap()
-    assert selected.name == "r2"
-
-    fallback = parser_utils.get_rule_for_target(rules_by_target, target_type="B")
-    assert fallback.is_ok()
-
-    missing = parser_utils.get_rule_for_target(rules_by_target, target_type="UNKNOWN")
-    assert missing.is_err()
-
-
 def test_prepare_generator_dataset_null_capacity_data() -> None:
     """Test error when capacity_data is None."""
     from r2x_reeds import parser_utils
@@ -661,38 +598,6 @@ def test_calculate_reserve_requirement_empty_generators() -> None:
     assert "Reserve requirement is zero" in str(result.unwrap_err())
 
 
-def test_collect_component_kwargs_missing_identifier() -> None:
-    """Test error handling when identifier is empty/None."""
-    import polars as pl
-    from rust_ok import Err
-
-    from r2x_core.exceptions import ValidationError
-    from r2x_reeds import parser_utils
-
-    df = pl.DataFrame({"col1": [1, 2, 3]})
-
-    def failing_identifier_getter(row):
-        # Return Ok with empty string
-        from rust_ok import Ok
-
-        return Ok("")
-
-    class DummyRule:
-        pass
-
-    result = parser_utils._collect_component_kwargs_from_rule(
-        data=df,
-        rule_provider=lambda _row: Err(ValidationError("unused")),
-        parser_context=None,
-        row_identifier_getter=failing_identifier_getter,
-    )
-    assert result.is_err()
-    error = result.unwrap_err()
-    assert isinstance(error, ValidationError)
-
-    assert "failed" in str(error).lower()
-
-
 def test_tech_matches_category_category_not_in_dict() -> None:
     """Test return False when category doesn't exist in dict."""
     from r2x_reeds import parser_utils
@@ -720,19 +625,6 @@ def test_tech_matches_category_exact_match_takes_precedence() -> None:
     # Non-exact prefix match should still work
     result_prefix = parser_utils.tech_matches_category("wind-offshore", "wind", categories)
     assert result_prefix is True
-
-
-def test_get_generator_class_with_no_matching_category() -> None:
-    """Test error case when technology has no matching categories."""
-    from r2x_reeds import parser_utils
-
-    # Unknown tech with empty categories should error
-    result = parser_utils.get_generator_class("unknown_tech", {}, {})
-    assert result.is_err()
-    error = result.unwrap_err()
-    assert isinstance(error, TypeError)
-    # Error message indicates no category match
-    assert "unknown_tech" in str(error)
 
 
 def test_prepare_generator_dataset_with_valid_excludes() -> None:
@@ -908,49 +800,6 @@ def test_merge_lazy_frames_custom_suffix() -> None:
     merged = parser_utils.merge_lazy_frames(left, right, on=["key"], suffix="_other").unwrap().collect()
     assert "value" in merged.columns
     assert "value_other" in merged.columns
-
-
-def test_get_generator_class_type_object_mapping() -> None:
-    """Category mapping with type object (not string)."""
-    from r2x_reeds import parser_utils
-    from r2x_reeds.models import ReEDSThermalGenerator, ReEDSVariableGenerator
-
-    technology_categories = {"thermal": {"prefixes": ["gas"]}, "wind": {"prefixes": ["wind"]}}
-    # Mapping with actual type objects instead of strings
-    mapping = {"thermal": ReEDSThermalGenerator, "wind": ReEDSVariableGenerator}
-
-    result = parser_utils.get_generator_class("gas-cc", technology_categories, mapping)
-    assert result.is_ok()
-    assert result.ok() is ReEDSThermalGenerator
-
-
-def test_get_generator_class_category_no_mapping() -> None:
-    """Category exists in tech_categories but not in class mapping."""
-    from r2x_reeds import parser_utils
-
-    technology_categories = {"thermal": {"prefixes": ["gas"]}}
-    mapping = {"solar": "ReEDSVariableGenerator"}  # thermal not in mapping
-
-    result = parser_utils.get_generator_class("gas-cc", technology_categories, mapping)
-    assert result.is_err()
-    assert isinstance(result.err(), TypeError)
-
-
-def test_get_generator_class_second_category_has_mapping() -> None:
-    """First category has no mapping, second does."""
-    from r2x_reeds import parser_utils
-    from r2x_reeds.models import ReEDSVariableGenerator
-
-    # Technology matches both 'wind' and 'renewable', but only 'renewable' has mapping
-    technology_categories = {
-        "wind": {"prefixes": ["wind"]},
-        "renewable": {"prefixes": ["wind"]},
-    }
-    mapping = {"renewable": "ReEDSVariableGenerator"}  # wind not in mapping
-
-    result = parser_utils.get_generator_class("wind-ons", technology_categories, mapping)
-    assert result.is_ok()
-    assert result.ok() is ReEDSVariableGenerator
 
 
 def test_prepare_generator_dataset_all_optional_none() -> None:
@@ -1190,104 +1039,6 @@ def test_calculate_reserve_requirement_time_series_longer_than_index() -> None:
     assert len(requirement) == 10
 
 
-def test_collect_component_kwargs_identifier_returns_err() -> None:
-    """Identifier getter returning Err should accumulate errors."""
-    from collections.abc import Mapping
-    from typing import Any
-
-    import polars as pl
-    from rust_ok import Err, Result
-
-    from r2x_core.exceptions import ValidationError
-    from r2x_reeds import parser_utils
-
-    df = pl.DataFrame({"col1": [1, 2]})
-
-    def failing_identifier_getter(row: Mapping[str, Any]) -> Result[str, Exception]:
-        return Err(ValueError("Cannot derive identifier"))
-
-    class DummyRule:
-        pass
-
-    result = parser_utils._collect_component_kwargs_from_rule(
-        data=df,
-        rule_provider=lambda _row: Err(ValidationError("unused")),
-        parser_context=None,
-        row_identifier_getter=failing_identifier_getter,
-    )
-    assert result.is_err()
-    error = result.unwrap_err()
-    assert isinstance(error, ValidationError)
-    assert "Cannot derive identifier" in str(error)
-
-
-def test_collect_component_kwargs_empty_dataframe() -> None:
-    """Empty DataFrame should return Ok with empty list."""
-    from collections.abc import Mapping
-    from typing import Any
-
-    import polars as pl
-    from rust_ok import Err, Ok, Result
-
-    from r2x_core.exceptions import ValidationError
-    from r2x_reeds import parser_utils
-
-    df = pl.DataFrame({"col1": []})
-
-    def identifier_getter(row: Mapping[str, Any]) -> Result[str, Exception]:
-        return Ok(str(row.get("col1", "")))
-
-    class DummyRule:
-        pass
-
-    result = parser_utils._collect_component_kwargs_from_rule(
-        data=df,
-        rule_provider=lambda _row: Err(ValidationError("unused")),
-        parser_context=None,
-        row_identifier_getter=identifier_getter,
-    )
-    collected = result.unwrap()
-    assert collected == []
-
-
-def test_resolve_generator_rule_missing_technology() -> None:
-    """Row without 'technology' key returns error."""
-    from r2x_reeds import parser_utils
-
-    row = {"region": "p1", "capacity": 10.0}  # No technology key
-    technology_categories = {"wind": {"prefixes": ["wind"]}}
-    category_class_mapping = {"wind": "ReEDSVariableGenerator"}
-    rules_by_target = {}
-
-    result = parser_utils._resolve_generator_rule_from_row(
-        row,
-        technology_categories=technology_categories,
-        category_class_mapping=category_class_mapping,
-        rules_by_target=rules_by_target,
-    )
-    assert result.is_err()
-    assert "missing technology" in str(result.err()).lower()
-
-
-def test_resolve_generator_rule_no_matching_rule() -> None:
-    """Technology class found but no rule defined."""
-    from r2x_reeds import parser_utils
-
-    row = {"technology": "wind-ons", "region": "p1"}
-    technology_categories = {"wind": {"prefixes": ["wind"]}}
-    category_class_mapping = {"wind": "ReEDSVariableGenerator"}
-    rules_by_target = {}  # No rules defined
-
-    result = parser_utils._resolve_generator_rule_from_row(
-        row,
-        technology_categories=technology_categories,
-        category_class_mapping=category_class_mapping,
-        rules_by_target=rules_by_target,
-    )
-    assert result.is_err()
-    assert "no parser rule" in str(result.err()).lower()
-
-
 def test_prepare_generator_inputs_empty_variable_categories_defaults() -> None:
     """Empty variable_categories list defaults to ['wind', 'solar'] due to 'or' logic."""
     import polars as pl
@@ -1364,87 +1115,6 @@ def test_prepare_generator_inputs_custom_categories_no_match() -> None:
     assert non_variable_df.shape[0] == 2
 
 
-def test_collect_component_kwargs_empty_identifier() -> None:
-    """Row where identifier getter returns Ok('') triggers 'Missing identifier' path."""
-    from unittest.mock import MagicMock
-
-    import polars as pl
-    from rust_ok import Ok
-
-    from r2x_reeds.parser_utils import _collect_component_kwargs_from_rule
-
-    data = pl.DataFrame({"region": ["p1"]})
-    ctx = MagicMock()
-
-    result = _collect_component_kwargs_from_rule(
-        data=data,
-        rule_provider=MagicMock(),
-        parser_context=ctx,
-        row_identifier_getter=lambda row: Ok(""),
-    )
-    assert result.is_err()
-    assert "Missing identifier value" in str(result.unwrap_err())
-
-
-def test_collect_component_kwargs_identifier_err() -> None:
-    """Row where identifier getter returns Err is recorded as a failure."""
-    from unittest.mock import MagicMock
-
-    import polars as pl
-    from rust_ok import Err
-
-    from r2x_reeds.parser_utils import _collect_component_kwargs_from_rule
-
-    data = pl.DataFrame({"region": ["p1"]})
-    ctx = MagicMock()
-
-    result = _collect_component_kwargs_from_rule(
-        data=data,
-        rule_provider=MagicMock(),
-        parser_context=ctx,
-        row_identifier_getter=lambda row: Err(ValueError("bad row")),
-    )
-    assert result.is_err()
-    assert "bad row" in str(result.unwrap_err())
-
-
-def test_collect_component_kwargs_rule_provider_returns_err() -> None:
-    """Callable rule_provider returning Err causes the row to be skipped with an error."""
-    from unittest.mock import MagicMock
-
-    import polars as pl
-    from rust_ok import Err, Ok
-
-    from r2x_core.exceptions import ValidationError
-    from r2x_reeds.parser_utils import _collect_component_kwargs_from_rule
-
-    data = pl.DataFrame({"region": ["p1"]})
-    ctx = MagicMock()
-
-    result = _collect_component_kwargs_from_rule(
-        data=data,
-        rule_provider=lambda row: Err(ValidationError("no rule")),
-        parser_context=ctx,
-        row_identifier_getter=lambda row: Ok("p1"),
-    )
-    assert result.is_err()
-    assert "no rule" in str(result.unwrap_err())
-
-
-def test_resolve_generator_rule_no_rule_for_class() -> None:
-    """Known class with no rules returns Err."""
-    from r2x_reeds.parser_utils import _resolve_generator_rule_from_row
-
-    result = _resolve_generator_rule_from_row(
-        row={"technology": "coal"},
-        technology_categories={"thermal": {"prefixes": ["coal"]}},
-        category_class_mapping={"thermal": "ReEDSThermalGenerator"},
-        rules_by_target={},  # no rules registered
-    )
-    assert result.is_err()
-    assert "ReEDSThermalGenerator" in str(result.unwrap_err())
-
-
 def test_prepare_generator_inputs_propagates_dataset_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Returns Err when _prepare_generator_dataset fails."""
     import polars as pl
@@ -1466,23 +1136,6 @@ def test_prepare_generator_inputs_propagates_dataset_error(monkeypatch: pytest.M
         technology_categories={},
     )
     assert result.is_err()
-
-
-def test_get_rule_for_target_named_miss_returns_first() -> None:
-    """When name doesn't match any rule, falls through and returns the first candidate."""
-
-    from r2x_core import Rule
-    from r2x_reeds.parser_utils import get_rule_for_target
-
-    class _R:
-        name = "first"
-
-        def get_target_types(self):
-            return ["X"]
-
-    result = get_rule_for_target({"X": cast(list[Rule], [_R()])}, target_type="X", name="nonexistent")
-    assert result.is_ok()
-    assert result.unwrap().name == "first"
 
 
 def test_calculate_reserve_requirement_exception_path() -> None:

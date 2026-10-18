@@ -9,6 +9,7 @@ import pytest
 from r2x_core import DataStore, PluginContext
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models.components import ReEDSGenerator
+from tests.fixtures.data_fixtures import csv_file_mapping
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +26,11 @@ def test_required_fom_sets_may_be_empty_but_must_exist(
     reeds_run_path: Path, tmp_path: Path, dataset: str, header: str, missing: bool
 ) -> None:
     shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": csv_file_mapping()},
+    )
     store = DataStore.from_plugin_config(config, path=tmp_path)
     parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
     path = store[dataset].fpath
@@ -50,7 +55,11 @@ def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
     shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
     path = tmp_path / "inputs_case" / "plantcharout.csv"
     path.write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": csv_file_mapping()},
+    )
     store = DataStore.from_plugin_config(config, path=tmp_path)
     parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
     if source == "missing":
@@ -79,7 +88,11 @@ def test_fixed_om_dataset_selects_only_solve_year_fom(
         "Gas-CC,2032,capcost,736901\n"
         "wind-ons_1,2032,fom,31000\n"
     )
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": csv_file_mapping()},
+    )
     store = DataStore.from_plugin_config(config, path=tmp_path)
     ReEDSParser.from_context(PluginContext(config=config, store=store))
 
@@ -104,7 +117,13 @@ def test_generators_receive_solve_year_fixed_om(reeds_run_path: Path, tmp_path: 
         "upv_1,2032,fom,12000\n"
         "battery_4,2032,fom,0\n"
     )
-    config = ReEDSConfig(solve_year=2032, weather_year=2012, case_name="test", scenario="base")
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="test",
+        scenario="base",
+        asset_overrides={"file_mapping": csv_file_mapping()},
+    )
     store = DataStore.from_plugin_config(config, path=run_path)
     ctx = PluginContext(config=config, store=store)
     parser = ReEDSParser.from_context(ctx)
@@ -164,7 +183,11 @@ def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
     with (tmp_path / "outputs" / "cap_ivrt.csv").open("a") as file:
         file.write("CoalOldUns_Coal-CCS_mod,init-1,p1,2032,100\n")
         file.write("CoalOldUns_Coal-CCS_mod,new1,p1,2032,100\n")
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": csv_file_mapping()},
+    )
     store = DataStore.from_plugin_config(config, path=tmp_path)
     ctx = PluginContext(config=config, store=store)
     result = ReEDSParser.from_context(ctx).run(ctx=ctx)

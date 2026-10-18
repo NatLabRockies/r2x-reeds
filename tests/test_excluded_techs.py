@@ -10,15 +10,18 @@ def test_excluded_techs_can_be_overridden(reeds_run_path):
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
     from r2x_reeds.models import ReEDSGenerator
+    from tests.fixtures.data_fixtures import csv_file_mapping
 
     default_config = ReEDSConfig(
         solve_year=2032,
         weather_year=2012,
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
     override_config = ReEDSConfig(
         solve_year=2032,
         weather_year=2012,
         excluded_techs=["electrolyzer", "smr", "smr_ccs"],
+        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
     def parse_generators(config):

@@ -283,11 +283,12 @@ def test_resolve_emission_generator_identifier_missing(dummy_context):
 def test_lookup_from_and_to_region(context_with_regions):
     from r2x_reeds.getters import lookup_from_region, lookup_to_region
 
-    from_result = lookup_from_region({"from_region": "p1"}, context=context_with_regions)
-    to_result = lookup_to_region({"to_region": "p2"}, context=context_with_regions)
+    row = {"from_region": "p2", "to_region": "p1"}
+    from_result = lookup_from_region(row, context=context_with_regions)
+    to_result = lookup_to_region(row, context=context_with_regions)
     assert from_result.is_ok() and to_result.is_ok()
-    assert from_result.ok() is not None
-    assert to_result.ok() is not None
+    assert from_result.ok() is not None and from_result.ok().name == "p1"
+    assert to_result.ok() is not None and to_result.ok().name == "p2"
 
 
 def test_lookup_reserve_region_success(context_with_regions):

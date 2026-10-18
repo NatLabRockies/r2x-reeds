@@ -1,609 +1,177 @@
-"""Unit tests for parser._build_* methods.
-
-Tests verify that individual builder methods:
-1. Handle empty/missing data gracefully
-2. Log appropriate messages
-3. Return correct Result types
-4. Process data correctly under normal conditions
-"""
+"""Public parser lifecycle coverage for configured Rule construction."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+import copy
+import json
+import shutil
+from pathlib import Path
 
+import h5py
+import numpy as np
 import polars as pl
 import pytest
-from rust_ok import Ok, Result
 
-from r2x_core import System
+from r2x_core import DataStore, PluginContext
 from r2x_reeds import ReEDSConfig, ReEDSParser
+from r2x_reeds.models.components import (
+    ReEDSDemand,
+    ReEDSEmission,
+    ReEDSGenerator,
+    ReEDSInterface,
+    ReEDSRegion,
+    ReEDSTransmissionLine,
+)
+from tests.fixtures.data_fixtures import csv_file_mapping
 
 pytestmark = [pytest.mark.integration]
 
-if TYPE_CHECKING:
-    from r2x_core import DataStore
 
+def test_public_lifecycle_builds_configured_region_transmission_and_emission_outputs(
+    example_system,
+) -> None:
+    """Configured Rule stages preserve links and full Pacific outputs."""
+    system = example_system
+    regions = {region.name: region for region in system.get_components(ReEDSRegion)}
+    demands = list(system.get_components(ReEDSDemand))
+    interfaces = list(system.get_components(ReEDSInterface))
+    lines = list(system.get_components(ReEDSTransmissionLine))
+    generators = list(system.get_components(ReEDSGenerator))
 
-class DummyRule:
-    def __init__(self) -> None:
-        self.name = "transmission_interface"
+    assert len(regions) == 11
+    assert len(demands) == 11
+    assert len(interfaces) == 17
+    assert len(lines) == 17
+    assert all(demand.region is regions[demand.region.name] for demand in demands)
+    assert all(interface.from_region is regions[interface.from_region.name] for interface in interfaces)
+    assert all(line.interface in interfaces for line in lines)
 
-    def get_target_types(self) -> list[str]:
-        return ["ReEDSInterface"]
+    line = system.get_component(ReEDSTransmissionLine, "p1_p2_ac")
+    assert line.distance_miles == pytest.approx(132.46)
+    assert line.line_cost_per_mw_mile == pytest.approx(2255.418390457496)
+    assert line.losses == pytest.approx(0.01325)
+    assert line.max_active_power.from_to == pytest.approx(9226.461)
+    assert line.max_active_power.to_from == pytest.approx(4588.725)
 
-
-@pytest.fixture
-def initialized_parser(
-    example_parser: ReEDSParser, example_reeds_config: ReEDSConfig, example_data_store: DataStore
-) -> ReEDSParser:
-    """Initialize parser by running through on_prepare."""
-    from r2x_core import PluginContext
-
-    ctx = PluginContext(config=example_reeds_config, store=example_data_store)
-    parser = example_parser.from_context(ctx)
-    assert parser.on_prepare().is_ok()
-    return parser
-
-
-@pytest.fixture
-def built_system() -> System:
-    return System(name="test_builder")
-
-
-def _builder_calls(parser: ReEDSParser, system: System) -> list[tuple[str, Result[None, str]]]:
-    return [
-        ("_build_regions", parser._build_regions(system)),
-        ("_build_generators", parser._build_generators(system)),
-        ("_build_transmission", parser._build_transmission(system)),
-        ("_build_loads", parser._build_loads(system)),
-        ("_build_reserves", parser._build_reserves(system)),
-        ("_build_emissions", parser._build_emissions(system)),
+    emissions = [
+        attribute
+        for generator in generators
+        for attribute in system.get_supplemental_attributes_with_component(generator, ReEDSEmission)
     ]
+    assert len(emissions) == 948
 
 
-@pytest.mark.unit
-def test_build_regions_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_regions succeeds with valid hierarchy data."""
-    result = initialized_parser._build_regions(built_system)
-    assert result.is_ok() or result.is_err()
-
-
-@pytest.mark.unit
-def test_build_regions_returns_ok_type(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_regions returns a Result type."""
-    result = initialized_parser._build_regions(built_system)
-    assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.mark.unit
-def test_build_generators_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_generators succeeds with valid generator data."""
-    result = initialized_parser._build_generators(built_system)
-    assert result.is_ok() or result.is_err()
-
-
-@pytest.mark.unit
-def test_build_generators_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_generators returns a Result type."""
-    result = initialized_parser._build_generators(built_system)
-    assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.mark.unit
-def test_build_transmission_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_transmission succeeds with valid transmission data."""
-    result = initialized_parser._build_transmission(built_system)
-    assert result.is_ok() or result.is_err()
-
-
-@pytest.mark.unit
-def test_build_transmission_returns_result_type(
-    initialized_parser: ReEDSParser, built_system: System
+def test_public_lifecycle_routes_region_and_load_sources_through_asset_overrides(
+    reeds_run_path: Path,
+    tmp_path: Path,
 ) -> None:
-    """Test _build_transmission returns a Result type."""
-    result = initialized_parser._build_transmission(built_system)
-    assert hasattr(result, "is_ok") and hasattr(result, "is_err")
+    """The validated plan routes region records and load profiles to selected assets."""
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    input_case = run_path / "inputs_case"
 
+    hierarchy_records = pl.read_csv(input_case / "hierarchy.csv").to_dicts()
+    extra_region = dict(hierarchy_records[0])
+    extra_region["*r"] = "source-selected"
+    hierarchy_records.append(extra_region)
+    alternate_hierarchy_path = input_case / "hierarchy_alternate.csv"
+    pl.DataFrame(hierarchy_records).write_csv(alternate_hierarchy_path)
 
-@pytest.mark.unit
-def test_build_loads_with_valid_data(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_loads succeeds with valid load data."""
-    result = initialized_parser._build_loads(built_system)
-    assert result.is_ok() or result.is_err()
+    alternate_load_path = input_case / "load_alternate.h5"
+    shutil.copy2(input_case / "load.h5", alternate_load_path)
+    with h5py.File(alternate_load_path, "r+") as load_file:
+        columns = [
+            column.decode() if isinstance(column, bytes) else str(column) for column in load_file["columns"]
+        ]
+        load_file["data"][:, columns.index("p1")] *= 2
 
-
-@pytest.mark.unit
-def test_build_loads_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_loads returns a Result type."""
-    result = initialized_parser._build_loads(built_system)
-    assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.mark.unit
-def test_build_reserves_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_reserves returns a Result type."""
-    result = initialized_parser._build_reserves(built_system)
-    assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.mark.unit
-def test_build_emissions_returns_result_type(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test _build_emissions returns a Result type."""
-    result = initialized_parser._build_emissions(built_system)
-    assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.mark.unit
-def test_build_emissions_only_attaches_to_created_generators(
-    example_reeds_config: ReEDSConfig,
-    example_data_store: DataStore,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Ensure emissions are only attached to generators that were created."""
-
-    from r2x_core import PluginContext, System
-    from r2x_reeds import ReEDSParser
-    from r2x_reeds.models.components import ReEDSRegion, ReEDSThermalGenerator
-
-    ctx = PluginContext(config=example_reeds_config, store=example_data_store)
-    parser = ReEDSParser.from_context(ctx)
-    assert parser.on_prepare().is_ok()
-
-    system = System(name="emissions-test")
-    region = ReEDSRegion(name="test-region")
-    system.add_component(region)
-    parser._region_cache[region.name] = region
-
-    parser.ctx.system = system
-
-    generator = ReEDSThermalGenerator(
-        name="test-tech_test-region",
-        region=region,
-        technology="test-tech",
-        capacity=10.0,
-        heat_rate=10.0,
-        fuel_type="naturalgas",
-    )
-    parser.system.add_component(generator)
-    parser._generator_cache.clear()
-    parser._generator_cache[generator.name] = generator
-
-    emission_data = pl.DataFrame(
+    config_dir = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config"
+    file_mapping = csv_file_mapping()
+    parser_rules = json.loads((config_dir / "parser_rules.json").read_text())
+    physical_files = file_mapping["files"]
+    alternate_hierarchy = copy.deepcopy(next(item for item in physical_files if item["name"] == "hierarchy"))
+    alternate_hierarchy.update(name="alternate_hierarchy", fpath="inputs_case/hierarchy_alternate.csv")
+    physical_files.append(alternate_hierarchy)
+    alternate_load = copy.deepcopy(next(item for item in physical_files if item["name"] == "load_profiles"))
+    alternate_load.update(name="alternate_load_profiles", fpath="inputs_case/load_alternate.h5")
+    physical_files.append(alternate_load)
+    file_mapping["tables"].append(
         {
-            "i": [generator.technology, "missing-tech"],
-            "r": [generator.region.name, "p999"],
-            "v": [generator.vintage, None],
-            "rate": [1.23, 4.56],
-            "emission_type": ["CO2E", "CO2E"],
-            "emission_source": ["COMBUSTION", "COMBUSTION"],
+            "name": "alternate_hierarchy_table",
+            "source": "alternate_hierarchy",
+            "required_columns": ["region_id"],
         }
-    ).lazy()
-
-    original_read = parser.read_data_file
-
-    def fake_read(name: str):
-        if name == "emission_rates":
-            return emission_data
-        return original_read(name)
-
-    monkeypatch.setattr(parser, "read_data_file", fake_read)
-
-    attached: list[str] = []
-    original_add = parser.system.add_supplemental_attribute
-
-    def track_add(component, attribute):
-        attached.append(component.name)
-        return original_add(component, attribute)
-
-    monkeypatch.setattr(parser.system, "add_supplemental_attribute", track_add)
-
-    result = parser._build_emissions(system)
-    assert result.is_ok() or result.is_err()
-
-
-@pytest.mark.unit
-def test_builder_methods_return_result_from_built_system(
-    initialized_parser: ReEDSParser, built_system: System
-) -> None:
-    """Test builder methods return Result types."""
-    for _, result in _builder_calls(initialized_parser, built_system):
-        assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.mark.unit
-def test_build_transmission_interfaces_handles_component_creation_errors(
-    initialized_parser: ReEDSParser, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Ensure interface builder captures creation failures."""
-    import r2x_reeds.parser as parser_module
-    from r2x_core import ComponentCreationError
-
-    parser = initialized_parser
-    parser._rules_by_target["ReEDSInterface"] = cast(list, [DummyRule()])
-
-    monkeypatch.setattr(
-        parser_module,
-        "_collect_component_kwargs_from_rule",
-        lambda *args, **kwargs: Ok(
-            [("p1||p2", {"name": "p1||p2", "from_region": "p1", "to_region": "p2", "trtype": "ac"})]
-        ),
     )
 
-    def failing_create(*args, **kwargs):
-        raise ComponentCreationError("boom")
+    region_rule = next(rule for rule in parser_rules["rules"] if rule["name"] == "region")
+    region_rule["source"]["dataset"] = "alternate_hierarchy_table"
+    load_rule = next(rule for rule in parser_rules["rules"] if rule["name"] == "load")
+    load_rule["source"]["dataset"] = "alternate_load_profiles"
+    parser_rules["required_datasets"] = ["alternate_hierarchy_table", "alternate_load_profiles"]
 
-    monkeypatch.setattr(parser_module, "create_component", failing_create)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="test",
+        scenario="base",
+        asset_overrides={"file_mapping": file_mapping, "parser_rules": parser_rules},
+    )
+    store = DataStore.from_plugin_config(config, path=run_path)
+    selected_profiles = store.read_data(
+        "alternate_load_profiles", placeholders={"solve_year": 2032, "weather_year": 2012}
+    ).collect()
+    context = PluginContext(config=config, store=store)
+    result_context = ReEDSParser.from_context(context).run(ctx=context)
 
-    data = pl.DataFrame({"from_region": ["p1"], "to_region": ["p2"], "trtype": ["ac"]})
-    result = parser._build_transmission_interfaces(System(name="test"), data)
-    assert result.is_ok() or result.is_err()
+    assert result_context.system is not None
+    system = result_context.system
+    regions = {region.name: region for region in system.get_components(ReEDSRegion)}
+    assert "source-selected" in regions
+    demands = list(system.get_components(ReEDSDemand))
+    assert all(demand.region is regions[demand.region.name] for demand in demands)
+
+    p1_load = system.get_component(ReEDSDemand, "p1_load")
+    expected_profile = selected_profiles["p1"].to_numpy()[:8760]
+    assert p1_load.max_active_power == pytest.approx(float(selected_profiles["p1"].max()))
+    np.testing.assert_allclose(system.get_time_series(p1_load).data, expected_profile)
 
 
-@pytest.mark.unit
-def test_builder_methods_return_result(initialized_parser: ReEDSParser, built_system: System) -> None:
-    """Test builder methods return Result types."""
-    for _, result in _builder_calls(initialized_parser, built_system):
-        assert hasattr(result, "is_ok") and hasattr(result, "is_err")
-
-
-@pytest.fixture
-def fresh_parser(reeds_config: ReEDSConfig, data_store: DataStore) -> ReEDSParser:
-    """Fresh function-scoped parser with on_prepare already called."""
-
-    from r2x_core import PluginContext
-    from r2x_reeds import ReEDSParser
-
-    ctx = PluginContext(config=reeds_config, store=data_store)
-    p = ReEDSParser.from_context(ctx)
-    assert p.on_prepare().is_ok()
-    return p
-
-
-@pytest.mark.unit
-def test_build_transmission_losses_attached_to_lines(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    ("source", "mark_hierarchy_optional", "message"),
+    [
+        ({"kind": "dataset"}, False, "dataset"),
+        ({"kind": "dataset", "dataset": "missing_hierarchy"}, False, "not registered"),
+        ({"kind": "dataset", "dataset": "hierarchy"}, True, "marked optional"),
+    ],
+)
+def test_rule_plan_rejects_invalid_required_region_sources(
+    reeds_config: ReEDSConfig,
+    data_store: DataStore,
+    source: dict[str, str],
+    mark_hierarchy_optional: bool,
+    message: str,
 ) -> None:
-    """Verify that transmission losses are attached to ReEDSTransmissionLine components."""
-    from r2x_core import System
-    from r2x_reeds.models.components import ReEDSTransmissionLine
+    """Missing, unregistered, and optional region sources fail config preflight."""
+    config_dir = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config"
+    parser_rules = json.loads((config_dir / "parser_rules.json").read_text())
+    region_rule = next(rule for rule in parser_rules["rules"] if rule["name"] == "region")
+    region_rule["source"] = source
+    file_mapping = csv_file_mapping()
+    if mark_hierarchy_optional:
+        hierarchy = next(item for item in file_mapping["files"] if item["name"] == "hierarchy")
+        hierarchy["info"]["is_optional"] = True
 
-    parser = fresh_parser
-    system = System(name="transmission-losses-test")
-
-    parser.ctx.system = system
-    assert parser._build_regions(system).is_ok(), "_build_regions failed"
-
-    existing_regions = list(parser._region_cache.keys())
-    assert len(existing_regions) >= 2, (
-        f"Need at least 2 regions after _build_regions, found: {existing_regions}"
+    config = reeds_config.model_copy(
+        update={"asset_overrides": {"file_mapping": file_mapping, "parser_rules": parser_rules}}
     )
-    r1, r2 = existing_regions[0], existing_regions[1]
-
-    original_read = parser.read_data_file
-
-    def fake_read(name: str):
-        if name == "transmission_losses":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "trtype": ["ac"],
-                    "losses": [0.02],
-                }
-            ).lazy()
-        return original_read(name)
-
-    monkeypatch.setattr(parser, "read_data_file", fake_read)
-
-    result = parser._build_transmission(system)
-    assert result.is_ok(), f"_build_transmission failed: {result}"
-
-    lines = list(system.get_components(ReEDSTransmissionLine))
-    assert len(lines) > 0, "Expected at least one ReEDSTransmissionLine to be created"
-
-    lines_with_losses = [ln for ln in lines if getattr(ln, "losses", None) == pytest.approx(0.02)]
-    assert len(lines_with_losses) > 0, (
-        f"Expected at least one line with losses=0.02; "
-        f"actual losses values: {[getattr(ln, 'losses', None) for ln in lines]}"
+    store = (
+        DataStore.from_plugin_config(config, path=data_store.folder)
+        if mark_hierarchy_optional
+        else data_store
     )
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
 
+    result = parser.on_validate_config()
 
-@pytest.mark.unit
-def test_build_transmission_missing_losses_data(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify _build_transmission succeeds and creates lines when losses data is absent."""
-    from r2x_core import System
-    from r2x_reeds.models.components import ReEDSTransmissionLine
-
-    parser = fresh_parser
-    system = System(name="transmission-no-losses-test")
-
-    parser.ctx.system = system
-    assert parser._build_regions(system).is_ok(), "_build_regions failed"
-
-    original_read = parser.read_data_file
-
-    def fake_read(name: str):
-        if name == "transmission_losses":
-            return None
-        return original_read(name)
-
-    monkeypatch.setattr(parser, "read_data_file", fake_read)
-
-    result = parser._build_transmission(system)
-    assert result.is_ok(), f"_build_transmission should succeed without losses data: {result}"
-
-    lines = list(system.get_components(ReEDSTransmissionLine))
-    assert len(lines) > 0, "Lines should still be created even without losses data"
-    for line in lines:
-        if hasattr(line, "losses"):
-            assert line.losses is None or line.losses == pytest.approx(0.0), (
-                f"Lines without losses data should have None or 0.0, got {line.losses}"
-            )
-
-
-@pytest.mark.unit
-def test_build_transmission_hurdle_rates_attached_to_lines(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify that transmission hurdle rates are attached to ReEDSTransmissionLine components."""
-    from r2x_core import System
-    from r2x_reeds.models.components import ReEDSTransmissionLine
-
-    parser = fresh_parser
-    system = System(name="transmission-hurdle-rate-test")
-
-    parser.ctx.system = system
-    assert parser._build_regions(system).is_ok(), "_build_regions failed"
-
-    existing_regions = list(parser._region_cache.keys())
-    assert len(existing_regions) >= 2, (
-        f"Need at least 2 regions after _build_regions, found: {existing_regions}"
-    )
-    r1, r2 = existing_regions[0], existing_regions[1]
-
-    original_read = parser.read_data_file
-
-    def fake_read(name: str):
-        if name == "transmission_capacity":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "trtype": ["ac"],
-                    "year": [parser.config.solve_year],
-                    "capacity": [100.0],
-                }
-            ).lazy()
-        if name == "cost_hurdle_rate":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "year": [parser.config.solve_year],
-                    "cost_hurdle_rate": [1.25],
-                }
-            ).lazy()
-        return original_read(name)
-
-    monkeypatch.setattr(parser, "read_data_file", fake_read)
-
-    result = parser._build_transmission(system)
-    assert result.is_ok(), f"_build_transmission failed: {result}"
-
-    lines = list(system.get_components(ReEDSTransmissionLine))
-    assert len(lines) > 0, "Expected at least one ReEDSTransmissionLine to be created"
-
-    lines_with_hurdle_rate = [ln for ln in lines if getattr(ln, "hurdle_rate", None) == pytest.approx(1.25)]
-    assert len(lines_with_hurdle_rate) > 0, (
-        "Expected at least one line with hurdle_rate=1.25; "
-        f"actual hurdle_rate values: {[getattr(ln, 'hurdle_rate', None) for ln in lines]}"
-    )
-
-
-@pytest.mark.unit
-def test_build_transmission_distance_and_cost_attached_to_lines(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify that transmission distance and derived per-MW-mile cost are attached to lines."""
-    from r2x_core import System
-    from r2x_reeds.models.components import ReEDSTransmissionLine
-
-    parser = fresh_parser
-    system = System(name="transmission-distance-cost-test")
-
-    parser.ctx.system = system
-    assert parser._build_regions(system).is_ok(), "_build_regions failed"
-
-    existing_regions = list(parser._region_cache.keys())
-    assert len(existing_regions) >= 2, (
-        f"Need at least 2 regions after _build_regions, found: {existing_regions}"
-    )
-    r1, r2 = existing_regions[0], existing_regions[1]
-
-    original_read = parser.read_data_file
-
-    def fake_read(name: str):
-        if name == "transmission_capacity":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "trtype": ["ac"],
-                    "year": [parser.config.solve_year],
-                    "capacity": [100.0],
-                }
-            ).lazy()
-        if name == "transmission_distance_cost_dc":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "distance_mi": [250.0],
-                }
-            ).lazy()
-        if name == "transmission_distance_cost_ac":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "cost_bin": ["t0"],
-                    "cost_usd_per_mw_forward": [250000.0],
-                }
-            ).lazy()
-        return original_read(name)
-
-    monkeypatch.setattr(parser, "read_data_file", fake_read)
-
-    result = parser._build_transmission(system)
-    assert result.is_ok(), f"_build_transmission failed: {result}"
-
-    lines = list(system.get_components(ReEDSTransmissionLine))
-    assert len(lines) > 0, "Expected at least one ReEDSTransmissionLine to be created"
-
-    target_lines = [
-        ln
-        for ln in lines
-        if getattr(ln, "distance_miles", None) == pytest.approx(250.0)
-        and getattr(ln, "line_cost_per_mw_mile", None) == pytest.approx(1000.0)
-    ]
-    assert len(target_lines) > 0, (
-        "Expected at least one line with distance_miles=250.0 and line_cost_per_mw_mile=1000.0; "
-        f"actual pairs: {[(getattr(ln, 'distance_miles', None), getattr(ln, 'line_cost_per_mw_mile', None)) for ln in lines]}"
-    )
-
-
-@pytest.mark.unit
-def test_build_transmission_legacy_column_aliases_are_supported(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify legacy transmission column aliases are renamed and consumed correctly."""
-    from r2x_core import System
-    from r2x_reeds.models.components import ReEDSTransmissionLine
-
-    parser = fresh_parser
-    system = System(name="transmission-legacy-aliases-test")
-
-    parser.ctx.system = system
-    assert parser._build_regions(system).is_ok(), "_build_regions failed"
-
-    existing_regions = list(parser._region_cache.keys())
-    assert len(existing_regions) >= 2, (
-        f"Need at least 2 regions after _build_regions, found: {existing_regions}"
-    )
-    r1, r2 = existing_regions[0], existing_regions[1]
-
-    original_read = parser.read_data_file
-
-    def fake_read(name: str):
-        if name == "transmission_capacity":
-            return pl.DataFrame(
-                {
-                    "from_region": [r1],
-                    "to_region": [r2],
-                    "trtype": ["ac"],
-                    "year": [parser.config.solve_year],
-                    "capacity": [120.0],
-                }
-            ).lazy()
-        if name == "transmission_losses":
-            return pl.DataFrame(
-                {
-                    "r": [r1],
-                    "to_region": [r2],
-                    "trtype": ["ac"],
-                    "value": [0.03],
-                }
-            ).lazy()
-        if name == "cost_hurdle_rate":
-            return pl.DataFrame(
-                {
-                    "r": [r1],
-                    "rr": [r2],
-                    "allt": [parser.config.solve_year],
-                    "value": [2.5],
-                }
-            ).lazy()
-        if name == "transmission_distance_cost_dc":
-            return pl.DataFrame(
-                {
-                    "r": [r1],
-                    "rr": [r2],
-                    "distance_mi": [200.0],
-                }
-            ).lazy()
-        if name == "transmission_distance_cost_ac":
-            return pl.DataFrame(
-                {
-                    "r": [r1],
-                    "rr": [r2],
-                    "cost_bin": ["t0"],
-                    "cost_usd_per_mw_forward": [100000.0],
-                }
-            ).lazy()
-        return original_read(name)
-
-    monkeypatch.setattr(parser, "read_data_file", fake_read)
-
-    result = parser._build_transmission(system)
-    assert result.is_ok(), f"_build_transmission failed: {result}"
-
-    lines = list(system.get_components(ReEDSTransmissionLine))
-    assert len(lines) > 0, "Expected at least one ReEDSTransmissionLine to be created"
-
-    matching = [
-        ln
-        for ln in lines
-        if getattr(ln, "losses", None) == pytest.approx(0.03)
-        and getattr(ln, "hurdle_rate", None) == pytest.approx(2.5)
-        and getattr(ln, "distance_miles", None) == pytest.approx(200.0)
-        and getattr(ln, "line_cost_per_mw_mile", None) == pytest.approx(500.0)
-    ]
-    assert matching, "Expected one line with legacy-column-mapped losses/hurdle/distance/cost"
-
-
-@pytest.mark.unit
-def test_build_transmission_returns_err_when_interface_builder_returns_none(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify _build_transmission surfaces an error when interface builder returns Ok(None)."""
-    from rust_ok import Ok
-
-    parser = fresh_parser
-    parser.ctx.system = System(name="transmission-interface-none")
-
-    monkeypatch.setattr(parser, "_build_transmission_interfaces", lambda *_args, **_kwargs: Ok(None))
-
-    result = parser._build_transmission(parser.ctx.system)
     assert result.is_err()
-    assert "unexpectedly None" in str(result.err())
-
-
-@pytest.mark.unit
-def test_build_transmission_returns_err_when_line_builder_reports_creation_errors(
-    fresh_parser: ReEDSParser,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify _build_transmission returns Err when line creation errors are reported."""
-    from rust_ok import Ok
-
-    parser = fresh_parser
-    parser.ctx.system = System(name="transmission-line-errors")
-
-    monkeypatch.setattr(
-        parser,
-        "_build_transmission_interfaces",
-        lambda *_args, **_kwargs: Ok((1, ["iface failed"])),
-    )
-    monkeypatch.setattr(parser, "_build_transmission_lines", lambda *_args, **_kwargs: Ok((1, [])))
-
-    result = parser._build_transmission(parser.ctx.system)
-    assert result.is_err()
-    assert "Failed to create transmission components" in str(result.err())
+    assert message in str(result.err())

@@ -164,22 +164,6 @@
       "exact": []
     }
   },
-  "category_class_mapping": {
-    "storage": "ReEDSStorage",
-    "pumped_storage": "ReEDSStorage",
-    "hydro": "ReEDSHydroGenerator",
-    "hydro_dispatchable": "ReEDSHydroGenerator",
-    "hydro_nondispatchable": "ReEDSHydroGenerator",
-    "electrolyzer": "ReEDSElectrolyzerDemand",
-    "thermal": "ReEDSThermalGenerator",
-    "solar": "ReEDSVariableGenerator",
-    "wind": "ReEDSVariableGenerator",
-    "geothermal": "ReEDSVariableGenerator",
-    "renewable": "ReEDSVariableGenerator",
-    "variable_renewable": "ReEDSVariableGenerator",
-    "hydrogen": "ReEDSConsumingTechnology",
-    "imports": "ReEDSGenerator"
-  },
   "default_values": {
     "base_year": 2020,
     "default_heat_rate": 10.0,

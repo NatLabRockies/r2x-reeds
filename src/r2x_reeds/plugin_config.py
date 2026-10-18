@@ -51,8 +51,9 @@ class ReEDSConfig(PluginConfig):
 
     Load model defaults separately for use in parser:
 
-    >>> # Load defaults using the class method
-    >>> defaults = ReEDSConfig.load_config()
+    >>> # Load defaults from this configuration instance
+    >>> config = ReEDSConfig(solve_year=2030, weather_year=2012)
+    >>> defaults = config.load_config()
     >>> excluded_techs = defaults.get("defaults", {}).get("excluded_techs", [])
     >>>
     >>> # Create config
@@ -67,6 +68,10 @@ class ReEDSConfig(PluginConfig):
     r2x_reeds.parser.ReEDSParser : Parser that uses this configuration
     """
 
+    models: Annotated[
+        tuple[str, ...],
+        Field(description="Module paths used to resolve configured ReEDS component types."),
+    ] = ("r2x_reeds.models",)
     solve_year: Annotated[
         int | list[int],
         Field(description="Model solve year(s) - automatically converted to list"),
@@ -92,7 +97,7 @@ class ReEDSConfig(PluginConfig):
         Field(
             default=False,
             description=(
-                "Switch the online_capacity dataset key from cap_ivrt to cap_deg_ivrt "
+                "Select the online_capacity_degraded file mapping "
                 "to use degradation-adjusted generator capacity."
             ),
         ),

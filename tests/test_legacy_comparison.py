@@ -22,6 +22,7 @@ from infrasys import Component, System
 
 from r2x_core import DataStore
 from r2x_reeds import ReEDSConfig, ReEDSParser
+from tests.fixtures.data_fixtures import csv_file_mapping
 
 pytestmark = [pytest.mark.integration]
 
@@ -68,7 +69,11 @@ def legacy_component_names(legacy_system_data: dict[str, Any]) -> set[str]:
 @pytest.fixture
 def reeds_config() -> ReEDSConfig:
     """Create ReEDS configuration matching legacy system."""
-    return ReEDSConfig(solve_year=2032, weather_year=2012)
+    return ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": csv_file_mapping()},
+    )
 
 
 @pytest.fixture

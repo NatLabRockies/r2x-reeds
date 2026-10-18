@@ -24,7 +24,7 @@ def _reeds_getter(func):
     return getter(func)
 
 
-def _get_region_by_name(system: Any, region_name: str) -> ReEDSRegion:
+def get_region_by_name(system: Any, region_name: str) -> ReEDSRegion:
     """Return a region by exact name, allowing source-case differences."""
     try:
         return system.get_component(ReEDSRegion, name=region_name)
@@ -65,7 +65,7 @@ def lookup_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Ex
 
         if context.system is None:
             return Err(ValueError("System not available in context"))
-        region = _get_region_by_name(context.system, str(region_name))
+        region = get_region_by_name(context.system, str(region_name))
         return Ok(region)
     except Exception as e:
         return Err(e)
@@ -299,34 +299,34 @@ def resolve_emission_generator_identifier(row: Any, *, context: PluginContext) -
 
 @_reeds_getter
 def lookup_from_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Exception]:
-    """Lookup region using the 'from_region' key."""
+    """Lookup the alphabetically first region of an interface."""
 
-    return _lookup_region_by_field(row, field="from_region", context=context)
+    if context.system is None:
+        return Err(ValueError("System not available in context"))
+    from_region = get_row_field(row, "from_region")
+    to_region = get_row_field(row, "to_region")
+    if not from_region or not to_region:
+        return Err(ValueError("Transmission row missing region identifiers"))
+    return lookup_region(
+        {"region": min(str(from_region), str(to_region))},
+        context=context,
+    )
 
 
 @_reeds_getter
 def lookup_to_region(row: Any, *, context: PluginContext) -> Result[ReEDSRegion, Exception]:
-    """Lookup region using the 'to_region' key."""
+    """Lookup the alphabetically second region of an interface."""
 
-    return _lookup_region_by_field(row, field="to_region", context=context)
-
-
-def _lookup_region_by_field(
-    row: Any, field: str, *, context: PluginContext
-) -> Result[ReEDSRegion, Exception]:
-    """Shared helper to look up regions by a configurable field."""
-
-    try:
-        region_name = get_row_field(row, field)
-        if region_name is None:
-            return Err(ValueError(f"Row missing required '{field}' field"))
-
-        if context.system is None:
-            return Err(ValueError("System not available in context"))
-        region = _get_region_by_name(context.system, str(region_name))
-        return Ok(region)
-    except Exception as e:
-        return Err(e)
+    if context.system is None:
+        return Err(ValueError("System not available in context"))
+    from_region = get_row_field(row, "from_region")
+    to_region = get_row_field(row, "to_region")
+    if not from_region or not to_region:
+        return Err(ValueError("Transmission row missing region identifiers"))
+    return lookup_region(
+        {"region": max(str(from_region), str(to_region))},
+        context=context,
+    )
 
 
 def _lookup_reserve_region_by_field(
