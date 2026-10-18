@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "src/r2x_reeds"
 PAGES = ROOT / "docs/src/content/docs/reference/api"
 NAVIGATION = ROOT / "docs/src/generated/api-sidebar.json"
+FRAGMENTS = ROOT / "docs/public/api-fragments.json"
 
 
 def public_names() -> list[str]:
@@ -151,7 +152,7 @@ def generate() -> None:
         sidebar.append({"label": name, "collapsed": True, "items": members})
     for prefix in ("r2x_reeds", "r2x_reeds.parser"):
         fragments[f"{prefix}.ReEDSParser.run"] = "/r2x-reeds/reference/python-api/#parser-and-configuration"
-    (ROOT / "docs/public/api-fragments.json").write_text(json.dumps(fragments, indent=2) + "\n")
+    FRAGMENTS.write_text(json.dumps(fragments, indent=2) + "\n")
     NAVIGATION.write_text(json.dumps(sidebar, indent=2) + "\n")
     print(f"Generated {len(sidebar)} public API pages and their member navigation")
 
