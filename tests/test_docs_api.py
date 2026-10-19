@@ -53,6 +53,8 @@ def test_generated_api_members(generated_api: ApiGenerator) -> None:
             text = page.read_text()
             assert "[Source](https://github.com/NatLabRockies/r2x-reeds/blob/" in text
             if not fragment:
+                frontmatter = text.split("---", 2)[1]
+                assert re.search(r"^editUrl: false$", frontmatter, re.MULTILINE), page
                 snippet = re.search(r"```python doctest\n(.*?)```", text, re.DOTALL)
                 assert snippet is not None
                 test = doctest.DocTestParser().get_doctest(snippet.group(1), {}, entry["label"], str(page), 0)

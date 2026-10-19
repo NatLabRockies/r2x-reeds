@@ -62,7 +62,10 @@ def generate() -> None:
         path, node = definitions[name]
         slug = name.lower().replace("_", "-")
         route = f"/reference/api/{slug}/"
-        lines = [f"---\ntitle: {name}\n---\n", f"[Source]({base}/{path.relative_to(ROOT)}#L{node.lineno})\n"]
+        lines = [
+            f"---\ntitle: {name}\neditUrl: false\n---\n",
+            f"[Source]({base}/{path.relative_to(ROOT)}#L{node.lineno})\n",
+        ]
         members: list[dict[str, str]] = [{"label": "Overview", "link": route}]
         if isinstance(node, (ast.ClassDef, ast.FunctionDef)):
             doc = ast.get_docstring(node)

@@ -58,6 +58,17 @@ def validate() -> None:
     api = pages[BUILD / "reference/api/reedsconfig/index.html"]
     assert api.sidebar_button and "starlight__sidebar" in api.ids
     assert "primary_solve_year" in api.ids
+    edit_prefix = "https://github.com/NatLabRockies/r2x-reeds/edit/"
+    generated_pages = {
+        path: page
+        for path, page in pages.items()
+        if path.relative_to(BUILD).parts[:2] == ("reference", "api")
+    }
+    assert generated_pages
+    for path, page in generated_pages.items():
+        assert not any(link.startswith(edit_prefix) for link in page.links), path
+    authored_api = pages[BUILD / "reference/python-api/index.html"]
+    assert any(link.startswith(edit_prefix) for link in authored_api.links)
     assert "/r2x-reeds/changelog/" in (BUILD / "versions/index.html").read_text()
     for legacy in (ROOT / "public").rglob("*.html"):
         if "Page moved" in legacy.read_text():
