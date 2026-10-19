@@ -14,14 +14,13 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import DataStore, PluginConfig, expand_keyed_grid, expose_plugin
 from r2x_reeds.models.components import (
     ReEDSDataCenterDemand,
     ReEDSElectrolyzerDemand,
     ReEDSRegion,
     ReEDSSteamMethaneReformingDemand,
 )
-from r2x_reeds.parser_utils import expand_loadsite_hourly
 
 TComponent = TypeVar("TComponent", bound=Component)
 HYDROGEN_PRODUCTION_COMPONENT_TYPES = {
@@ -316,7 +315,17 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
         loadsite_raw = _read_optional_frame(config.loadsite_op_fpath, "loadsite_op")
         if loadsite_raw is not None and not loadsite_raw.is_empty():
             loadsite = _normalize_loadsite(loadsite_raw, config.solve_year)
-            expanded_result = expand_loadsite_hourly(loadsite_data=loadsite, hour_map_myr=hour_map)
+            expanded_result = expand_keyed_grid(
+                loadsite,
+                hour_map,
+                group_columns=["region"],
+                value_keys=["hour_period"],
+                grid_keys=["hour_period"],
+                order_columns=["sequential_hour"],
+                value_columns=["value"],
+                fill_values={"value": 0.0},
+                round_digits=5,
+            )
             if expanded_result.is_err():
                 return Err(str(expanded_result.unwrap_err()))
             expanded = expanded_result.unwrap()
@@ -414,11 +423,16 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
                 if technology_profile.is_empty():
                     continue
 
-                expanded_result = expand_loadsite_hourly(
-                    loadsite_data=_normalize_loadsite(
-                        technology_profile.select("region", "hour_period", "value"), None
-                    ),
-                    hour_map_myr=hour_map,
+                expanded_result = expand_keyed_grid(
+                    _normalize_loadsite(technology_profile.select("region", "hour_period", "value"), None),
+                    hour_map,
+                    group_columns=["region"],
+                    value_keys=["hour_period"],
+                    grid_keys=["hour_period"],
+                    order_columns=["sequential_hour"],
+                    value_columns=["value"],
+                    fill_values={"value": 0.0},
+                    round_digits=5,
                 )
                 if expanded_result.is_err():
                     return Err(str(expanded_result.unwrap_err()))
@@ -456,7 +470,17 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
         # Attach data center profile time series from loadsite_op.
         if loadsite_raw is not None and not loadsite_raw.is_empty():
             loadsite = _normalize_loadsite(loadsite_raw, config.solve_year)
-            expanded_result = expand_loadsite_hourly(loadsite_data=loadsite, hour_map_myr=hour_map)
+            expanded_result = expand_keyed_grid(
+                loadsite,
+                hour_map,
+                group_columns=["region"],
+                value_keys=["hour_period"],
+                grid_keys=["hour_period"],
+                order_columns=["sequential_hour"],
+                value_columns=["value"],
+                fill_values={"value": 0.0},
+                round_digits=5,
+            )
             if expanded_result.is_err():
                 return Err(str(expanded_result.unwrap_err()))
             expanded = expanded_result.unwrap()

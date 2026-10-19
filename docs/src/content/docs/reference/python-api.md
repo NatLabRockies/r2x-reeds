@@ -10,7 +10,8 @@ This reference describes the public surface at main revision
 Import `ReEDSConfig` and `ReEDSParser` from `r2x_reeds`.
 `ReEDSConfig` requires `solve_year: int | list[int]` and
 `weather_year: int | list[int]`. Optional package fields are `case_name`, `scenario`,
-`excluded_techs` and `use_degraded_capacity`. See [configuration](/r2x-reeds/reference/configuration/).
+and `excluded_techs`. Select normal or degradation-adjusted capacity by overriding
+the `generator_inputs.source` in `file_mapping`. See [configuration](/r2x-reeds/reference/configuration/).
 
 Construct `PluginContext(config=config, store=DataStore.from_plugin_config(config, path=run_path))`
 from `r2x_core`, then call `ReEDSParser.from_context(context).run()`.

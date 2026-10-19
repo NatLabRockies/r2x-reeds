@@ -137,30 +137,19 @@ def test_build_generator_name_with_namespace_row(dummy_context):
     assert result.ok() == "gas_p1"
 
 
-def test_build_load_and_reserve_names(context_with_regions):
-    from r2x_reeds.getters import build_load_name, build_reserve_name
+def test_build_load_name(context_with_regions):
+    from r2x_reeds.getters import build_load_name
 
-    load_result = build_load_name({"region": "p1"}, context=context_with_regions)
-    reserve_result = build_reserve_name(
-        {"region": "p1", "reserve_type": "spin"}, context=context_with_regions
-    )
+    result = build_load_name({"region": "p1"}, context=context_with_regions)
 
-    assert load_result.is_ok() and reserve_result.is_ok()
-    assert load_result.ok() == "p1_load"
-    assert reserve_result.ok() == "p1_spin"
+    assert result.is_ok()
+    assert result.ok() == "p1_load"
 
 
 def test_build_load_name_missing_region(context_with_regions):
     from r2x_reeds.getters import build_load_name
 
     result = build_load_name({}, context=context_with_regions)
-    assert result.is_err()
-
-
-def test_build_reserve_name_missing_fields(context_with_regions):
-    from r2x_reeds.getters import build_reserve_name
-
-    result = build_reserve_name({"region": "p1"}, context=context_with_regions)
     assert result.is_err()
 
 
@@ -186,50 +175,6 @@ def test_reserve_direction_missing_errors(dummy_context):
     from r2x_reeds.getters import resolve_reserve_direction
 
     result = resolve_reserve_direction({}, context=dummy_context)
-    assert result.is_err()
-
-
-def test_storage_defaults(dummy_context):
-    from r2x_reeds.getters import get_round_trip_efficiency, get_storage_duration
-
-    assert get_storage_duration({}, context=dummy_context).ok() == 1.0
-    assert get_round_trip_efficiency({}, context=dummy_context).ok() == 1.0
-    assert get_storage_duration({"storage_duration": 2}, context=dummy_context).ok() == 2.0
-    assert get_round_trip_efficiency({"round_trip_efficiency": 0.9}, context=dummy_context).ok() == 0.9
-
-
-def test_fuel_type_known_and_unknown(dummy_context):
-    from r2x_reeds.getters import get_fuel_type
-
-    known = get_fuel_type({"fuel_type": "NaturalGas"}, context=dummy_context)
-    unknown = get_fuel_type({"fuel_type": "mystery"}, context=dummy_context)
-    assert known.is_ok()
-    assert known.ok() == "NaturalGas"
-    assert unknown.is_ok()
-    assert unknown.ok() == "mystery"
-
-
-def test_get_fuel_type_thermal_defaults_to_other(dummy_context):
-    from r2x_reeds.getters import get_fuel_type
-
-    dummy_context.metadata = {"tech_categories": {"thermal": {"prefixes": ["gas"]}}}
-    result = get_fuel_type({"technology": "gas-ct"}, context=dummy_context)
-    assert result.is_ok()
-    assert result.ok() == "OTHER"
-
-
-def test_get_fuel_type_non_thermal_missing_fuel_errors(dummy_context):
-    from r2x_reeds.getters import get_fuel_type
-
-    dummy_context.metadata = {"tech_categories": {"thermal": {"prefixes": ["coal"]}}}
-    result = get_fuel_type({"technology": "solar"}, context=dummy_context)
-    assert result.is_err()
-
-
-def test_get_fuel_type_missing_field_errors(dummy_context):
-    from r2x_reeds.getters import get_fuel_type
-
-    result = get_fuel_type({}, context=dummy_context)
     assert result.is_err()
 
 
@@ -416,12 +361,8 @@ def test_getters_surface_internal_exceptions(context_with_regions):
         build_load_name,
         build_region_description,
         build_region_name,
-        build_reserve_name,
         build_transmission_interface_name,
         build_transmission_line_name,
-        compute_is_dispatchable,
-        get_round_trip_efficiency,
-        get_storage_duration,
         resolve_emission_source,
         resolve_emission_type,
         resolve_reserve_direction,
@@ -436,14 +377,10 @@ def test_getters_surface_internal_exceptions(context_with_regions):
 
     assert build_region_description(bad_row, context=context).is_err()
     assert build_region_name(bad_row, context=context).is_err()
-    assert compute_is_dispatchable(bad_row, context=context).is_err()
     assert build_generator_name(bad_row, context=context).is_err()
     assert build_load_name(bad_row, context=context).is_err()
-    assert build_reserve_name(bad_row, context=context).is_err()
     assert resolve_reserve_type(bad_row, context=context).is_err()
     assert resolve_reserve_direction(bad_row, context=context).is_err()
-    assert get_storage_duration(bad_row, context=context).is_err()
-    assert get_round_trip_efficiency(bad_row, context=context).is_err()
     assert resolve_emission_type(bad_row, context=context).is_err()
     assert resolve_emission_source(bad_row, context=context).is_err()
     assert build_transmission_interface_name(bad_row, context=context).is_err()
@@ -488,21 +425,6 @@ def test_lookup_reserve_region_no_system(dummy_context):
     result = lookup_reserve_region({"region": "rsv"}, context=dummy_context)
     assert result.is_err()
     assert "System not available" in str(result.err())
-
-
-def test_compute_is_dispatchable_no_tech(dummy_context):
-    from r2x_reeds.getters import compute_is_dispatchable
-
-    result = compute_is_dispatchable({}, context=dummy_context)
-    assert result.is_ok()
-    assert result.ok() is False
-
-
-def test_get_fuel_type_exploding_row(dummy_context):
-    from r2x_reeds.getters import get_fuel_type
-
-    result = get_fuel_type(ExplodingRow(), context=dummy_context)
-    assert result.is_err()
 
 
 def test_resolve_emission_generator_identifier_exploding_row(dummy_context):

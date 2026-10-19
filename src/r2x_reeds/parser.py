@@ -7,23 +7,15 @@ using the new Plugin[ReEDSConfig] pattern with lifecycle hooks.
 
 from __future__ import annotations
 
-import calendar
-from collections.abc import Iterable
-from datetime import datetime, timedelta
 from itertools import chain
 from typing import Any, Self, cast
 
-import numpy as np
 import polars as pl
-from infrasys import Component, SingleTimeSeries
-from infrasys.location import GeographicInfo
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
 from r2x_core import (
-    ComponentCreationError,
     DatasetSource,
-    FixedMappingRoute,
     Plugin,
     PluginContext,
     RulePlan,
@@ -31,104 +23,11 @@ from r2x_core import (
     System,
     apply_mapping_records,
     apply_rules_to_context,
-    create_component,
 )
-from r2x_core.exceptions import ReaderError
 
-from .data_readers import register_gams_header_readers
-from .getters import build_resource_name
-from .models.components import (
-    ReEDSDemand,
-    ReEDSGenerator,
-    ReEDSHydroGenerator,
-    ReEDSRegion,
-    ReEDSReserve,
-    ReEDSReserveRegion,
-    ReEDSResourceBuild,
-    ReEDSResourceSite,
-)
-from .models.enums import ReserveType
-from .parser_checks import check_dataset_non_empty, check_required_values_in_column
-from .parser_utils import (
-    calculate_hydro_profiles_for_generator,
-    calculate_reserve_requirement,
-    merge_lazy_frames,
-    prepare_generator_inputs,
-    tech_matches_category,
-)
 from .plugin_config import ReEDSConfig
 from .rules_helper import create_parser_context
 from .upgrader.data_upgrader import run_reeds_upgrades
-
-
-def _resource_dataset_names(technology: str) -> tuple[str, str, str]:
-    """Return dataset names for source, candidate, and selected resource rows."""
-
-    return (
-        f"{technology}_supply_curve",
-        f"df_sc_in_{technology}",
-        f"df_sc_out_{technology}_reduced",
-    )
-
-
-def _coerce_optional_int(value: Any) -> int | None:
-    """Convert a value to an int when possible, else return None."""
-
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return int(value)
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _coerce_optional_float(value: Any) -> float | None:
-    """Convert a value to a float when possible, else return None."""
-
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _coerce_optional_bool(value: Any) -> bool | None:
-    """Convert common truthy/falsy values to bool when possible."""
-
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return bool(value)
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"true", "t", "yes", "y", "1"}:
-            return True
-        if normalized in {"false", "f", "no", "n", "0"}:
-            return False
-    return None
-
-
-def _build_synthetic_hour_map(weather_years: Iterable[int]) -> pl.DataFrame:
-    """Build a minimal in-memory hour_map used only when source files are missing.
-
-    The synthetic frame is intentionally small and only guarantees validation
-    requirements needed for translation to proceed.
-    """
-    rows = [
-        {
-            "year": int(year),
-            "time_index": f"{int(year)}-01-01 00:00:00",
-            "hour_period": "h1",
-            "season": "annual",
-        }
-        for year in weather_years
-    ]
-    return pl.DataFrame(rows)
 
 
 class ReEDSParser(Plugin[ReEDSConfig]):
@@ -143,10 +42,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
     2. **Preparation** (:meth:`on_prepare`):
        - Parser context with configuration and defaults
-       - Time indices and calendar mappings for the weather year
-       - Generator datasets separated into variable and non-variable groups
-       - Hydro capacity factor data for availability profiles
-       - Reserve requirement configuration and costs
+       - Configured generator datasets
 
     3. **Building** (:meth:`on_build`):
        - Regions from hierarchy data with regional attributes
@@ -188,7 +84,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
     on_validate()
         Validate input data and configuration before building the system
     on_prepare()
-        Prepare and normalize configuration, time arrays, and component datasets
+        Prepare configuration and component datasets
     on_build()
         Build and return the complete infrasys.System
 
@@ -232,99 +128,16 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         # Internal caches for component building
         self._variable_generator_df: pl.DataFrame | None = None
         self._non_variable_generator_df: pl.DataFrame | None = None
-        self.load_profiles: pl.DataFrame | None = None
-        self._generator_cache: dict[str, ReEDSGenerator] = {}
-        self._reserve_region_cache: dict[str, ReEDSReserveRegion] = {}
-        self._hydro_cf_prepared: pl.DataFrame | None = None
-        self._hydro_capacity_adjustment_prepared: pl.DataFrame | None = None
-        self._reserve_percentages: dict[str, dict[str, float]] = {}
-        self._reserve_costs: dict[str, dict[str, float]] = {}
-        # Parser context and time indices
         self._ctx: Any = None
-        self.solve_years: list[int] = []
-        self.weather_years: list[int] = []
-        self.hourly_time_index: np.ndarray = np.array([])
-        self.daily_time_index: np.ndarray = np.array([])
-        self.initial_timestamp: datetime = datetime.now()
-        self.month_map: dict[str, int] = {}
-        self.year_month_day_hours: pl.DataFrame = pl.DataFrame()
 
         # Technology categorization
-        self._tech_categories: dict[str, list[str]] = {}
+        self._tech_categories: dict[str, Any] = {}
         self._excluded_techs: list[str] = []
-        self._resource_supply_curve_datasets: tuple[str, ...] = ()
 
     @classmethod
     def from_context(cls, ctx: PluginContext[ReEDSConfig]) -> Self:
-        """Create the parser and install custom ReEDS data readers."""
-        parser = cast(Self, super().from_context(ctx))
-        if ctx.store is not None:
-            register_gams_header_readers(ctx.store)
-        return parser
-
-    def _truncate_and_cast_time_series(self, arr: np.ndarray | list[float]) -> np.ndarray:
-        """Truncate a time series to 8760 and ensure dtype float64."""
-        arr = np.asarray(arr, dtype=np.float64)
-        return arr[:8760] if arr.shape[0] > 8760 else arr
-
-    def _get_hour_map_for_validation(self, placeholders: dict[str, Any]) -> Result[pl.DataFrame, str]:
-        """Return hour_map data or a synthetic fallback when the file is genuinely absent.
-
-        A synthetic frame is produced **only** when the hour_map key is not registered
-        in the store (``store.read_data`` returns ``None``) or when the backing file
-        does not exist on disk (``FileNotFoundError``).  All other failure modes are
-        returned as ``Err`` so that an existing-but-bad hour_map is a hard validation
-        error rather than a silent pass:
-
-        * Empty file → ``Err``
-        * Missing ``year`` column → ``Err``
-        * Parse / schema / permission errors on an existing file → ``Err``
-        """
-        weather_years: list[int] = (
-            [self.config.weather_year]
-            if isinstance(self.config.weather_year, int)
-            else list(self.config.weather_year)
-        )
-
-        def _synthetic(reason: str) -> Result[pl.DataFrame, str]:
-            """Build and log a synthetic hour_map fallback for a genuinely absent file."""
-            synthetic = _build_synthetic_hour_map(weather_years)
-            logger.warning(
-                "hour_map file is missing or unusable ({}). "
-                "Using synthetic in-memory hour_map for translation; no files will be written to source path.",
-                reason,
-            )
-            return Ok(synthetic)
-
-        try:
-            data = self.store.read_data("hour_map", placeholders=placeholders)
-        except FileNotFoundError as exc:
-            # File is not on disk at all — synthesize.
-            return _synthetic(str(exc))
-        except Exception as exc:
-            # File exists but could not be read (permissions, corrupt HDF5, etc.).
-            return Err(f"hour_map could not be read: {exc}")
-
-        if data is None:
-            # Key is not registered in the store — synthesize.
-            return _synthetic("store returned None")
-
-        try:
-            if isinstance(data, pl.LazyFrame):
-                frame = data.collect()
-            elif isinstance(data, pl.DataFrame):
-                frame = data
-            else:
-                frame = pl.DataFrame(data)
-        except Exception as exc:
-            return Err(f"hour_map could not be collected: {exc}")
-
-        if frame.is_empty():
-            return Err("hour_map file exists but contains no rows")
-        if "year" not in frame.columns:
-            return Err("hour_map file exists but is missing required 'year' column")
-
-        return Ok(frame)
+        """Create the parser from its configured context."""
+        return cast(Self, super().from_context(ctx))
 
     def on_validate_config(self) -> Result[None, str]:
         """Validate configuration assets before upgrades or data I/O."""
@@ -352,7 +165,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
         if plan_result.is_err():
             return Err(str(plan_result.err()))
-        self.rule_plan = plan_result.unwrap()
+        plan = plan_result.unwrap()
+        load_profile_source = self._get_load_profile_source(plan)
+        if load_profile_source.is_err():
+            return Err(str(load_profile_source.err()))
+        self.rule_plan = plan
         return Ok(None)
 
     def on_upgrade(self) -> Result[System | None, str]:
@@ -363,38 +180,57 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             return Err(str(result.err()))
         return Ok(None)
 
-    def read_data_file(self, name: str) -> Any:
-        """Read a configured physical file or prepared table by name."""
-        placeholders = {
-            "solve_year": self.config.solve_year,
-            "weather_year": self.config.weather_year,
-        }
-        source_name = name
-        degraded_capacity = name == "online_capacity" and self.config.use_degraded_capacity
-        if degraded_capacity:
-            source_name = "online_capacity_degraded"
+    def _get_load_profile_source(self, plan: RulePlan) -> Result[str, str]:
+        """Resolve the required physical source shared by load peaks and profiles."""
+        match plan.get_rule("load"):
+            case Err(error):
+                return Err(str(error))
+            case Ok(resolved_rule):
+                source = resolved_rule.rule.source
 
-        data = self.store.read_data(source_name, placeholders=placeholders)
-        if degraded_capacity and data is None:
-            data_file = self.store.get_data_file(source_name)
-            raise FileNotFoundError(
-                f"Configured degraded-capacity source {source_name!r} was unavailable at {data_file.fpath}"
+        if not isinstance(source, DatasetSource):
+            return Err("Load Rule must use a DatasetSource")
+
+        try:
+            table = self.store.get_table(source.dataset)
+        except KeyError:
+            return Err(f"Load Rule dataset {source.dataset!r} must reference a prepared table")
+
+        required_load_columns = {"region", "max_active_power"}
+        missing_non_null_columns = sorted(required_load_columns - set(table.non_null_columns))
+        if missing_non_null_columns:
+            return Err(
+                f"Load Rule prepared table {source.dataset!r} must declare non-null columns: "
+                f"{missing_non_null_columns}"
             )
-        return data
 
-    def create_component(self, component_class: type[Component], **kwargs: Any) -> Component:
-        """Create a component instance with consistent validation handling."""
-        result = create_component(
-            component_class,
-            skip_validation=self._ctx.skip_validation,
-            **kwargs,
-        )
-        if result.is_err():
-            raise ComponentCreationError(str(result.err()))
-        component = result.ok()
-        if component is None:
-            raise ComponentCreationError("Component creation returned None")
-        return component
+        def physical_root(dataset: str) -> str:
+            """Follow named-table roots to the configured physical input."""
+            while dataset in self.store.prepared_tables:
+                dataset = self.store.get_table(dataset).source
+            return dataset
+
+        peaks_source = physical_root(source.dataset)
+        match plan.get_rule("load_profile"):
+            case Err(error):
+                return Err(str(error))
+            case Ok(profile_rule):
+                profile_dataset = profile_rule.rule.source
+        if not isinstance(profile_dataset, DatasetSource):
+            return Err("Load profile Rule must use a DatasetSource")
+        if profile_dataset.dataset not in self.store.prepared_tables:
+            return Err(f"Load profile Rule dataset {profile_dataset.dataset!r} must be a prepared table")
+        profiles_source = physical_root(profile_dataset.dataset)
+        if profiles_source != peaks_source:
+            return Err(
+                "Load peak and profile prepared tables must resolve to the same physical source, "
+                f"got {peaks_source!r} and {profiles_source!r}"
+            )
+        if peaks_source not in self.store.list_files():
+            return Err(f"Load profile tables must resolve to a physical source, got {peaks_source!r}")
+        if self.store.is_optional(peaks_source):
+            return Err(f"Load profile source {peaks_source!r} must be a required physical dataset")
+        return Ok(peaks_source)
 
     def on_validate(self) -> Result[None, str]:
         """Validate input data after upgrades, before building the system.
@@ -415,84 +251,16 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if config_result.is_err():
             return Err(str(config_result.err()))
 
-        placeholders = self.config.model_dump()
-        solve_years: Iterable[int] = (
-            [self.config.solve_year]
-            if isinstance(self.config.solve_year, int)
-            else list(self.config.solve_year)
-        )
-        res = check_required_values_in_column(
-            store=self.store,
-            dataset="modeled_years",
-            required_values=solve_years,
-            what="Solve year(s)",
-            placeholders=placeholders,
-        )
-        if res.is_err():
-            return Err(str(res.err()))
-
-        weather_years: list[int] = (
-            [self.config.weather_year]
-            if isinstance(self.config.weather_year, int)
-            else list(self.config.weather_year)
-        )
-        hour_map_result = self._get_hour_map_for_validation(placeholders)
-        if hour_map_result.is_err():
-            return Err(f"Weather year(s): {hour_map_result.err()}")
-        hour_map_df = hour_map_result.ok()
-        if hour_map_df is None:
-            return Err("Weather year(s): hour map validation returned no data")
-
-        available_weather_years = {
-            int(val)
-            for val in hour_map_df.select("year").drop_nulls().to_series().to_list()
-            if val is not None
-        }
-        missing_weather_years = [year for year in weather_years if year not in available_weather_years]
-        if missing_weather_years:
-            return Err(
-                "Weather year(s) "
-                f"{missing_weather_years} not found in hour_map.year. "
-                f"Available values: {sorted(available_weather_years)}"
-            )
-
-        required_inputs = []
-        for dataset_name in self.store.list_files():
-            data_file = self.store[dataset_name]
-            info = data_file.info
-            if info and info.is_optional:
-                continue
-            if info and not info.is_input:
-                continue
-            required_inputs.append(dataset_name)
-
-        logger.trace("Validating presence of {} required datasets", len(required_inputs))
-        for dataset_name in required_inputs:
-            if dataset_name in {"fom_upgrade_links", "fom_unitspec_upgrades"}:
-                # Empty GAMS sets are valid, but core must still validate their required files.
-                try:
-                    self.store.read_data(dataset_name).collect()
-                except (OSError, ValueError, ReaderError, pl.exceptions.PolarsError) as exc:
-                    return Err(f"{dataset_name}: {exc}")
-                continue
-            if dataset_name == "hour_map":
-                # hour_map can be synthesized in-memory when the source file is unavailable.
-                continue
-            presence_result = check_dataset_non_empty(self.store, dataset_name, placeholders=placeholders)
-            if presence_result.is_err():
-                return Err(f"{dataset_name}: {presence_result.err()}")
-
+        try:
+            self.store.validate_input_data(placeholders=self.config.model_dump())
+        except (KeyError, OSError, TypeError, ValueError, pl.exceptions.PolarsError) as error:
+            return Err(str(error))
         return Ok(None)
 
     def on_prepare(self) -> Result[None, str]:
-        """Prepare and normalize configuration, time arrays, and component datasets.
+        """Prepare configuration and generator component datasets.
 
-        Initializes internal caches and datasets required for component building:
-        - Parser context with configuration and defaults
-        - Time indices and calendar mappings for the weather year
-        - Generator datasets separated into variable and non-variable groups
-        - Hydro capacity factor data for budget calculations
-        - Reserve requirement configuration and costs
+        Initializes the parser context and configured generator tables.
 
         Returns
         -------
@@ -507,10 +275,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if res.is_err():
             return Err(str(res.err()))
 
-        res = self._prepare_time_arrays()
-        if res.is_err():
-            return Err(str(res.err()))
-
         # Create a temporary system for context creation
         temp_system = System(name=self.config.case_name or "ReEDS")
         self._ctx = create_parser_context(temp_system, self.config, self._defaults, store=self._ctx.store)
@@ -520,16 +284,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if generator_data_result.is_err():
             return Err(str(generator_data_result.err()))
         logger.trace("Generator datasets prepared")
-
-        hydro_result = self._prepare_hydro_datasets()
-        if hydro_result.is_err():
-            return Err(str(hydro_result.err()))
-        logger.trace("Hydro datasets prepared")
-
-        reserve_data_result = self._prepare_reserve_datasets()
-        if reserve_data_result.is_err():
-            return Err(str(reserve_data_result.err()))
-        logger.trace("Reserve datasets prepared")
 
         return Ok(None)
 
@@ -577,6 +331,23 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             )
             return Err(failure)
 
+        reserve_result = apply_rules_to_context(
+            self._ctx,
+            on_error="stop",
+            plan=self.rule_plan,
+            stage="reserves",
+        )
+        if not reserve_result.success:
+            failure = next(
+                (
+                    item.error
+                    for item in reserve_result.rule_results
+                    if not item.success and item.error is not None
+                ),
+                "Reserve Rule execution failed",
+            )
+            return Err(failure)
+
         if self._variable_generator_df is None or self._non_variable_generator_df is None:
             return Err("Generator datasets were not prepared")
         generator_rows = chain.from_iterable(
@@ -592,18 +363,28 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             case Err(error):
                 return Err(str(error))
             case Ok(stats):
-                self._generator_cache = {
-                    generator.name: generator for generator in system.get_components(ReEDSGenerator)
-                }
                 logger.info(
                     "Attached {} generators; skipped {} by configured duplicate/filter policy",
                     stats.converted,
                     stats.skipped,
                 )
 
-        resource_result = self._build_resource_components(system)
-        if resource_result.is_err():
-            return Err(str(resource_result.err()))
+        resource_result = apply_rules_to_context(
+            self._ctx,
+            on_error="stop",
+            plan=self.rule_plan,
+            stage="resources",
+        )
+        if not resource_result.success:
+            failure = next(
+                (
+                    item.error
+                    for item in resource_result.rule_results
+                    if not item.success and item.error is not None
+                ),
+                "Resource Rule execution failed",
+            )
+            return Err(failure)
 
         transmission_result = apply_rules_to_context(
             self._ctx,
@@ -622,13 +403,22 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             )
             return Err(failure)
 
-        load_result = self._build_loads()
-        if load_result.is_err():
-            return Err(str(load_result.err()))
-
-        reserve_result = self._build_reserves(system)
-        if reserve_result.is_err():
-            return Err(str(reserve_result.err()))
+        load_result = apply_rules_to_context(
+            self._ctx,
+            on_error="stop",
+            plan=self.rule_plan,
+            stage="loads",
+        )
+        if not load_result.success:
+            failure = next(
+                (
+                    item.error
+                    for item in load_result.rule_results
+                    if not item.success and item.error is not None
+                ),
+                "Load Rule execution failed",
+            )
+            return Err(failure)
 
         emission_result = apply_rules_to_context(
             self._ctx,
@@ -648,766 +438,62 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             return Err(failure)
 
         # Attach time series data
-        reserve_membership_result = self._attach_reserve_membership(system)
-        if reserve_membership_result.is_err():
-            return Err(str(reserve_membership_result.err()))
+        profile_result = apply_rules_to_context(
+            self._ctx,
+            on_error="stop",
+            plan=self.rule_plan,
+            stage="profiles",
+        )
+        if not profile_result.success:
+            failure = next(
+                (
+                    item.error
+                    for item in profile_result.rule_results
+                    if not item.success and item.error is not None
+                ),
+                "Profile Rule execution failed",
+            )
+            return Err(failure)
 
-        load_ts_result = self._attach_load_profiles(system)
-        if load_ts_result.is_err():
-            return Err(str(load_ts_result.err()))
+        hydro_profile_result = apply_rules_to_context(
+            self._ctx,
+            on_error="stop",
+            plan=self.rule_plan,
+            stage="hydro_profiles",
+        )
+        if not hydro_profile_result.success:
+            failure = next(
+                (
+                    item.error
+                    for item in hydro_profile_result.rule_results
+                    if not item.success and item.error is not None
+                ),
+                "Hydro profile Rule execution failed",
+            )
+            return Err(failure)
 
-        renewable_ts_result = self._attach_renewable_profiles(system)
-        if renewable_ts_result.is_err():
-            return Err(str(renewable_ts_result.err()))
-
-        reserve_ts_result = self._attach_reserve_profiles(system)
-        if reserve_ts_result.is_err():
-            return Err(str(reserve_ts_result.err()))
-
-        hydro_ts_result = self._attach_hydro_profiles(system)
-        if hydro_ts_result.is_err():
-            return Err(str(hydro_ts_result.err()))
+        reserve_profile_result = apply_rules_to_context(
+            self._ctx,
+            on_error="stop",
+            plan=self.rule_plan,
+            stage="reserve_profiles",
+        )
+        if not reserve_profile_result.success:
+            failure = next(
+                (
+                    item.error
+                    for item in reserve_profile_result.rule_results
+                    if not item.success and item.error is not None
+                ),
+                "Reserve profile Rule execution failed",
+            )
+            return Err(failure)
 
         # Post-process the system
         self._postprocess_system(system)
 
         logger.info("ReEDS system build complete")
         return Ok(system)
-
-    def _build_resource_components(self, system: System) -> Result[None, str]:
-        """Build candidate and selected reV resource components."""
-
-        logger.info("Building ReEDS resource site components")
-        total_sites = 0
-        total_builds = 0
-
-        for technology in self._resource_supply_curve_datasets:
-            candidate_result = self._build_resource_components_for_technology(
-                system=system,
-                technology=technology,
-                component_type=ReEDSResourceSite,
-                selected_only=False,
-            )
-            if candidate_result.is_err():
-                return Err(str(candidate_result.err()))
-            total_sites += candidate_result.ok() or 0
-
-            build_result = self._build_resource_components_for_technology(
-                system=system,
-                technology=technology,
-                component_type=ReEDSResourceBuild,
-                selected_only=True,
-            )
-            if build_result.is_err():
-                return Err(str(build_result.err()))
-            total_builds += build_result.ok() or 0
-
-        logger.info(
-            "Attached {} resource site components and {} selected resource components",
-            total_sites,
-            total_builds,
-        )
-        return Ok(None)
-
-    def _build_resource_components_for_technology(
-        self,
-        system: System,
-        technology: str,
-        component_type: type[ReEDSResourceSite] | type[ReEDSResourceBuild],
-        selected_only: bool,
-    ) -> Result[int, str]:
-        """Build resource components for one technology."""
-
-        source_name, candidate_name, selected_name = _resource_dataset_names(technology)
-        source_df = self._collect_resource_frame(source_name)
-        candidate_df = self._collect_resource_frame(candidate_name)
-        selected_df = self._collect_resource_frame(selected_name)
-
-        if component_type is ReEDSResourceSite:
-            base_df = source_df if source_df is not None and not source_df.is_empty() else candidate_df
-            if base_df is None or base_df.is_empty():
-                logger.debug("No resource site data found for {}", technology)
-                return Ok(0)
-            enrichment_df = None if base_df is candidate_df else candidate_df
-            resource_df = self._merge_resource_frames(base_df, enrichment_df, technology)
-        else:
-            if selected_df is None or selected_df.is_empty():
-                logger.debug("No selected resource data found for {}", technology)
-                return Ok(0)
-            reference_base = source_df if source_df is not None and not source_df.is_empty() else candidate_df
-            if reference_base is not None and candidate_df is not None and reference_base is not candidate_df:
-                reference_df = self._merge_resource_frames(reference_base, candidate_df, technology)
-            else:
-                reference_df = reference_base
-            resource_df = self._merge_resource_frames(selected_df, reference_df, technology)
-
-        if resource_df.is_empty():
-            logger.debug("Resource frame for {} is empty after normalization", technology)
-            return Ok(0)
-
-        creation_errors: list[str] = []
-        created = 0
-        for row in resource_df.iter_rows(named=True):
-            component_kwargs = self._resource_component_kwargs(
-                row=row,
-                technology=technology,
-                selected_only=selected_only,
-                system=system,
-            )
-            if component_kwargs is None:
-                continue
-
-            identifier = str(component_kwargs["name"])
-            try:
-                component = self.create_component(component_type, **component_kwargs)
-            except ComponentCreationError as exc:
-                creation_errors.append(f"{identifier}: {exc}")
-                continue
-
-            system.add_component(component)
-            geographic_info = self._resource_geographic_info(component_kwargs)
-            if geographic_info is not None:
-                system.add_supplemental_attribute(component, geographic_info)
-            created += 1
-
-        if creation_errors:
-            failure_list = "; ".join(creation_errors)
-            return Err(f"Failed to create the following {technology} resource components: {failure_list}")
-
-        logger.info("Attached {} {} resource components", created, technology)
-        return Ok(created)
-
-    def _collect_resource_frame(self, name: str) -> pl.DataFrame | None:
-        """Read and collect an optional resource dataset."""
-
-        data = self.read_data_file(name)
-        if data is None:
-            return None
-        if isinstance(data, pl.DataFrame):
-            return data
-        return data.collect()
-
-    def _merge_resource_frames(
-        self,
-        base_df: pl.DataFrame,
-        enrichment_df: pl.DataFrame | None,
-        technology: str,
-    ) -> pl.DataFrame:
-        """Normalize resource columns and enrich from the candidate frame when possible."""
-
-        normalized_base = self._normalize_resource_frame(base_df, source_name=technology)
-        if enrichment_df is None or enrichment_df.is_empty():
-            return normalized_base
-
-        normalized_enrichment = self._normalize_resource_frame(enrichment_df, source_name=technology)
-        join_keys = ["sc_point_gid", "resource_class"]
-        enrichment_columns = [
-            column
-            for column in (
-                "sc_gid",
-                "available_capacity",
-                "capacity_factor",
-                "latitude",
-                "longitude",
-                "existing_capacity",
-                "online_year",
-                "retire_year",
-                "bin",
-                "capacity",
-                "supply_curve_cost",
-            )
-            if column in normalized_enrichment.columns and column not in join_keys
-        ]
-        if not enrichment_columns:
-            return normalized_base
-
-        enrichment_select = normalized_enrichment.select(join_keys + enrichment_columns)
-        merged = normalized_base.join(enrichment_select, on=join_keys, how="left", suffix="_enrichment")
-
-        coalesced_columns = [
-            pl.coalesce(pl.col(column), pl.col(f"{column}_enrichment")).alias(column)
-            for column in enrichment_columns
-            if f"{column}_enrichment" in merged.columns
-        ]
-        if coalesced_columns:
-            merged = merged.with_columns(coalesced_columns)
-            merged = merged.drop(
-                [
-                    f"{column}_enrichment"
-                    for column in enrichment_columns
-                    if f"{column}_enrichment" in merged.columns
-                ]
-            )
-        return merged
-
-    def _normalize_resource_frame(self, df: pl.DataFrame, *, source_name: str) -> pl.DataFrame:
-        """Normalize resource dataset column names."""
-
-        if "technology" not in df.columns:
-            return df.with_columns(pl.lit(source_name).alias("technology"))
-        return df
-
-    def _resource_component_kwargs(
-        self,
-        *,
-        row: dict[str, Any],
-        technology: str,
-        selected_only: bool,
-        system: System,
-    ) -> dict[str, Any] | None:
-        """Convert a resource row into component kwargs."""
-
-        region_name = row.get("region")
-        if region_name is None:
-            logger.debug("Skipping {} row missing region", technology)
-            return None
-
-        region = system.get_component(ReEDSRegion, name=str(region_name))
-        if region is None:
-            logger.debug("Skipping {} row with unknown region {}", technology, region_name)
-            return None
-
-        sc_point_gid = _coerce_optional_int(row.get("sc_point_gid"))
-        resource_class = row.get("resource_class")
-        if sc_point_gid is None or resource_class is None:
-            logger.debug("Skipping {} row missing sc_point_gid or resource_class", technology)
-            return None
-
-        capacity = _coerce_optional_float(row.get("capacity"))
-        available_capacity = _coerce_optional_float(row.get("available_capacity"))
-        if available_capacity is None:
-            available_capacity = _coerce_optional_float(row.get("cap_avail"))
-        if capacity is None:
-            capacity = available_capacity
-
-        supply_curve_cost = _coerce_optional_float(row.get("supply_curve_cost"))
-        if supply_curve_cost is None:
-            supply_curve_cost = _coerce_optional_float(row.get("supply_curve_cost_per_mw"))
-        if supply_curve_cost is None:
-            supply_curve_cost = _coerce_optional_float(row.get("cost_per_mw"))
-
-        resource_year = _coerce_optional_int(row.get("year"))
-
-        base_kwargs: dict[str, Any] = {
-            "name": build_resource_name(technology, resource_class, sc_point_gid, resource_year),
-            "technology": technology,
-            "region": region,
-            "sc_point_gid": sc_point_gid,
-            "resource_class": str(resource_class),
-            "capacity": capacity,
-            "available_capacity": available_capacity,
-            "capacity_factor": _coerce_optional_float(row.get("capacity_factor")),
-            "sc_gid": _coerce_optional_int(row.get("sc_gid")),
-            "bin": _coerce_optional_int(row.get("bin")),
-            "latitude": _coerce_optional_float(row.get("latitude")),
-            "longitude": _coerce_optional_float(row.get("longitude")),
-            "supply_curve_cost": supply_curve_cost,
-            "existing_capacity": _coerce_optional_float(row.get("existing_capacity")),
-            "online_year": _coerce_optional_int(row.get("online_year")),
-            "retire_year": _coerce_optional_int(row.get("retire_year")),
-        }
-
-        if selected_only:
-            built_capacity = _coerce_optional_float(row.get("built_capacity"))
-            investment_bool = _coerce_optional_bool(row.get("investment_bool"))
-            if resource_year is None or built_capacity is None or investment_bool is None:
-                logger.debug(
-                    "Skipping {} selected row missing year, built_capacity, or investment_bool", technology
-                )
-                return None
-            base_kwargs.update(
-                {
-                    "year": resource_year,
-                    "built_capacity": built_capacity,
-                    "investment_bool": investment_bool,
-                }
-            )
-
-        return base_kwargs
-
-    @staticmethod
-    def _resource_geographic_info(component_kwargs: dict[str, Any]) -> GeographicInfo | None:
-        """Build a geographic supplemental attribute from resource coordinates."""
-
-        latitude = component_kwargs.pop("latitude", None)
-        longitude = component_kwargs.pop("longitude", None)
-        if latitude is None or longitude is None:
-            return None
-
-        properties: dict[str, Any] = {
-            "name": component_kwargs["name"],
-            "technology": component_kwargs["technology"],
-            "sc_point_gid": component_kwargs["sc_point_gid"],
-            "resource_class": component_kwargs["resource_class"],
-        }
-        if "year" in component_kwargs:
-            properties["year"] = component_kwargs["year"]
-
-        return GeographicInfo(
-            geo_json={
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [longitude, latitude]},
-                "properties": properties,
-            },
-        )
-
-    def _build_loads(self) -> Result[None, str]:
-        """Build load components from the load rule's configured profile dataset."""
-        logger.info("Building loads...")
-
-        if self._ctx is None or self.rule_plan is None:
-            return Err("Parser context or RulePlan is missing")
-
-        load_rule_result = self.rule_plan.get_rule("load")
-        if load_rule_result.is_err():
-            return Err(str(load_rule_result.err()))
-        load_rule = load_rule_result.unwrap().rule
-        if not isinstance(load_rule.source, DatasetSource):
-            return Err("Load Rule must use a DatasetSource")
-        load_profiles_data = self.read_data_file(load_rule.source.dataset)
-        if load_profiles_data is None:
-            return Err(f"Required load source {load_rule.source.dataset!r} is unavailable")
-        load_profiles = load_profiles_data.collect()
-        self.load_profiles = load_profiles
-        logger.trace("Load profile columns: {}", load_profiles.columns)
-
-        region_columns = [
-            col for col in load_profiles.columns if col not in {"datetime", "solve_year", "year"}
-        ]
-        if not region_columns:
-            msg = "Load data has no region columns"
-            logger.warning(msg)
-            return Err(msg)
-        logger.trace("Found {} load regions", len(region_columns))
-
-        rows = []
-        for region in region_columns:
-            peak_load = float(load_profiles.select(pl.col(region)).max().item())
-            rows.append({"region": region, "max_active_power": peak_load})
-
-        batch_result = apply_mapping_records(
-            rows,
-            plan=self.rule_plan,
-            route=FixedMappingRoute(name="load"),
-            context=self._ctx,
-        )
-        if batch_result.is_err():
-            return Err(str(batch_result.err()))
-        stats = batch_result.unwrap()
-        logger.info("Attached {} load components", stats.converted)
-        return Ok(None)
-
-    def _build_reserves(self, system: System) -> Result[None, str]:
-        """Build reserve requirement components for each transmission region and type."""
-        logger.info("Building reserves...")
-        reserve_region_count = 0
-        reserve_count = 0
-
-        if self.rule_plan is None:
-            return Err("RulePlan was not validated before building reserves")
-        region_rule_result = self.rule_plan.get_rule("region")
-        if region_rule_result.is_err():
-            return Err(str(region_rule_result.err()))
-        region_source = region_rule_result.unwrap().rule.source
-        if not isinstance(region_source, DatasetSource):
-            return Err("Region Rule must use a DatasetSource")
-        hierarchy_data = self.read_data_file(region_source.dataset)
-        if hierarchy_data is None:
-            logger.warning("No region source data found, skipping reserves")
-            return Ok(None)
-
-        df = hierarchy_data.collect()
-        if df.is_empty():
-            logger.warning("Hierarchy data is empty, skipping reserves")
-            return Ok(None)
-
-        # Load defaults via classmethod to keep PluginConfig as a pure model
-        defaults = self._defaults
-        reserve_types = defaults.get("default_reserve_types", [])
-        reserve_duration = defaults.get("reserve_duration", {})
-        reserve_time_frame = defaults.get("reserve_time_frame", {})
-        reserve_vors = defaults.get("reserve_vors", {})
-        reserve_direction = defaults.get("reserve_direction", {})
-
-        if not reserve_types:
-            logger.debug("No reserve types configured, skipping reserves")
-            return Ok(None)
-
-        if "transmission_region" in df.columns:
-            transmission_regions = df["transmission_region"].unique().to_list()
-        else:
-            transmission_regions = []
-        logger.trace(
-            "Preparing reserves for {} transmission regions and {} reserve types",
-            len(transmission_regions),
-            len(reserve_types),
-        )
-
-        reserve_region_result = apply_mapping_records(
-            ({"name": region_name} for region_name in transmission_regions),
-            plan=self.rule_plan,
-            route=FixedMappingRoute(name="reserve_region"),
-            context=self._ctx,
-        )
-        if reserve_region_result.is_err():
-            return Err(str(reserve_region_result.err()))
-        reserve_region_count = reserve_region_result.unwrap().converted
-        self._reserve_region_cache = {
-            region.name: region for region in system.get_components(ReEDSReserveRegion)
-        }
-
-        rows: list[dict[str, Any]] = []
-        for region_name in transmission_regions:
-            for reserve_type_name in reserve_types:
-                pct_cfg = self._reserve_percentages.get(reserve_type_name.upper(), {})
-                cost_cfg = self._reserve_costs.get(reserve_type_name.upper(), {})
-                rows.append(
-                    {
-                        "region": region_name,
-                        "reserve_type": reserve_type_name,
-                        "duration": reserve_duration.get(reserve_type_name),
-                        "time_frame": reserve_time_frame.get(reserve_type_name),
-                        "vors": reserve_vors.get(reserve_type_name),
-                        "direction": reserve_direction.get(reserve_type_name, "Up"),
-                        "or_load_percentage": pct_cfg.get("or_load_percentage"),
-                        "or_wind_percentage": pct_cfg.get("or_wind_percentage"),
-                        "or_pv_percentage": pct_cfg.get("or_pv_percentage"),
-                        "spin_cost": cost_cfg.get("spin_cost"),
-                        "reg_cost": cost_cfg.get("reg_cost"),
-                        "flex_cost": cost_cfg.get("flex_cost"),
-                    }
-                )
-
-        if not rows:
-            logger.debug("No reserve rows generated, skipping reserves")
-            return Ok(None)
-        logger.trace("Generated {} reserve component rows", len(rows))
-
-        if self._ctx is None:
-            return Err("Parser context is missing")
-        reserve_result = apply_mapping_records(
-            rows,
-            plan=self.rule_plan,
-            route=FixedMappingRoute(name="reserve"),
-            context=self._ctx,
-        )
-        if reserve_result.is_err():
-            return Err(str(reserve_result.err()))
-        reserve_count = reserve_result.unwrap().converted
-
-        logger.info(
-            "Attached {} reserve regions and {} reserve components",
-            reserve_region_count,
-            reserve_count,
-        )
-        return Ok(None)
-
-    def _attach_load_profiles(self, system: System) -> Result[None, str]:
-        """Attach time series from the same configured source used for peak loads."""
-        logger.info("Starting load profile attachment")
-
-        load_profiles = self.load_profiles
-        if load_profiles is None:
-            return Err("Load profiles were not collected while building load components")
-        logger.trace(
-            "Load profile dataset size: {} rows, {} columns",
-            load_profiles.height,
-            load_profiles.width,
-        )
-
-        attached_count = 0
-        for demand in system.get_components(ReEDSDemand):
-            region_name = demand.name.replace("_load", "")
-            if region_name in load_profiles.columns:
-                base_data = self._truncate_and_cast_time_series(load_profiles[region_name].to_numpy())
-
-                ts = SingleTimeSeries.from_array(
-                    data=base_data,
-                    name="max_active_power",
-                    initial_timestamp=self.initial_timestamp,
-                    resolution=timedelta(hours=1),
-                )
-                system.add_time_series(ts, demand)
-                attached_count += 1
-
-        logger.info("Attached load profiles to {} demand components", attached_count)
-        return Ok(None)
-
-    def _attach_renewable_profiles(self, system: System) -> Result[None, str]:
-        """Attach renewable capacity factor profiles to generator components.
-
-        Matches renewable profile columns (format: technology|region) to generators.
-        Validates that weather years in profiles match configured weather years.
-
-        Returns
-        -------
-        Result[None, str]
-            Ok() on success, Err() with error message if data is empty or years mismatch
-        """
-        logger.info("Starting renewable profile attachment")
-
-        renewable_profiles = self.read_data_file("renewable_profiles").collect()
-        logger.trace(
-            "Renewable profiles dataset size: {} rows, {} columns",
-            renewable_profiles.height,
-            renewable_profiles.width,
-        )
-
-        profile_count = 0
-        tech_regions = (
-            pl.DataFrame({"col": renewable_profiles.columns})
-            .filter(pl.col("col") != "datetime")
-            .with_columns(
-                [
-                    pl.col("col").str.split("|").alias("parts"),
-                    pl.col("col").str.split("|").list.len().alias("len"),
-                ]
-            )
-            .filter(pl.col("len") == 2)
-            .with_columns(
-                [
-                    pl.col("parts").list.get(0).alias("tech"),
-                    pl.col("parts").list.get(1).alias("region"),
-                ]
-            )
-            .select("col", "tech", "region")
-        )
-        logger.trace("Parsed {} tech-region renewable profile columns", tech_regions.height)
-
-        for row in tech_regions.iter_rows(named=True):
-            tech = row["tech"]
-            region_name = row["region"]
-            col_name = row["col"]
-
-            matching_generators = [
-                gen
-                for gen in self._generator_cache.values()
-                if gen.technology == tech and gen.region.name == region_name
-            ]
-
-            if not matching_generators:
-                logger.debug("No matching generators for renewable profile {}|{}", tech, region_name)
-                continue
-
-            cf_data = self._truncate_and_cast_time_series(renewable_profiles[col_name].to_numpy())
-
-            # Scale profiles by rated capaciy
-            for generator in matching_generators:
-                data = cf_data * generator.capacity
-                ts = SingleTimeSeries.from_array(
-                    data=data,
-                    name="max_active_power",
-                    initial_timestamp=self.initial_timestamp,
-                    resolution=timedelta(hours=1),
-                )
-                system.add_time_series(ts, generator)
-                profile_count += 1
-
-        logger.info("Attached renewable profiles to {} generator components", profile_count)
-        return Ok(None)
-
-    def _attach_reserve_profiles(self, system: System) -> Result[None, str]:
-        """Attach reserve requirement time series to reserve components.
-
-        Calculates dynamic reserve requirements from wind, solar, and load contributions
-        using configurable percentages from defaults. Applies requirements to reserve
-        components by transmission region.
-
-        Returns
-        -------
-        Result[None, str]
-        """
-        logger.info("Starting reserve requirement attachment")
-        attached_count = 0
-        reserves = list(system.get_components(ReEDSReserve))
-        logger.trace("Attaching reserve requirements for {} reserve components", len(reserves))
-        for reserve in reserves:
-            logger.debug("Calculating reserve requirement for {}", reserve.name)
-            reserve_type_name = reserve.reserve_type.value.upper()
-            if reserve_type_name in ("FLEXIBILITY_UP", "FLEXIBILITY_DOWN"):
-                reserve_type_name = "FLEXIBILITY"
-
-            region_name = reserve.name.rsplit("_", 1)[0]
-
-            wind_pct = self._defaults.get("wind_reserves", {}).get(reserve_type_name, 0.0)
-            solar_pct = self._defaults.get("solar_reserves", {}).get(reserve_type_name, 0.0)
-            load_pct = self._defaults.get("load_reserves", {}).get(reserve_type_name, 0.0)
-
-            wind_generators = [
-                {
-                    "capacity": gen.capacity,
-                    "time_series": system.get_time_series(gen).data if system.has_time_series(gen) else None,
-                }
-                for gen in system.get_components(ReEDSGenerator)
-                if gen.region
-                and gen.region.transmission_region == region_name
-                and tech_matches_category(gen.technology, "wind", self._tech_categories)
-            ]
-
-            solar_generators = [
-                {
-                    "capacity": gen.capacity,
-                    "time_series": system.get_time_series(gen).data if system.has_time_series(gen) else None,
-                }
-                for gen in system.get_components(ReEDSGenerator)
-                if gen.region
-                and gen.region.transmission_region == region_name
-                and tech_matches_category(gen.technology, "solar", self._tech_categories)
-            ]
-
-            loads = [
-                {
-                    "time_series": system.get_time_series(load).data
-                    if system.has_time_series(load)
-                    else None,
-                }
-                for load in system.get_components(ReEDSDemand)
-                if load.region and load.region.transmission_region == region_name
-            ]
-            logger.trace(
-                "Reserve {} inputs - wind: {}, solar: {}, loads: {}",
-                reserve.name,
-                len(wind_generators),
-                len(solar_generators),
-                len(loads),
-            )
-
-            calc_result = calculate_reserve_requirement(
-                wind_generators=wind_generators,
-                solar_generators=solar_generators,
-                loads=loads,
-                hourly_time_index=self.hourly_time_index,
-                wind_pct=wind_pct,
-                solar_pct=solar_pct,
-                load_pct=load_pct,
-            )
-            if calc_result.is_err():
-                return Err(str(calc_result.err()))
-
-            requirement_profile = calc_result.ok()
-            if requirement_profile is None or len(requirement_profile) == 0:
-                logger.warning("No reserve requirement calculated for {}, skipping", reserve.name)
-                continue
-
-            data = self._truncate_and_cast_time_series(requirement_profile)
-            ts = SingleTimeSeries.from_array(
-                data=data,
-                name="requirement",
-                initial_timestamp=self.initial_timestamp,
-                resolution=timedelta(hours=1),
-            )
-            system.add_time_series(ts, reserve)
-            attached_count += 1
-
-        logger.info("Attached reserve requirements to {} reserve components", attached_count)
-        return Ok(None)
-
-    def _attach_reserve_membership(self, system: System) -> Result[None, str]:
-        """Attach reserves to generators in the same transmission region, excluding configured techs."""
-        excluded_map = self._defaults.get("excluded_from_reserves", {})
-        logger.info("Starting reserve membership attachment")
-        attached_memberships = 0
-        if not excluded_map:
-            logger.info("Attached 0 reserve membership links")
-            return Ok(None)
-
-        reserves = list(system.get_components(ReEDSReserve))
-        generators = list(system.get_components(ReEDSGenerator))
-        logger.trace(
-            "Evaluating reserve membership for {} reserves across {} generators",
-            len(reserves),
-            len(generators),
-        )
-
-        for reserve in reserves:
-            reserve_type_name = reserve.reserve_type.value.upper()
-            if reserve_type_name in ("FLEXIBILITY_UP", "FLEXIBILITY_DOWN"):
-                reserve_type_name = "FLEXIBILITY"
-
-            excluded_categories = excluded_map.get(reserve_type_name, [])
-            region_name = reserve.name.rsplit("_", 1)[0]
-
-            for gen in generators:
-                if not gen.region or gen.region.transmission_region != region_name:
-                    continue
-
-                if any(
-                    tech_matches_category(gen.technology, cat, self._tech_categories)
-                    for cat in excluded_categories
-                ):
-                    continue
-
-                reserve_list = gen.ext.get("reserves", [])
-                if reserve.name not in reserve_list:
-                    reserve_list.append(reserve.name)
-                    gen.ext["reserves"] = reserve_list
-                    attached_memberships += 1
-
-        logger.info("Attached {} reserve membership links", attached_memberships)
-        return Ok(None)
-
-    def _attach_hydro_profiles(self, system: System) -> Result[None, str]:
-        """Attach dispatchable budgets or nondispatchable power profiles to hydro generators."""
-        logger.info("Starting hydro profile attachment")
-        attached_profiles = 0
-
-        hydro_generators = list(system.get_components(ReEDSHydroGenerator))
-        logger.trace("Hydro generators detected: {}", len(hydro_generators))
-
-        if not hydro_generators:
-            logger.warning("No hydro generators found, skipping hydro profiles")
-            return Ok(None)
-
-        if self._hydro_cf_prepared is None:
-            logger.warning("Hydro CF data not prepared, skipping hydro profiles")
-            return Ok(None)
-        logger.trace("Hydro CF prepared rows: {}", self._hydro_cf_prepared.height)
-
-        hydro_capacity = pl.DataFrame(
-            [
-                (gen.name, gen.technology, gen.region.name, gen.capacity, gen.vintage)
-                for gen in hydro_generators
-            ],
-            schema=["name", "technology", "region", "capacity", "vintage"],
-            orient="row",
-        )
-
-        hydro_data = hydro_capacity.join(self._hydro_cf_prepared, on=["technology", "region"], how="left")
-
-        # Drop rows where no CF data was found (null from the left join).
-        # These are generators whose technology/region has no entry in hydcf.csv.
-        missing_cf = hydro_data.filter(pl.col("hydro_cf").is_null())
-        if not missing_cf.is_empty():
-            missing_names = missing_cf["name"].unique().to_list()
-            logger.warning(
-                "No hydro CF data for {} generators (missing technology/region in hydcf.csv): {}",
-                len(missing_names),
-                ", ".join(missing_names),
-            )
-        hydro_data = hydro_data.filter(pl.col("hydro_cf").is_not_null())
-
-        for generator in hydro_generators:
-            profiles = calculate_hydro_profiles_for_generator(
-                generator,
-                hydro_data=hydro_data,
-                solve_years=self.solve_years,
-                weather_year=self.config.primary_weather_year,
-                hydro_capacity_adjustment=self._hydro_capacity_adjustment_prepared,
-            )
-            for profile in profiles:
-                data = self._truncate_and_cast_time_series(profile.data)
-                ts = SingleTimeSeries.from_array(
-                    data=data,
-                    name=profile.name,
-                    initial_timestamp=self.initial_timestamp,
-                    resolution=timedelta(hours=1),
-                )
-
-                system.add_time_series(ts, generator, solve_year=profile.year)
-                logger.trace("Adding {} profile to {}", profile.name, generator.label)
-                attached_profiles += 1
-        logger.info("Attached {} hydro profiles", attached_profiles)
-        return Ok(None)
 
     def _postprocess_system(self, system: System) -> None:
         """Perform post-processing and finalization of the constructed system.
@@ -1470,13 +556,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Reset parser caches for a fresh build."""
         self._variable_generator_df = None
         self._non_variable_generator_df = None
-        self.load_profiles = None
-        self._generator_cache = {}
-        self._reserve_region_cache = {}
-        self._hydro_cf_prepared = None
-        self._hydro_capacity_adjustment_prepared = None
-        self._reserve_percentages = {}
-        self._reserve_costs = {}
 
     def _initialize_parser_globals(self) -> Result[None, str]:
         """Initialize parser configuration, rules, and metadata from loaded assets."""
@@ -1484,17 +563,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if res.is_err():
             return res
 
-        self.solve_years = (
-            [self.config.solve_year]
-            if isinstance(self.config.solve_year, int)
-            else list(self.config.solve_year)
-        )
-
-        self.weather_years = (
-            [self.config.weather_year]
-            if isinstance(self.config.weather_year, int)
-            else list(self.config.weather_year)
-        )
         res = self.on_validate_config()
         if res.is_err():
             return res
@@ -1514,253 +582,44 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             if configured_excluded_techs is not None
             else self._defaults.get("excluded_techs", [])
         )
-        self._resource_supply_curve_datasets = tuple(self._defaults.get("resource_supply_curve_datasets", []))
         return Ok(None)
 
     def _prepare_generator_datasets(self) -> Result[None, str]:
-        """Load and preprocess generator-related datasets."""
-        logger.trace("Preparing generator datasets with excluded techs: {}", self._excluded_techs)
-        capacity_data = self.read_data_file("online_capacity")
-        upgrade_links = self.read_data_file("fom_upgrade_links")
-        switches = self.read_data_file("fom_switches").collect()
-        switch_values = dict(switches.iter_rows())
-        if switch_values.get("gsw_watermain") == "1":
-            water_links = self.read_data_file("fom_water_upgrade_links")
-            if water_links is None:
-                return Err("Required FOM dataset 'fom_water_upgrade_links' is unavailable")
-            upgrade_links = pl.concat([upgrade_links, water_links])
-        fuel_price = self.read_data_file("fuel_price")
-        biofuel = self.read_data_file("biofuel_price")
-        fuel_map = self.read_data_file("fuel_tech_map")
+        """Execute configured generator recipes and retain component-mapping rows."""
+        placeholders = {
+            "solve_year": self.config.solve_year,
+            "weather_year": self.config.weather_year,
+            "technology_categories": self._tech_categories,
+            "excluded_technologies": self._excluded_techs,
+            "default_heat_rate": self._defaults.get("default_values", {}).get("default_heat_rate"),
+        }
+        try:
+            frames = self.store.prepare_tables(
+                ("variable_generator_rows", "non_variable_generator_rows"),
+                placeholders=placeholders,
+                context=self._ctx,
+            )
+        except (KeyError, OSError, TypeError, ValueError, pl.exceptions.PolarsError) as exc:
+            return Err(f"Failed to prepare configured generator datasets: {exc}")
 
-        biofuel_prepped = biofuel.with_columns(pl.lit("biomass").alias("fuel_type"))
-        merge_result = merge_lazy_frames(biofuel_prepped, fuel_map, on=["fuel_type"], how="inner")
-        if merge_result.is_err():
-            return Err(str(merge_result.err()))
-        biofuel_merged = merge_result.ok()
-        if biofuel_merged is not None:
-            biofuel_mapped = biofuel_merged.select(pl.exclude("fuel_type"))
-            biofuel_mapped_df = biofuel_mapped.collect()
-            if not biofuel_mapped_df.is_empty():
-                fuel_price = pl.concat([fuel_price, biofuel_mapped], how="diagonal")
+        variable_rows = frames["variable_generator_rows"]
+        non_variable_rows = frames["non_variable_generator_rows"]
+        if variable_rows is None or non_variable_rows is None:
+            return Err("No capacity data found")
 
-        generator_data_result = prepare_generator_inputs(
-            capacity_data=capacity_data,
-            optional_data={
-                "fuel_price": fuel_price,
-                "fuel_tech_map": fuel_map,
-                "heat_rate": self.read_data_file("heat_rate"),
-                "cost_vom": self.read_data_file("cost_vom"),
-                "cost_fom": self.read_data_file("cost_fom"),
-                "fom_hydro": self.read_data_file("fom_hydro"),
-                "fom_hintage": self.read_data_file("fom_hintage"),
-                "fom_technology_subsets": self.read_data_file("fom_technology_subsets"),
-                "fom_upgrade_links": upgrade_links,
-                "fom_switches": switches.lazy(),
-                "fom_scalars": self.read_data_file("fom_scalars"),
-                "fom_unitspec_upgrades": self.read_data_file("fom_unitspec_upgrades"),
-                "fom_upgrade_characteristics": self.store.read_data(
-                    "cost_fom",
-                    placeholders={"solve_year": int(switch_values["gsw_upgradechar_year"])},
-                ),
-                "forced_outages": self.read_data_file("forced_outages"),
-                "planned_outages": self.read_data_file("planned_outages"),
-                "startcost": self.read_data_file("startcost"),
-                "maxage": self.read_data_file("maxage"),
-                "storage_duration": self.read_data_file("storage_duration"),
-                "storage_efficiency": self.read_data_file("storage_efficiency"),
-                "storage_duration_out": self.read_data_file("storage_duration_out"),
-                "consume_characteristics": self.read_data_file("consume_characteristics"),
-            },
-            excluded_technologies=self._excluded_techs,
-            technology_categories=self._tech_categories,
-        )
-        if generator_data_result.is_err():
-            return Err(str(generator_data_result.err()))
-        generator_data = generator_data_result.ok()
-        if generator_data is None:
-            return Err("Generator data result was unexpectedly None")
-
-        variable_df, non_variable_df = generator_data
-        ramprate_data = self.read_data_file("ramprate")
-        if ramprate_data is not None:
-            ramprate_df = ramprate_data.collect()
-            if not ramprate_df.is_empty():
-                ramprate_df = ramprate_df.filter(pl.col("ramp_rate").is_not_null())
-                logger.trace(
-                    "Joining ramp rate data ({} techs) into generator datasets",
-                    ramprate_df.height,
-                )
-                variable_df = variable_df.join(ramprate_df, on="technology", how="left")
-                non_variable_df = non_variable_df.join(ramprate_df, on="technology", how="left")
-            else:
-                logger.debug("Ramp rate data is empty, skipping join")
-        else:
-            logger.debug("No ramp rate data found, skipping join")
-
-        # Fill missing thermal heat rates with the technology-vintage mean or global default.
-        default_heat_rate = self._defaults.get("default_values", {}).get("default_heat_rate")
-        if default_heat_rate is not None:
-            if "heat_rate" not in non_variable_df.columns:
-                non_variable_df = non_variable_df.with_columns(
-                    pl.lit(None, dtype=pl.Float64).alias("heat_rate")
-                )
-
-            thermal_mask = pl.col("categories").list.contains("thermal")
-            null_count = non_variable_df.filter(thermal_mask & pl.col("heat_rate").is_null()).height
-            if null_count > 0:
-                group_cols = [c for c in ("technology", "vintage") if c in non_variable_df.columns]
-                group_fill = (
-                    pl.col("heat_rate").mean().over(group_cols)
-                    if group_cols
-                    else pl.lit(default_heat_rate, dtype=pl.Float64)
-                )
-                non_variable_df = non_variable_df.with_columns(
-                    pl.when(thermal_mask)
-                    .then(pl.col("heat_rate").fill_null(group_fill).fill_null(default_heat_rate))
-                    .otherwise(pl.col("heat_rate"))
-                    .alias("heat_rate")
-                )
-                logger.debug(
-                    "Filled {} null thermal heat_rate(s): group mean over [{}], default={}",
-                    null_count,
-                    ", ".join(group_cols),
-                    default_heat_rate,
-                )
+        try:
+            variable_df = variable_rows.collect()
+            non_variable_df = non_variable_rows.collect()
+        except (OSError, ValueError, pl.exceptions.PolarsError) as exc:
+            return Err(f"Failed to collect configured generator datasets: {exc}")
+        if variable_df.is_empty() and non_variable_df.is_empty():
+            return Err("Generator data is empty after configured policy filters")
 
         self._variable_generator_df = variable_df
         self._non_variable_generator_df = non_variable_df
-
         logger.trace(
             "Prepared generator datasets - variable rows: {}, non-variable rows: {}",
-            self._variable_generator_df.height,
-            self._non_variable_generator_df.height,
-        )
-        return Ok(None)
-
-    def _prepare_hydro_datasets(self) -> Result[None, str]:
-        """Prepare hydro profile data for later attachment."""
-        hydro_cf = self.read_data_file("hydro_cf")
-        if hydro_cf is None:
-            self._hydro_cf_prepared = None
-            logger.trace("No hydro CF dataset available")
-            return Ok(None)
-
-        hydro_cf = (
-            hydro_cf.with_columns(
-                pl.col("month")
-                .map_elements(lambda x: self.month_map.get(x, x), return_dtype=pl.Int16)
-                .alias("month_num"),
-            )
-            .sort(["year", "technology", "region", "month_num"])
-            .collect()
-        )
-        hydro_cf_joined = hydro_cf.join(self.year_month_day_hours, on=["year", "month_num"], how="left")
-        self._hydro_cf_prepared = hydro_cf_joined
-        logger.trace("Hydro CF prepared rows: {}", hydro_cf_joined.height)
-
-        hydro_capacity_adjustment = self.read_data_file("hydro_capacity_adjustment")
-        if hydro_capacity_adjustment is None:
-            self._hydro_capacity_adjustment_prepared = None
-            logger.trace("No hydro capacity adjustment dataset available")
-            return Ok(None)
-
-        self._hydro_capacity_adjustment_prepared = (
-            hydro_capacity_adjustment.with_columns(
-                pl.col("month")
-                .map_elements(lambda x: self.month_map.get(x, x), return_dtype=pl.Int16)
-                .alias("month_num"),
-            )
-            .sort(["technology", "region", "month_num"])
-            .collect()
-        )
-        logger.trace(
-            "Hydro capacity adjustment prepared rows: {}",
-            self._hydro_capacity_adjustment_prepared.height,
-        )
-        return Ok(None)
-
-    def _prepare_reserve_datasets(self) -> Result[None, str]:
-        """Prepare reserve-related inputs (percentages, costs)."""
-        logger.trace("Preparing reserve dataset defaults")
-        pct_map: dict[str, dict[str, float]] = {}
-        reserve_pct_df = self.read_data_file("reserve_percentages")
-        if reserve_pct_df is not None:
-            df = reserve_pct_df.collect()
-            for row in df.iter_rows(named=True):
-                rtype = str(row.get("reserve_type") or "").upper()
-                if not rtype:
-                    continue
-                pct_map[rtype] = {
-                    "or_load_percentage": row.get("or_load_percentage"),
-                    "or_wind_percentage": row.get("or_wind_percentage"),
-                    "or_pv_percentage": row.get("or_pv_percentage"),
-                }
-        else:
-            load_res = self._defaults.get("load_reserves", {})
-            wind_res = self._defaults.get("wind_reserves", {})
-            solar_res = self._defaults.get("solar_reserves", {})
-            for rtype in set(load_res) | set(wind_res) | set(solar_res):
-                key = str(rtype).upper()
-                pct_map[key] = {
-                    "or_load_percentage": load_res.get(rtype),
-                    "or_wind_percentage": wind_res.get(rtype),
-                    "or_pv_percentage": solar_res.get(rtype),
-                }
-        self._reserve_percentages = pct_map
-        logger.trace("Prepared reserve percentage map entries: {}", len(self._reserve_percentages))
-
-        cost_map: dict[str, dict[str, float]] = {}
-        cost_df = self.read_data_file("reserve_costs_default")
-        if cost_df is None:
-            cost_df = self.read_data_file("reserve_costs_market")
-        if cost_df is not None:
-            df = cost_df.collect()
-            for col, rtype in (
-                ("spin_cost", ReserveType.SPINNING.value),
-                ("reg_cost", ReserveType.REGULATION.value),
-                ("flex_cost", ReserveType.FLEXIBILITY.value),
-            ):
-                if col in df.columns:
-                    val = df[col].mean()
-                    if val is not None:
-                        cost_map[rtype] = {col: float(val)}
-        self._reserve_costs = cost_map
-        logger.trace("Prepared reserve cost map entries: {}", len(self._reserve_costs))
-        return Ok(None)
-
-    def _prepare_time_arrays(self) -> Result[None, str]:
-        """Set up solve/weather year lists and derived time indices."""
-
-        self.hourly_time_index = np.arange(
-            np.datetime64(f"{self.config.primary_weather_year}"),
-            np.datetime64(f"{self.config.primary_weather_year + 1}"),
-            dtype="datetime64[h]",
-        )
-        self.daily_time_index = np.arange(
-            np.datetime64(f"{self.config.primary_weather_year}"),
-            np.datetime64(f"{self.config.primary_weather_year + 1}"),
-            dtype="datetime64[D]",
-        )
-        self.initial_timestamp = self.hourly_time_index[0].astype("datetime64[s]").astype(datetime)
-        self.month_map = {calendar.month_abbr[i].lower(): i for i in range(1, 13)}
-        self.year_month_day_hours = pl.DataFrame(
-            {
-                "year": [y for y in self.solve_years for _ in range(1, 13)],
-                "month_num": [m for _ in self.solve_years for m in range(1, 13)],
-                "days_in_month": [
-                    calendar.monthrange(y, m)[1] for y in self.solve_years for m in range(1, 13)
-                ],
-                "hours_in_month": [
-                    calendar.monthrange(y, m)[1] * 24 for y in self.solve_years for m in range(1, 13)
-                ],
-            }
-        )
-        logger.debug(
-            "Created time indixes for weather year {}: {} hours, {} days starting at {}",
-            self.config.primary_weather_year,
-            len(self.hourly_time_index),
-            len(self.daily_time_index),
-            self.initial_timestamp,
+            variable_df.height,
+            non_variable_df.height,
         )
         return Ok(None)

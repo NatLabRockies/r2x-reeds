@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 def build_parser(
     run_path: Path,
     *,
-    use_degraded_capacity: bool = False,
     file_mapping: dict[str, object] | None = None,
 ):
     from r2x_core import DataStore, PluginContext
@@ -39,7 +38,6 @@ def build_parser(
         weather_year=2012,
         case_name="test",
         scenario="base",
-        use_degraded_capacity=use_degraded_capacity,
         asset_overrides={"file_mapping": selected_mapping},
     )
     store = DataStore.from_plugin_config(config, path=run_path)
@@ -75,11 +73,11 @@ def write_fuel2tech_outputs_h5(h5_path: Path) -> None:
         group.create_dataset("i", data=np.array(["gas-cc", "coal"], dtype="S"))
 
 
-def test_read_data_file_uses_explicit_csv_mapping(reeds_run_path: Path) -> None:
+def test_store_reads_explicit_csv_mapping(reeds_run_path: Path) -> None:
     """Explicit CSV file mappings read the CSV outputs in the unpacked test archive."""
     parser = build_parser(reeds_run_path)
 
-    result = parser.read_data_file("fuel_price")
+    result = parser.store.read_data("fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
 
     assert result is not None
     df = result.collect()
@@ -111,7 +109,7 @@ def test_datastore_reads_configured_h5_output_group(tmp_path: Path, reeds_run_pa
     }
 
 
-def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_path: Path) -> None:
+def test_store_reads_outputs_h5_instead_of_csv(tmp_path: Path, reeds_run_path: Path) -> None:
     """Parser should read output datasets from outputs.h5 when available."""
     run_path = tmp_path / "test_Pacific"
     shutil.copytree(reeds_run_path, run_path)
@@ -125,7 +123,7 @@ def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_pa
     fuel_price_csv.unlink()
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = parser.read_data_file("fuel_price")
+    result = parser.store.read_data("fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
 
     assert result is not None
     df = result.collect()
@@ -135,69 +133,6 @@ def test_read_data_file_uses_outputs_h5_and_not_csv(tmp_path: Path, reeds_run_pa
         "technology": ["ngas"],
         "region": ["p1"],
     }
-
-
-def test_read_data_file_uses_degraded_capacity_from_outputs_h5(tmp_path: Path, reeds_run_path: Path) -> None:
-    """Select degraded capacity and lowercase its technology and region identifiers."""
-    run_path = tmp_path / "test_Pacific"
-    shutil.copytree(reeds_run_path, run_path)
-
-    outputs_h5 = run_path / "outputs" / "outputs.h5"
-    with h5py.File(outputs_h5, "w") as h5_file:
-        group = h5_file.create_group("cap_deg_ivrt")
-        group.create_dataset("columns", data=np.array([b"i", b"r", b"t", b"v", b"value"]))
-        group.create_dataset("i", data=np.array([b"WIND-ONS"]))
-        group.create_dataset("r", data=np.array([b"P4"]))
-        group.create_dataset("t", data=np.array([2032]))
-        group.create_dataset("v", data=np.array([2020]))
-        group.create_dataset("value", data=np.array([95.0]))
-
-    parser = build_parser(run_path, use_degraded_capacity=True, file_mapping=package_file_mapping())
-    result = parser.read_data_file("online_capacity")
-
-    assert result is not None
-    assert result.collect().to_dict(as_series=False) == {
-        "technology": ["wind-ons"],
-        "region": ["p4"],
-        "year": [2032],
-        "vintage": [2020],
-        "capacity": [95.0],
-    }
-
-
-def test_read_data_file_uses_explicit_degraded_capacity_csv_mapping(
-    tmp_path: Path, reeds_run_path: Path
-) -> None:
-    """The degraded-capacity flag selects the configured cap_deg_ivrt.csv mapping."""
-    run_path = tmp_path / "test_Pacific"
-    shutil.copytree(reeds_run_path, run_path)
-
-    outputs_dir = run_path / "outputs"
-    pl.DataFrame(
-        {
-            "i": ["wind-ons"],
-            "r": ["p4"],
-            "t": [2032],
-            "v": [2020],
-            "Value": [95.0],
-        }
-    ).write_csv(outputs_dir / "cap_deg_ivrt.csv")
-
-    parser = build_parser(run_path, use_degraded_capacity=True)
-    result = parser.read_data_file("online_capacity")
-
-    assert result is not None
-    assert result.collect().to_dict(as_series=False)["capacity"] == [95.0]
-
-
-def test_read_data_file_reports_missing_degraded_capacity(tmp_path: Path, reeds_run_path: Path) -> None:
-    """Missing degraded capacity must identify cap_deg_ivrt instead of returning None."""
-    run_path = tmp_path / "test_Pacific"
-    shutil.copytree(reeds_run_path, run_path)
-
-    parser = build_parser(run_path, use_degraded_capacity=True)
-    with pytest.raises(FileNotFoundError, match="cap_deg_ivrt"):
-        parser.read_data_file("online_capacity")
 
 
 def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path) -> None:
@@ -231,8 +166,8 @@ def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path) -> None:
     ]
 
 
-def test_read_fuel_tech_map_uses_reeds_mapping_nodes(tmp_path: Path, reeds_run_path: Path) -> None:
-    """The ReEDS fuel2tech group uses f/i nodes without a value column."""
+def test_fuel_tech_map_preserves_base_and_full_technology_keys(tmp_path: Path, reeds_run_path: Path) -> None:
+    """The ReEDS fuel2tech group uses f/i nodes and preserves both technology keys."""
     run_path = tmp_path / "test_Pacific"
     shutil.copytree(reeds_run_path, run_path)
 
@@ -240,20 +175,21 @@ def test_read_fuel_tech_map_uses_reeds_mapping_nodes(tmp_path: Path, reeds_run_p
     write_fuel2tech_outputs_h5(outputs_h5)
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = parser.read_data_file("fuel_tech_map")
+    result = parser.store.read_data("fuel_tech_map", placeholders={"solve_year": 2032, "weather_year": 2012})
 
     assert result is not None
     assert result.collect().to_dict(as_series=False) == {
         "fuel_type": ["ngas", "coal"],
-        "technology": ["gas-cc", "coal"],
+        "technology_base": ["gas-cc", "coal"],
+        "technology_full": ["gas-cc", "coal"],
     }
 
 
-def test_read_data_file_uses_store_for_non_outputs_dataset(reeds_run_path: Path) -> None:
+def test_store_reads_non_outputs_dataset(reeds_run_path: Path) -> None:
     """Non-output mappings should still be read through DataStore directly."""
     parser = build_parser(reeds_run_path)
 
-    result = parser.read_data_file("hierarchy")
+    result = parser.store.read_data("hierarchy")
 
     assert result is not None
     df = result.collect()
@@ -261,52 +197,42 @@ def test_read_data_file_uses_store_for_non_outputs_dataset(reeds_run_path: Path)
     assert "region_id" in df.columns
 
 
-@pytest.mark.parametrize("technology_column", ["i", "*i"])
-def test_read_existing_capacity_with_technology_column(tmp_path: Path, technology_column: str) -> None:
-    """Existing capacity inputs support plain and domain-marked technology columns."""
+def test_read_existing_capacity_with_configured_source_columns(tmp_path: Path) -> None:
+    """Existing capacity maps the source schema directly through its file recipe."""
     import json
 
     from r2x_core import DataFile, DataStore
-    from r2x_reeds.data_readers import register_gams_header_readers
 
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
-    (inputs_case / "capnonrsc.csv").write_text(f"{technology_column},r,value\nsolar,p1,100.0\n")
+    (inputs_case / "capnonrsc.csv").write_text("*i,r,value\nsolar,p1,100.0\n")
 
     mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
     records = json.loads(mapping_path.read_text())["files"]
     record = next(item for item in records if item["name"] == "existing_capacity")
     store = DataStore(path=tmp_path)
     store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
-    register_gams_header_readers(store)
 
     result = store.read_data("existing_capacity")
 
     assert result.collect().to_dicts() == [{"technology": "solar", "region": "p1", "capacity": 100.0}]
 
 
-@pytest.mark.parametrize("from_region_column", ["r", "*r"])
-def test_read_existing_transmission_capacity_with_region_column(
-    tmp_path: Path, from_region_column: str
-) -> None:
-    """Initial transmission capacity inputs support plain and domain-marked regions."""
+def test_read_marked_transmission_region_from_configured_source_column(tmp_path: Path) -> None:
+    """The marked source header is explicitly mapped without runtime registration."""
     import json
 
     from r2x_core import DataFile, DataStore
-    from r2x_reeds.data_readers import register_gams_header_readers
 
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
-    (inputs_case / "trancap_init_energy.csv").write_text(
-        f"{from_region_column},rr,trtype,MW\np1,p2,AC,10.7\n"
-    )
+    (inputs_case / "trancap_init_energy.csv").write_text("*r,rr,trtype,MW\np1,p2,AC,10.7\n")
 
     mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
     records = json.loads(mapping_path.read_text())["files"]
     record = next(item for item in records if item["name"] == "existing_transmission_capacity")
     store = DataStore(path=tmp_path)
     store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
-    register_gams_header_readers(store)
 
     result = store.read_data("existing_transmission_capacity")
 
@@ -315,24 +241,21 @@ def test_read_existing_transmission_capacity_with_region_column(
     ]
 
 
-@pytest.mark.parametrize("technology_column", ["i", "*i"])
-def test_read_renewable_supply_curves_with_technology_column(tmp_path: Path, technology_column: str) -> None:
-    """Renewable supply curves support plain and domain-marked technology columns."""
+def test_read_marked_renewable_supply_curve_technology_from_configured_source_column(tmp_path: Path) -> None:
+    """The marked technology header is explicitly mapped by the file recipe."""
     import json
 
     from r2x_core import DataFile, DataStore
-    from r2x_reeds.data_readers import register_gams_header_readers
 
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
-    (inputs_case / "caprsc.csv").write_text(f"{technology_column},r,value\nupv,p1,10.0\n")
+    (inputs_case / "caprsc.csv").write_text("*i,r,value\nupv,p1,10.0\n")
 
     mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
     records = json.loads(mapping_path.read_text())["files"]
     record = next(item for item in records if item["name"] == "renewable_supply_curves")
     store = DataStore(path=tmp_path)
     store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
-    register_gams_header_readers(store)
 
     result = store.read_data("renewable_supply_curves")
 

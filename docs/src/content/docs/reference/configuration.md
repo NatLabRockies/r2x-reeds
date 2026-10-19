@@ -11,7 +11,6 @@ title: Configuration Reference
 | `case_name`             | `str` or `None`       | `None`   | Optional case label                                            |
 | `scenario`              | `str`                 | `"base"` | Scenario label                                                 |
 | `excluded_techs`        | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
-| `use_degraded_capacity` | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
 
 `primary_solve_year` and `primary_weather_year` return the first value when a list
 is supplied. The CLI tutorial uses scalar years so downstream plugins receive one
@@ -31,7 +30,6 @@ Key fields:
 - `weather_year`: int or list of int
 - `case_name`: optional string
 - `scenario`: optional string, default `base`
-- `use_degraded_capacity`: bool, default `False`; choose degradation-adjusted `cap_deg_ivrt` instead of `cap_ivrt` for online capacity.
 - `excluded_techs`: optional list of technologies to exclude. When omitted, the list from `defaults.json` is used.
 
 Convenience properties:
@@ -49,7 +47,7 @@ Defines package-level parser defaults including:
 
 - `excluded_techs`
 - `tech_categories`
-- reserve defaults (`default_reserve_types`, `reserve_duration`, `reserve_time_frame`, etc.)
+- reserve product and provider-exclusion records in `reserve_products` and `reserve_provider_exclusions`
 - unit conversion constants
 
 Notable default behavior:
@@ -59,12 +57,38 @@ Notable default behavior:
 
 ## file_mapping.json
 
-Defines physical files and prepared tables in a `{"files": [...], "tables": [...]}`
-envelope. Each physical file entry names a dataset and configures its path,
+Defines physical files, named runtime sources, and prepared tables in a
+`{"files": [...], "sources": [...], "tables": [...]}` envelope. Each physical file entry names a dataset and configures its path,
 optional metadata, reader settings, and `proc_spec`. Reader settings select the
 format-specific behavior, including HDF5 group or dataset keys. Prepared tables
-name a physical base source, explicit left many-to-one joins, and required result
-columns. Table joins do not read other prepared tables.
+name a physical or prepared-table source, explicit joins, and required result
+columns. A table source or join source can also name a declared in-memory frame
+input. The DataStore resolves named table dependencies in one request-local
+execution, materializing shared sources once per request. Each join declares how
+to handle an absent source with `missing_source`: `error` by default, `skip`, or
+`null` for nullable payloads.
+
+The packaged `load_peaks` table unpivots filtered `load_profiles` into
+`region` and `max_active_power` rows. The `load` Rule must name a prepared table
+that requires both columns and declares them non-null. The parser follows that table's physical `source`
+when attaching the original wide profiles, keeping component peaks and attached
+time series on the same configured input.
+
+The `generator_inputs` table selects its capacity source directly. Set its
+`source` to `online_capacity` or `online_capacity_degraded` in the effective
+`file_mapping` to choose the intended capacity series. A selected missing source
+fails instead of falling back. The named generator tables compose category,
+storage, fuel, FOM, classification, aggregation, ramp, and thermal heat-rate
+preparation. ReEDS switch and technology policy remains in those configuration
+recipes. Singleton control joins reject duplicate values. Resource tables are
+semi-joined to a `SystemFrameSource` projecting actual target `ReEDSRegion`
+components, so inclusion follows constructed regions rather than a guessed list. The FOM recipe joins
+all-year cost sources using solve, characteristic, and upgrade-year columns,
+then resolves individual FOM before renewable capacity-weighted aggregation.
+VOM retains its configured arithmetic mean. The `weighted_mean` configuration
+propagates unknown rates with positive capacity, preserves known zero rates, and
+returns null for nonpositive total capacity. `ensure_null_columns` supplies null
+values only for absent optional aggregate inputs.
 
 The packaged mapping reads ReEDS output groups from `outputs/outputs.h5` using
 core's configured HDF5 reader. Core selects the CSV or HDF5 reader from the
@@ -148,8 +172,8 @@ There is no list-root compatibility form.
 
 Rule mappings use `field_map`, `getters`, `defaults`, and `filter`. Dataset
 sources name either a physical file or a prepared table from `file_mapping.json`.
-The current ReEDS plan declares region, transmission, and emission stages; other
-policy-prepared families continue to use named mappings until their migration.
+The current ReEDS plan declares region, transmission, load, and emission stages;
+other policy-prepared families continue to use named mappings until their migration.
 
 ## Runtime Placeholder Substitution
 

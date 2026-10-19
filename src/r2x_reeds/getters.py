@@ -15,7 +15,6 @@ from r2x_reeds.enum_mappings import (
 from r2x_reeds.models.base import FromTo_ToFrom
 from r2x_reeds.models.components import ReEDSInterface, ReEDSRegion, ReEDSReserveRegion
 from r2x_reeds.models.enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
-from r2x_reeds.parser_utils import tech_matches_category
 from r2x_reeds.row_utils import get_row_field
 
 
@@ -103,36 +102,6 @@ def build_region_name(row: Any, *, context: PluginContext) -> Result[str, Except
 
 
 @_reeds_getter
-def compute_is_dispatchable(row: Any, *, context: PluginContext) -> Result[bool, Exception]:
-    """Determine if hydro generator is dispatchable from technology category.
-
-    Parameters
-    ----------
-    context : PluginContext
-        Parser context with metadata containing tech_categories
-    row : Any
-        Data row (dict or SimpleNamespace) with 'technology' field
-
-    Returns
-    -------
-    Result[bool, Exception]
-        Ok(True/False) based on technology category
-    """
-    from r2x_reeds.parser_utils import tech_matches_category
-
-    try:
-        tech = get_row_field(row, "technology")
-        if tech is None:
-            return Ok(False)
-
-        tech_categories = context.metadata.get("tech_categories", {})
-        is_dispatchable = tech_matches_category(str(tech), "hydro_dispatchable", tech_categories)
-        return Ok(is_dispatchable)
-    except Exception as e:
-        return Err(e)
-
-
-@_reeds_getter
 def build_generator_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build generator name from technology, vintage, and region.
 
@@ -170,6 +139,52 @@ def build_resource_name(technology: str, resource_class: Any, sc_point_gid: int,
 
 
 @_reeds_getter
+def build_resource_component_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
+    """Build a resource component name from its configured record fields."""
+    _ = context
+    technology = get_row_field(row, "technology")
+    resource_class = get_row_field(row, "resource_class")
+    sc_point_gid = get_row_field(row, "sc_point_gid")
+    if technology is None or resource_class is None or sc_point_gid is None:
+        return Err(ValueError("Resource row is missing name fields"))
+    return Ok(
+        build_resource_name(
+            str(technology),
+            resource_class,
+            int(sc_point_gid),
+            get_row_field(row, "year"),
+        )
+    )
+
+
+@_reeds_getter
+def build_resource_geo_json(row: Any, *, context: PluginContext) -> Result[dict[str, Any], Exception]:
+    """Build a GeoJSON point from configured resource coordinates and identity."""
+    _ = context
+    latitude = get_row_field(row, "latitude")
+    longitude = get_row_field(row, "longitude")
+    if latitude is None or longitude is None:
+        return Err(ValueError("Resource coordinates are missing"))
+
+    properties: dict[str, Any] = {
+        "name": get_row_field(row, "name"),
+        "technology": get_row_field(row, "technology"),
+        "sc_point_gid": get_row_field(row, "sc_point_gid"),
+        "resource_class": get_row_field(row, "resource_class"),
+    }
+    year = get_row_field(row, "year")
+    if year is not None:
+        properties["year"] = year
+    return Ok(
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [longitude, latitude]},
+            "properties": properties,
+        }
+    )
+
+
+@_reeds_getter
 def build_load_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
     """Build canonical load name from region."""
 
@@ -178,20 +193,6 @@ def build_load_name(row: Any, *, context: PluginContext) -> Result[str, Exceptio
         if region is None:
             return Err(ValueError("Load row missing 'region' field"))
         return Ok(f"{region}_load")
-    except Exception as e:
-        return Err(e)
-
-
-@_reeds_getter
-def build_reserve_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
-    """Build reserve component name from region and type."""
-
-    try:
-        region = get_row_field(row, "region")
-        reserve_type = get_row_field(row, "reserve_type")
-        if not region or not reserve_type:
-            return Err(ValueError("Reserve row missing region or reserve_type"))
-        return Ok(f"{region}_{reserve_type}")
     except Exception as e:
         return Err(e)
 
@@ -218,44 +219,6 @@ def resolve_reserve_direction(row: Any, *, context: PluginContext) -> Result[Res
         if value is None:
             return Err(ValueError("Reserve row missing direction"))
         return map_reserve_direction(str(value))
-    except Exception as e:
-        return Err(e)
-
-
-@_reeds_getter
-def get_storage_duration(row: Any, *, context: PluginContext) -> Result[float, Exception]:
-    """Return storage duration, defaulting to 1.0 if missing."""
-    try:
-        value = get_row_field(row, "storage_duration")
-        return Ok(float(value) if value is not None else 1.0)
-    except Exception as e:
-        return Err(e)
-
-
-@_reeds_getter
-def get_round_trip_efficiency(row: Any, *, context: PluginContext) -> Result[float, Exception]:
-    """Return round-trip efficiency, defaulting to 1.0 if missing."""
-    try:
-        value = get_row_field(row, "round_trip_efficiency")
-        return Ok(float(value) if value is not None else 1.0)
-    except Exception as e:
-        return Err(e)
-
-
-@_reeds_getter
-def get_fuel_type(row: Any, *, context: PluginContext) -> Result[str, Exception]:
-    """Resolve the fuel type from the joined ``fuel2tech`` mapping."""
-    try:
-        value = get_row_field(row, "fuel_type")
-        if value is not None:
-            return Ok(str(value).strip())
-
-        technology = get_row_field(row, "technology")
-        tech_categories = getattr(context, "metadata", {}).get("tech_categories", {})
-        if technology and tech_matches_category(str(technology), "thermal", tech_categories):
-            return Ok("OTHER")
-
-        return Err(ValueError("Row missing required 'fuel_type' field"))
     except Exception as e:
         return Err(e)
 

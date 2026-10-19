@@ -46,25 +46,6 @@ def test_reeds_config_default_scenario():
     assert config.scenario == "base"
 
 
-def test_reeds_config_defaults_to_non_degraded_capacity():
-    """The parser retains cap_ivrt behavior unless explicitly configured otherwise."""
-    config = ReEDSConfig(
-        solve_year=2030,
-        weather_year=2012,
-    )
-    assert config.use_degraded_capacity is False
-
-
-def test_reeds_config_can_use_degraded_capacity():
-    """The parser can opt into degradation-adjusted generator capacity."""
-    config = ReEDSConfig(
-        solve_year=2030,
-        weather_year=2012,
-        use_degraded_capacity=True,
-    )
-    assert config.use_degraded_capacity is True
-
-
 def test_reeds_config_scenario_field():
     """Test scenario field."""
     config = ReEDSConfig(

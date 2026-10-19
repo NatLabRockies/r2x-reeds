@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, computed_field
 
 from r2x_core import PluginConfig
 
@@ -92,16 +92,6 @@ class ReEDSConfig(PluginConfig):
             ),
         ),
     ] = None
-    use_degraded_capacity: Annotated[
-        bool,
-        Field(
-            default=False,
-            description=(
-                "Select the online_capacity_degraded file mapping "
-                "to use degradation-adjusted generator capacity."
-            ),
-        ),
-    ] = False
 
     @property
     def primary_solve_year(self) -> int:
@@ -116,6 +106,7 @@ class ReEDSConfig(PluginConfig):
             return self.solve_year[0]
         return self.solve_year
 
+    @computed_field
     @property
     def primary_weather_year(self) -> int:
         """Get the primary (first) weather year.

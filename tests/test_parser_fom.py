@@ -1,5 +1,6 @@
 """Fixed O&M reaches generator components from processed ReEDS inputs."""
 
+import copy
 import shutil
 from pathlib import Path
 
@@ -48,8 +49,8 @@ def test_required_fom_sets_may_be_empty_but_must_exist(
         assert result.is_ok(), result
 
 
-@pytest.mark.parametrize("source", ["missing", "empty", "wrong-year"])
-def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
+@pytest.mark.parametrize("source", ["missing", "empty"])
+def test_fixed_om_requires_a_nonempty_physical_source(
     reeds_run_path: Path, tmp_path: Path, source: str
 ) -> None:
     shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
@@ -66,8 +67,6 @@ def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
         path.unlink()
     elif source == "empty":
         path.write_text("*i,t,variable,value\n")
-    else:
-        path.write_text("*i,t,variable,value\nGas-CC,2029,fom,20081\n")
 
     result = parser.on_validate()
 
@@ -76,7 +75,7 @@ def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
 
 
 @pytest.mark.parametrize("marker", ["", "*"])
-def test_fixed_om_dataset_selects_only_solve_year_fom(
+def test_fixed_om_dataset_preserves_all_characteristic_years(
     reeds_run_path: Path, tmp_path: Path, marker: str
 ) -> None:
     shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
@@ -96,12 +95,51 @@ def test_fixed_om_dataset_selects_only_solve_year_fom(
     store = DataStore.from_plugin_config(config, path=tmp_path)
     ReEDSParser.from_context(PluginContext(config=config, store=store))
 
-    costs = store.read_data("cost_fom", placeholders={"solve_year": 2032}).collect()
+    costs = store.read_data("cost_fom").collect()
 
     assert costs.to_dicts() == [
         {"technology": "gas-cc", "year": 2032, "fom_cost": 20081},
+        {"technology": "gas-cc", "year": 2029, "fom_cost": 99999},
         {"technology": "wind-ons_1", "year": 2032, "fom_cost": 31000},
     ]
+
+
+def test_fom_recipe_reads_its_configured_physical_cost_source(reeds_run_path: Path, tmp_path: Path) -> None:
+    """Changing the configured physical FOM source changes constructed components."""
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    inputs = run_path / "inputs_case"
+    (inputs / "plantcharout.csv").write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
+    alternate_path = "inputs_case/alternate_plantcharout.csv"
+    (run_path / alternate_path).write_text("*i,t,variable,value\nGas-CC,2032,fom,43210\n")
+
+    file_mapping = csv_file_mapping()
+    alternate = copy.deepcopy(next(item for item in file_mapping["files"] if item["name"] == "cost_fom"))
+    alternate.update(name="alternate_cost_fom", fpath=alternate_path)
+    alternate["info"]["is_input"] = False
+    file_mapping["files"].append(alternate)
+    fom_table = next(item for item in file_mapping["tables"] if item["name"] == "generator_fom_policy")
+    cost_joins = [join for join in fom_table["joins"] if join["source"] == "cost_fom"]
+    for join in cost_joins:
+        join["source"] = "alternate_cost_fom"
+
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": file_mapping},
+    )
+    store = DataStore.from_plugin_config(config, path=run_path)
+    context = PluginContext(config=config, store=store)
+    result = ReEDSParser.from_context(context).run(ctx=context)
+
+    assert result.system is not None
+    generators = [
+        generator
+        for generator in result.system.get_components(ReEDSGenerator)
+        if generator.technology == "gas-cc"
+    ]
+    assert generators
+    assert {generator.fom_cost for generator in generators} == {43210.0}
 
 
 def test_generators_receive_solve_year_fixed_om(reeds_run_path: Path, tmp_path: Path) -> None:
@@ -140,6 +178,47 @@ def test_generators_receive_solve_year_fixed_om(reeds_run_path: Path, tmp_path: 
     unmatched = [generator for generator in generators if generator.technology == "gas-ct"]
     assert unmatched
     assert all(generator.fom_cost is None for generator in unmatched)
+
+
+def test_fom_policy_configuration_controls_selection(reeds_run_path: Path, tmp_path: Path) -> None:
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    inputs = run_path / "inputs_case"
+    (inputs / "plantcharout.csv").write_text(
+        "*i,t,variable,value\n"
+        "Gas-CC,2032,fom,20081\n"
+        "coal-ccs_mod,2028,fom,45000\n"
+        "coal-ccs_mod,2032,fom,46000\n"
+    )
+    hydro = pl.read_csv(inputs / "hyd_fom.csv")
+    hydro.with_columns(pl.lit(42000.0).alias(column) for column in hydro.columns if column != "i").write_csv(
+        inputs / "hyd_fom.csv"
+    )
+    (inputs / "scalars.csv").write_text("cost_fom_psh,13030,2004$/MW-year\n")
+
+    mapping = csv_file_mapping()
+    table = next(item for item in mapping["tables"] if item["name"] == "generator_fom_policy")
+    assignments = table["proc_spec"]["conditional_assignments"]
+    psh_assignment = next(item for item in assignments if item["when"][0]["column"] == "psh")
+    psh_assignment["value_source"] = {"kind": "literal", "value": 54321.0}
+
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        asset_overrides={"file_mapping": mapping},
+    )
+    store = DataStore.from_plugin_config(config, path=run_path)
+    ctx = PluginContext(config=config, store=store)
+    result = ReEDSParser.from_context(ctx).run(ctx=ctx)
+    assert result.system is not None
+
+    pumped_hydro = [
+        generator
+        for generator in result.system.get_components(ReEDSGenerator)
+        if generator.technology == "pumped-hydro"
+    ]
+    assert pumped_hydro
+    assert {generator.fom_cost for generator in pumped_hydro} == {54321.0}
 
 
 @pytest.mark.parametrize(
@@ -205,3 +284,56 @@ def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
         "init-1": initial_cost,
         "new1": 46000.0,
     }
+
+
+def test_variable_fom_aggregation_preserves_annual_cost(
+    reeds_run_path: Path, tmp_path: Path, reeds_config: ReEDSConfig
+) -> None:
+    """Configured grouping uses capacity-weighted FOM before component mapping."""
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    (run_path / "outputs" / "cap_ivrt.csv").write_text(
+        "i,v,r,t,Value\ndistpv,init-1,p1,2032,100\ndistpv,new1,p1,2032,300\n"
+    )
+    hintage_path = run_path / "inputs_case" / "hintage_data.csv"
+    hintage = pl.read_csv(hintage_path)
+    controlled = (
+        (pl.col("TECH").str.to_lowercase() == "distpv") & (pl.col("r") == "p1") & (pl.col("yr") == 2032)
+    ).fill_null(False)
+    hintage = hintage.filter(~controlled)
+    rates = pl.DataFrame(
+        {
+            "TECH": ["distpv", "distpv"],
+            "bin": ["init-1", "new1"],
+            "r": ["p1", "p1"],
+            "yr": [2032, 2032],
+            "cap": [100.0, 300.0],
+            "wFOM": [10.0, 30.0],
+            "wCCS_Retro_FOM": [0.0, 0.0],
+        }
+    )
+    pl.concat([hintage, rates], how="diagonal_relaxed").write_csv(hintage_path)
+
+    defaults = reeds_config.load_config()["defaults"]
+    defaults["reserve_products"] = []
+    parser_rules = copy.deepcopy(reeds_config.load_config()["parser_rules"])
+    next(stage for stage in parser_rules["execution"] if stage["name"] == "resources")["rules"] = []
+    config = reeds_config.model_copy(
+        update={
+            "asset_overrides": {
+                **reeds_config.asset_overrides,
+                "defaults": defaults,
+                "parser_rules": parser_rules,
+            }
+        }
+    )
+    store = DataStore.from_plugin_config(config, path=run_path)
+    context = PluginContext(config=config, store=store)
+    result = ReEDSParser.from_context(context).run(ctx=context)
+
+    assert result.system is not None
+    generators = list(result.system.get_components(ReEDSGenerator))
+    assert len(generators) == 1
+    assert generators[0].capacity == 400.0
+    assert generators[0].fom_cost == pytest.approx(25.0)
+    assert generators[0].capacity * generators[0].fom_cost == pytest.approx(10_000.0)

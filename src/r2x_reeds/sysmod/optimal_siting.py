@@ -11,9 +11,8 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import DataStore, PluginConfig, expand_keyed_grid, expose_plugin
 from r2x_reeds.models.components import ReEDSDemand
-from r2x_reeds.parser_utils import expand_loadsite_hourly
 
 
 class OptimalSitingConfig(PluginConfig):
@@ -122,7 +121,17 @@ def _build_region_increments(
     loadsite: pl.DataFrame, hour_map_myr: pl.DataFrame
 ) -> Result[dict[str, np.ndarray], str]:
     """Expand loadsite data to hourly increments and group by region."""
-    expanded_result = expand_loadsite_hourly(loadsite, hour_map_myr)
+    expanded_result = expand_keyed_grid(
+        loadsite,
+        hour_map_myr,
+        group_columns=["region"],
+        value_keys=["hour_period"],
+        grid_keys=["hour_period"],
+        order_columns=["sequential_hour"],
+        value_columns=["value"],
+        fill_values={"value": 0.0},
+        round_digits=5,
+    )
     if expanded_result.is_err():
         return Err(str(expanded_result.unwrap_err()))
 

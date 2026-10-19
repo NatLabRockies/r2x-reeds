@@ -103,16 +103,6 @@ def test_resolve_reserve_type_dict(test_context) -> None:
     assert result.is_ok()
 
 
-@pytest.mark.unit
-def test_get_storage_duration_dict(test_context) -> None:
-    """Test getter with dict input accessing numeric field."""
-    from r2x_reeds.getters import get_storage_duration
-
-    row: dict[str, Any] = {"storage_duration": 2.0}
-    result = get_storage_duration(row, context=test_context)
-    assert isinstance(result.is_ok() or result.is_err(), bool)
-
-
 # Row Accessor Pattern Tests - SimpleNamespace Input
 
 
@@ -164,16 +154,6 @@ def test_resolve_reserve_type_namespace(test_context) -> None:
     row = SimpleNamespace(reserve_type="SPINNING")
     result = resolve_reserve_type(row, context=test_context)
     assert result.is_ok()
-
-
-@pytest.mark.unit
-def test_get_storage_duration_namespace(test_context) -> None:
-    """Test getter with SimpleNamespace accessing numeric field."""
-    from r2x_reeds.getters import get_storage_duration
-
-    row = SimpleNamespace(storage_duration=2.0)
-    result = get_storage_duration(row, context=test_context)
-    assert isinstance(result.is_ok() or result.is_err(), bool)
 
 
 # Row Accessor Consistency Tests (dict vs namespace)

@@ -60,15 +60,15 @@ for the CSV files present in your run. The configured extension selects the
 reader, while the mapping selects the source. Rerun the parser alone and inspect
 regions, generators and demand before adding modifiers.
 
-When `use_degraded_capacity=True`, the parser selects the configured
-`online_capacity_degraded` dataset, packaged as HDF5 group `cap_deg_ivrt`. Verify
-that mapping's file and group exist. Set the flag to `False` only when the
-undegraded `online_capacity` source (`cap_ivrt`) is the intended modeling choice.
-The two capacity series need not have the same MW values.
+Choose the capacity series in the effective `file_mapping`: set the
+`generator_inputs` table's `source` to `online_capacity_degraded` (HDF5 group
+`cap_deg_ivrt`) or `online_capacity` (`cap_ivrt`). Verify the selected file and
+group exist. A missing selected source is an input error, not a request to use the
+other capacity series. The two series need not have the same MW values.
 
 ## `invalid HDF5 signature` or `file signature not found`
 
-The validation helper identifies an unreadable HDF5 binary, commonly an incomplete
+The mapped reader rejects an unreadable HDF5 binary, commonly an incomplete
 copy or mislabeled file. Check the actual mapped file, not only its extension:
 
 ```python
@@ -83,28 +83,33 @@ print(h5py.is_hdf5(path))
 the source run, then require `h5py.is_hdf5(path)` to return `True` and rerun parsing.
 A valid signature alone does not prove the required groups exist. A permission
 error is a different failure: verify read access to the reported path rather than
-replacing good data. See the
-[validation implementation and tests](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/tests/test_parser_checks.py).
+replacing good data. Source paths and input constraints are declared in
+[file_mapping](/r2x-reeds/reference/configuration/).
 
-## A requested year is absent, or `hour_map` validation fails
+## A requested year is absent
 
-The solve year selects capacity; the weather year selects hourly data. After the
-same `config` and `store` setup as the tutorial, inspect the mapped modeled years:
+The solve year selects capacity. The profile calendar uses
+`config.primary_weather_year`, the first configured weather year. After the same
+`config` and `store` setup as the tutorial, inspect the mapped modeled years:
 
 ```python
 print(store.read_data("modeled_years").collect())
-print(config.solve_year, config.weather_year)
+print(config.solve_year, config.primary_weather_year)
 ```
 
-Choose a solve year shown in that data. An error listing available weather years
-must be resolved against the run's own hour map and profiles, not by substituting
-the solve year. `hour_map file exists but contains no rows` and a missing `year`
-column are malformed-input failures. Restore the matching hour map from the run;
-do not delete it to force the parser's missing-file fallback. Rerun the parser,
-then inspect profile length, initial timestamp and hourly resolution as in
-[profile inspection](/r2x-reeds/tutorials/parse-run/#inspect-a-demand-profile).
-The Pacific example has 8,760 samples beginning in 2012; do not pad, truncate or
-relabel other calendars merely to match that example.
+Choose a solve year shown in that data. The configured `modeled_years` constraint
+checks solve-year coverage. Verify that the selected load and renewable sources
+contain the requested solve and weather years. Changing the solve year does not
+supply missing weather data.
+
+The generated profile calendar does not replace the `hour_map` or `hour_map_myr`
+inputs used by representative-period modifiers. Restore a missing or malformed
+mapping when a modifier requires it. No synthetic hour-map fallback is supplied.
+
+Rerun parsing, then inspect profile length, initial timestamp and hourly resolution
+as in [profile inspection](/r2x-reeds/tutorials/parse-run/#inspect-a-demand-profile).
+The Pacific example has 8,760 samples beginning in 2012. Do not relabel source
+calendars merely to match that example.
 
 ## Modifier succeeds but imports or purchaser loads are absent
 

@@ -11,7 +11,6 @@ import pytest
 from infrasys import Component
 
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator
-from r2x_reeds.parser_utils import get_technology_category
 
 pytestmark = [pytest.mark.integration]
 
@@ -44,13 +43,11 @@ def test_load_count_for_test_data(example_system) -> None:
     assert len(loads) == 11, "11 Load expected for test case."
 
 
-def test_renewable_generator_count(example_system, example_reeds_config) -> None:
+def test_renewable_generator_count(example_system) -> None:
     """Test expected renewable generator count for test_Pacific data."""
-    # Use classmethod API per migration guide
-    defaults = example_reeds_config.load_config()["defaults"]
     ren_gens = example_system.get_components(
         ReEDSGenerator,
-        filter_func=lambda comp: get_technology_category(comp.technology, defaults["tech_categories"]),
+        filter_func=lambda comp: comp.category in {"solar", "wind"},
     )
     assert len(list(ren_gens)) != 0.0
 

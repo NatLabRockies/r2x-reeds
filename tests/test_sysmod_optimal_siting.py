@@ -153,11 +153,11 @@ def test_optimal_siting_returns_err_when_expand_fails(
         },
     )
 
-    def _boom_expand(loadsite: pl.DataFrame, hour_map: pl.DataFrame):
-        del loadsite, hour_map
-        return Err("failed to expand")
+    def _boom_expand(values: pl.DataFrame, grid: pl.DataFrame, **kwargs: Any):
+        del values, grid, kwargs
+        return Err(ValueError("failed to expand"))
 
-    monkeypatch.setattr(optimal_siting, "expand_loadsite_hourly", _boom_expand)
+    monkeypatch.setattr(optimal_siting, "expand_keyed_grid", _boom_expand)
 
     result = optimal_siting.add_optimal_siting(
         system,
@@ -259,11 +259,11 @@ def test_load_and_prepare_frames_returns_none_on_empty_frames(monkeypatch: pytes
 
 
 def test_build_region_increments_empty_expand(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _mock_expand(loadsite: pl.DataFrame, hour_map: pl.DataFrame):
-        del loadsite, hour_map
+    def _mock_expand(values: pl.DataFrame, grid: pl.DataFrame, **kwargs: Any):
+        del values, grid, kwargs
         return Ok(pl.DataFrame({"region": [], "sequential_hour": [], "value": []}))
 
-    monkeypatch.setattr(optimal_siting, "expand_loadsite_hourly", _mock_expand)
+    monkeypatch.setattr(optimal_siting, "expand_keyed_grid", _mock_expand)
 
     result = optimal_siting._build_region_increments(pl.DataFrame(), pl.DataFrame())
     assert result.is_ok()

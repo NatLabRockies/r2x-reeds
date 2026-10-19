@@ -10,13 +10,14 @@
         "forced_outage_rate": "forced_outage_rate",
         "planned_outage_rate": "planned_outage_rate",
         "max_age": "maxage_years",
-        "vom_cost": "vom_price",
+        "vom_cost": "vom_cost",
         "fom_cost": "fom_cost",
         "capital_cost": "capital_cost",
         "heat_rate": "heat_rate",
         "fuel_type": "fuel_type",
         "fuel_price": "fuel_price",
-        "vintage": "vintage"
+        "vintage": "vintage",
+        "ext": "ext"
       },
       "getters": {
         "name": "build_generator_name",
@@ -52,7 +53,7 @@
         "category": "technology",
         "forced_outage_rate": "forced_outage_rate",
         "planned_outage_rate": "planned_outage_rate",
-        "max_age": "max_age",
+        "max_age": "maxage_years",
         "vom_cost": "vom_cost",
         "fom_cost": "fom_cost",
         "capital_cost": "capital_cost",
@@ -64,12 +65,12 @@
         "startup_cost": "startup_cost",
         "ramp_rate": "ramp_rate",
         "min_up_time": "min_up_time",
-        "min_down_time": "min_down_time"
+        "min_down_time": "min_down_time",
+        "ext": "ext"
       },
       "getters": {
         "name": "build_generator_name",
-        "region": "lookup_region",
-        "fuel_type": "get_fuel_type"
+        "region": "lookup_region"
       },
       "defaults": {
         "category": null,
@@ -105,7 +106,7 @@
         "category": "category",
         "forced_outage_rate": "forced_outage_rate",
         "planned_outage_rate": "planned_outage_rate",
-        "max_age": "max_age",
+        "max_age": "maxage_years",
         "vom_cost": "vom_cost",
         "fom_cost": "fom_cost",
         "capital_cost": "capital_cost",
@@ -115,7 +116,8 @@
         "capacity_factor_adjustment": "capacity_factor_adjustment",
         "max_capacity_factor": "max_capacity_factor",
         "supply_curve_cost": "supply_curve_cost",
-        "transmission_adder": "transmission_adder"
+        "transmission_adder": "transmission_adder",
+        "ext": "ext"
       },
       "getters": {
         "name": "build_generator_name",
@@ -154,7 +156,7 @@
         "category": "category",
         "forced_outage_rate": "forced_outage_rate",
         "planned_outage_rate": "planned_outage_rate",
-        "max_age": "max_age",
+        "max_age": "maxage_years",
         "vom_cost": "vom_cost",
         "fom_cost": "fom_cost",
         "capital_cost": "capital_cost",
@@ -163,7 +165,8 @@
         "round_trip_efficiency": "round_trip_efficiency",
         "energy_capacity": "energy_capacity",
         "capital_cost_energy": "capital_cost_energy",
-        "fom_cost_energy": "fom_cost_energy"
+        "fom_cost_energy": "fom_cost_energy",
+        "ext": "ext"
       },
       "getters": {
         "name": "build_generator_name",
@@ -178,8 +181,8 @@
         "fom_cost": null,
         "capital_cost": null,
         "vintage": null,
-        "storage_duration": null,
-        "round_trip_efficiency": null,
+        "storage_duration": 1.0,
+        "round_trip_efficiency": 1.0,
         "energy_capacity": null,
         "capital_cost_energy": null,
         "fom_cost_energy": null
@@ -201,17 +204,18 @@
         "category": "category",
         "forced_outage_rate": "forced_outage_rate",
         "planned_outage_rate": "planned_outage_rate",
-        "max_age": "max_age",
+        "max_age": "maxage_years",
         "vom_cost": "vom_cost",
         "fom_cost": "fom_cost",
         "capital_cost": "capital_cost",
         "vintage": "vintage",
-        "ramp_rate": "ramp_rate"
+        "ramp_rate": "ramp_rate",
+        "is_dispatchable": "is_dispatchable",
+        "ext": "ext"
       },
       "getters": {
         "name": "build_generator_name",
-        "region": "lookup_region",
-        "is_dispatchable": "compute_is_dispatchable"
+        "region": "lookup_region"
       },
       "defaults": {
         "category": null,
@@ -328,13 +332,21 @@
       "version": 1,
       "name": "reserve",
       "field_map": {
+        "name": "owner_name",
+        "reserve_type": "reserve_type",
+        "direction": "direction",
         "region": "region",
-        "duration": "duration",
-        "time_frame": "time_frame",
-        "vors": "vors"
+        "duration": "duration_seconds",
+        "time_frame": "time_frame_seconds",
+        "vors": "vors",
+        "or_load_percentage": "or_load_percentage",
+        "or_wind_percentage": "or_wind_percentage",
+        "or_pv_percentage": "or_pv_percentage",
+        "spin_cost": "spin_cost",
+        "reg_cost": "reg_cost",
+        "flex_cost": "flex_cost"
       },
       "getters": {
-        "name": "build_reserve_name",
         "reserve_type": "resolve_reserve_type",
         "direction": "resolve_reserve_direction",
         "region": "lookup_reserve_region"
@@ -343,7 +355,13 @@
         "direction": null,
         "time_frame": null,
         "vors": null,
-        "duration": null
+        "duration": null,
+        "or_load_percentage": null,
+        "or_wind_percentage": null,
+        "or_pv_percentage": null,
+        "spin_cost": null,
+        "reg_cost": null,
+        "flex_cost": null
       },
       "target": {
         "kind": "component",
@@ -352,6 +370,105 @@
         ],
         "duplicate_policy": "error"
       }
+    },
+    {
+      "version": 1,
+      "name": "resource_site",
+      "field_map": {
+        "technology": "technology",
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "capacity": "capacity",
+        "available_capacity": "available_capacity",
+        "capacity_factor": "capacity_factor",
+        "sc_gid": "sc_gid",
+        "bin": "bin",
+        "supply_curve_cost": "supply_curve_cost",
+        "existing_capacity": "existing_capacity",
+        "online_year": "online_year",
+        "retire_year": "retire_year"
+      },
+      "getters": {
+        "name": "build_resource_component_name",
+        "region": "lookup_region"
+      },
+      "defaults": {
+        "capacity": null,
+        "available_capacity": null,
+        "capacity_factor": null,
+        "sc_gid": null,
+        "bin": null,
+        "supply_curve_cost": null,
+        "existing_capacity": null,
+        "online_year": null,
+        "retire_year": null
+      },
+      "target": {
+        "kind": "component",
+        "component_types": ["ReEDSResourceSite"],
+        "duplicate_policy": "error"
+      },
+      "supplemental_attributes": [
+        {
+          "target_type": "GeographicInfo",
+          "field_map": {
+            "geo_json": ["latitude", "longitude", "name", "technology", "sc_point_gid", "resource_class", "year"]
+          },
+          "getters": {"geo_json": "build_resource_geo_json"},
+          "optional": true
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "name": "resource_build",
+      "field_map": {
+        "technology": "technology",
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "capacity": "capacity",
+        "available_capacity": "available_capacity",
+        "capacity_factor": "capacity_factor",
+        "sc_gid": "sc_gid",
+        "bin": "bin",
+        "supply_curve_cost": "supply_curve_cost",
+        "existing_capacity": "existing_capacity",
+        "online_year": "online_year",
+        "retire_year": "retire_year",
+        "year": "year",
+        "built_capacity": "built_capacity",
+        "investment_bool": "investment_bool"
+      },
+      "getters": {
+        "name": "build_resource_component_name",
+        "region": "lookup_region"
+      },
+      "defaults": {
+        "capacity": null,
+        "available_capacity": null,
+        "capacity_factor": null,
+        "sc_gid": null,
+        "bin": null,
+        "supply_curve_cost": null,
+        "existing_capacity": null,
+        "online_year": null,
+        "retire_year": null
+      },
+      "target": {
+        "kind": "component",
+        "component_types": ["ReEDSResourceBuild"],
+        "duplicate_policy": "error"
+      },
+      "supplemental_attributes": [
+        {
+          "target_type": "GeographicInfo",
+          "field_map": {
+            "geo_json": ["latitude", "longitude", "name", "technology", "sc_point_gid", "resource_class", "year"]
+          },
+          "getters": {"geo_json": "build_resource_geo_json"},
+          "optional": true
+        }
+      ]
     }
   ],
   "mapping_selections": [
@@ -551,8 +668,328 @@
       },
       "source": {
         "kind": "dataset",
-        "dataset": "load_profiles"
+        "dataset": "load_peaks"
       }
+    },
+    {
+      "version": 1,
+      "name": "load_profile",
+      "source": {
+        "kind": "dataset",
+        "dataset": "load_profile_rows"
+      },
+      "target": {
+        "kind": "time_series",
+        "name": "max_active_power",
+        "owner_type": "ReEDSDemand",
+        "owner_field": "owner_name",
+        "hour_column": "hour_index",
+        "value_column": "value",
+        "initial_timestamp_column": "datetime",
+        "resolution_seconds": 3600,
+        "metadata_columns": {"weather_year": "weather_year"}
+      }
+    },
+    {
+      "version": 1,
+      "name": "renewable_profile",
+      "source": {
+        "kind": "dataset",
+        "dataset": "renewable_profile_rows"
+      },
+      "target": {
+        "kind": "time_series",
+        "name": "max_active_power",
+        "owner_type": "ReEDSGenerator",
+        "owner_field": "owner_name",
+        "hour_column": "hour_index",
+        "value_column": "max_active_power",
+        "initial_timestamp_column": "datetime",
+        "resolution_seconds": 3600,
+        "metadata_columns": {"weather_year": "weather_year"}
+      }
+    },
+    {
+      "version": 1,
+      "name": "hydro_budget_profile",
+      "source": {"kind": "dataset", "dataset": "hydro_budget_rows"},
+      "target": {
+        "kind": "time_series",
+        "name": "hydro_budget",
+        "owner_type": "ReEDSHydroGenerator",
+        "owner_field": "owner_name",
+        "hour_column": "hour_index",
+        "value_column": "value",
+        "initial_timestamp_column": "timestamp",
+        "resolution_seconds": 3600,
+        "metadata_columns": {"solve_year": "solve_year", "weather_year": "weather_year"},
+        "expected_samples": 8760
+      }
+    },
+    {
+      "version": 1,
+      "name": "hydro_nondispatchable_profile",
+      "source": {"kind": "dataset", "dataset": "hydro_nondispatchable_rows"},
+      "target": {
+        "kind": "time_series",
+        "name": "max_active_power",
+        "owner_type": "ReEDSHydroGenerator",
+        "owner_field": "owner_name",
+        "hour_column": "hour_index",
+        "value_column": "value",
+        "initial_timestamp_column": "timestamp",
+        "resolution_seconds": 3600,
+        "metadata_columns": {"solve_year": "solve_year", "weather_year": "weather_year"},
+        "expected_samples": 8760
+      }
+    },
+    {
+      "version": 1,
+      "name": "hydro_adjustment_profile",
+      "source": {"kind": "dataset", "dataset": "hydro_adjustment_profile_rows"},
+      "target": {
+        "kind": "time_series",
+        "name": "max_active_power",
+        "owner_type": "ReEDSHydroGenerator",
+        "owner_field": "owner_name",
+        "hour_column": "hour_index",
+        "value_column": "max_active_power",
+        "initial_timestamp_column": "timestamp",
+        "resolution_seconds": 3600,
+        "metadata_columns": {"solve_year": "solve_year", "weather_year": "weather_year"},
+        "expected_samples": 8760
+      }
+    },
+    {
+      "version": 1,
+      "name": "reserve_profile",
+      "source": {"kind": "dataset", "dataset": "reserve_requirement_validated_rows"},
+      "target": {
+        "kind": "time_series",
+        "name": "requirement",
+        "owner_type": "ReEDSReserve",
+        "owner_field": "owner_name",
+        "hour_column": "hour_index",
+        "value_column": "requirement",
+        "initial_timestamp_column": "timestamp",
+        "resolution_seconds": 3600,
+        "metadata_columns": {"weather_year": "weather_year"},
+        "expected_samples": 8760
+      }
+    },
+    {
+      "version": 1,
+      "name": "reserve_region_components",
+      "source": {"kind": "dataset", "dataset": "reserve_component_regions"},
+      "target": {
+        "kind": "component",
+        "component_types": ["ReEDSReserveRegion"],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "reserve_region"
+    },
+    {
+      "version": 1,
+      "name": "reserve_components",
+      "source": {"kind": "dataset", "dataset": "reserve_component_rows"},
+      "target": {
+        "kind": "component",
+        "component_types": ["ReEDSReserve"],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "reserve"
+    },
+    {
+      "version": 1,
+      "name": "resource_site_csp",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_site_inputs_csp"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceSite"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_site"
+    },
+    {
+      "version": 1,
+      "name": "resource_build_csp",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_build_inputs_csp"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceBuild"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_build"
+    },
+    {
+      "version": 1,
+      "name": "resource_site_egs",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_site_inputs_egs"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceSite"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_site"
+    },
+    {
+      "version": 1,
+      "name": "resource_build_egs",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_build_inputs_egs"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceBuild"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_build"
+    },
+    {
+      "version": 1,
+      "name": "resource_site_geohydro",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_site_inputs_geohydro"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceSite"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_site"
+    },
+    {
+      "version": 1,
+      "name": "resource_build_geohydro",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_build_inputs_geohydro"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceBuild"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_build"
+    },
+    {
+      "version": 1,
+      "name": "resource_site_upv",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_site_inputs_upv"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceSite"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_site"
+    },
+    {
+      "version": 1,
+      "name": "resource_build_upv",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_build_inputs_upv"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceBuild"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_build"
+    },
+    {
+      "version": 1,
+      "name": "resource_site_wind-ons",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_site_inputs_wind-ons"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceSite"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_site"
+    },
+    {
+      "version": 1,
+      "name": "resource_build_wind-ons",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_build_inputs_wind-ons"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceBuild"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_build"
+    },
+    {
+      "version": 1,
+      "name": "resource_site_wind-ofs",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_site_inputs_wind-ofs"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceSite"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_site"
+    },
+    {
+      "version": 1,
+      "name": "resource_build_wind-ofs",
+      "source": {
+        "kind": "dataset",
+        "dataset": "resource_build_inputs_wind-ofs"
+      },
+      "target": {
+        "kind": "component",
+        "component_types": [
+          "ReEDSResourceBuild"
+        ],
+        "duplicate_policy": "error"
+      },
+      "mapping_ref": "resource_build"
     }
   ],
   "execution": [
@@ -563,6 +1000,27 @@
       ]
     },
     {
+      "name": "reserves",
+      "rules": ["reserve_region_components", "reserve_components"]
+    },
+    {
+      "name": "resources",
+      "rules": [
+        "resource_site_csp",
+        "resource_build_csp",
+        "resource_site_egs",
+        "resource_build_egs",
+        "resource_site_geohydro",
+        "resource_build_geohydro",
+        "resource_site_upv",
+        "resource_build_upv",
+        "resource_site_wind-ons",
+        "resource_build_wind-ons",
+        "resource_site_wind-ofs",
+        "resource_build_wind-ofs"
+      ]
+    },
+    {
       "name": "transmission",
       "rules": [
         "transmission_interface",
@@ -570,16 +1028,47 @@
       ]
     },
     {
+      "name": "loads",
+      "rules": [
+        "load"
+      ]
+    },
+    {
       "name": "emissions",
       "rules": [
         "emission"
       ]
+    },
+    {
+      "name": "profiles",
+      "rules": [
+        "load_profile",
+        "renewable_profile"
+      ]
+    },
+    {
+      "name": "hydro_profiles",
+      "rules": [
+        "hydro_budget_profile",
+        "hydro_nondispatchable_profile",
+        "hydro_adjustment_profile"
+      ]
+    },
+    {
+      "name": "reserve_profiles",
+      "rules": ["reserve_profile"]
     }
   ],
   "required_stages": [
     "regions",
+    "reserves",
+    "resources",
     "transmission",
-    "emissions"
+    "loads",
+    "emissions",
+    "profiles",
+    "hydro_profiles",
+    "reserve_profiles"
   ],
   "required_rules": [
     "region",
@@ -588,11 +1077,36 @@
     "emission",
     "base_generator",
     "load",
+    "load_profile",
+    "renewable_profile",
+    "hydro_budget_profile",
+    "hydro_nondispatchable_profile",
+    "hydro_adjustment_profile",
+    "reserve_profile",
     "reserve_region",
-    "reserve"
+    "reserve",
+    "reserve_region_components",
+    "reserve_components",
+    "resource_site_csp",
+    "resource_build_csp",
+    "resource_site_egs",
+    "resource_build_egs",
+    "resource_site_geohydro",
+    "resource_build_geohydro",
+    "resource_site_upv",
+    "resource_build_upv",
+    "resource_site_wind-ons",
+    "resource_build_wind-ons",
+    "resource_site_wind-ofs",
+    "resource_build_wind-ofs"
   ],
   "required_datasets": [
     "hierarchy",
-    "load_profiles"
+    "load_peaks",
+    "load_profile_rows",
+    "renewable_profile_rows",
+    "hydro_budget_rows",
+    "hydro_nondispatchable_rows",
+    "reserve_requirement_validated_rows"
   ]
 }
