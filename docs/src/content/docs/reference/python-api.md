@@ -49,35 +49,36 @@ run-root paths. The example compares `county2zone.csv` from the left run with
 `r_county.csv` from the right run. Set `run_b = run_a` to inspect two mapping
 files in one run.
 
-```python
-from pathlib import Path
-
-from r2x_reeds import RegionAlignmentPolicy, align_regions, load_county_membership
-
-run_a = Path.cwd()
-run_b = run_a  # Replace with another run root to compare two runs.
-
-left = load_county_membership(run_a / "inputs_case" / "county2zone.csv")
-right = load_county_membership(run_b / "inputs_case" / "r_county.csv")
-
-alignment = align_regions(
-	left,
-	right,
-	policy=RegionAlignmentPolicy.NESTED,
-	require_complete=True,
-	# Treat the left mapping as the expected county set. For independent
-	# completeness validation, provide a trusted reference county universe.
-	county_universe=left.county_to_region,
-)
-
-print(f"Coverage: left={alignment.left_coverage:.1%}, right={alignment.right_coverage:.1%}")
-print(f"Region relationship: {alignment.resolution}")
-print(f"Unmatched left regions: {alignment.unmatched_left_regions}")
-print(f"Unmatched right regions: {alignment.unmatched_right_regions}")
-
-for match in alignment.matched_regions:
-	if match.left_region != match.right_region:
-		print(f"{match.left_region} -> {match.right_region}: {match.counties}")
+```python doctest
+>>> from pathlib import Path
+>>> from tempfile import TemporaryDirectory
+>>> from r2x_reeds import RegionAlignmentPolicy, align_regions, load_county_membership
+>>> scratch = TemporaryDirectory()
+>>> run_a = Path(scratch.name) / "run_a"
+>>> run_b = Path(scratch.name) / "run_b"
+>>> (run_a / "inputs_case").mkdir(parents=True)
+>>> (run_b / "inputs_case").mkdir(parents=True)
+>>> _ = (run_a / "inputs_case/county2zone.csv").write_text(
+...     "FIPS,ba,county_name,state\n53007,p1,chelan,WA\n53029,p1,island,WA\n"
+... )
+>>> _ = (run_b / "inputs_case/r_county.csv").write_text(
+...     "r,county\np53007,p53007\np53029,p53029\n"
+... )
+>>> left = load_county_membership(run_a / "inputs_case/county2zone.csv")
+>>> right = load_county_membership(run_b / "inputs_case/r_county.csv")
+>>> alignment = align_regions(
+...     left,
+...     right,
+...     policy=RegionAlignmentPolicy.NESTED,
+...     require_complete=True,
+...     county_universe=left.county_to_region,
+... )
+>>> (alignment.left_coverage, alignment.right_coverage, alignment.resolution.value)
+(1.0, 1.0, 'left_coarser')
+>>> [(match.left_region, match.right_region, match.counties) for match in alignment.matched_regions]
+[('p1', 'p53007', ('53007',)), ('p1', 'p53029', ('53029',))]
+>>> left.county_labels['53007']
+'chelan'
 ```
 
 This is useful before comparing or translating region-indexed inputs: it shows
