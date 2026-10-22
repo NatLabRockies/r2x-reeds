@@ -21,7 +21,7 @@ ReEDS run with matching input and output data; this package does not run ReEDS.
 | Look up fields and APIs | [Reference](/r2x-reeds/reference/)                                      |
 | Understand data flow    | [Explanation](/r2x-reeds/explanation/architecture/)                     |
 | Diagnose a failure      | [Troubleshooting](/r2x-reeds/troubleshooting/)                          |
-| Review changes          | [Changelog](/r2x-reeds/changelog/) and [versions](/r2x-reeds/versions/) |
+| Review changes          | [Changelog](/r2x-reeds/changelog/) and [source tags](https://github.com/NatLabRockies/r2x-reeds/tags) |
 
 See [PyPI](https://pypi.org/project/r2x-reeds/) for current package releases and
 [contributors](/r2x-reeds/contributors/) for development checks.

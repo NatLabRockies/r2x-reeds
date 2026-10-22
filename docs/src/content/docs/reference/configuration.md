@@ -21,7 +21,7 @@ the parser validates mapped data during its lifecycle.
 The CLI's `path` locates the data store. It is **not** a `ReEDSConfig` field in
 Python: pass it to `DataStore.from_plugin_config(config, path=run_path)` instead.
 See the [tested parsing tutorial](/r2x-reeds/tutorials/parse-run/) for the complete
-context construction and [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/plugin_config.py).
+context construction and [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/plugin_config.py).
 
 `ReEDSConfig` is the parser configuration model.
 

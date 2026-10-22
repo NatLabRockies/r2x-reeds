@@ -11,8 +11,7 @@ Follow [environment setup](/r2x-reeds/getting-started/environment/) to create an
 from [PyPI](https://pypi.org/project/r2x-reeds/):
 
 ```bash
-python -m pip install r2x-reeds
-python -m pip show r2x-reeds
+python -m pip install r2x-reeds && python -m pip show r2x-reeds
 ```
 
 Follow the [fixture tutorial](/r2x-reeds/tutorials/parse-run/) for the separate data download. Fixtures are not installed package
@@ -27,11 +26,19 @@ Install [r2x-cli](https://github.com/NatLabRockies/r2x-cli#install) and check it
 managed Python before installing the plugin:
 
 ```bash
-r2x --version
-r2x python show
+r2x --version && r2x python show
+```
+
+Install the package into the managed runtime. This changes that environment:
+
+```bash
 r2x install r2x-reeds
-r2x list r2x-reeds
-r2x run reeds-parser --help
+```
+
+Verify discovery and inspect parser options without running a pipeline:
+
+```bash
+r2x list r2x-reeds && r2x run reeds-parser --help
 ```
 
 If the CLI reports missing managed Python, use `r2x python install` before installing

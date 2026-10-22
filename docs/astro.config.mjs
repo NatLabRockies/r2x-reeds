@@ -1,13 +1,17 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import mermaid from "astro-mermaid";
+import apiSidebar from "./src/generated/api-sidebar.json";
 import { unified } from "@astrojs/markdown-remark";
 
 export default defineConfig({
   outDir: "./_build",
   site: "https://natlabrockies.github.io",
   base: "/r2x-reeds/",
-  redirects: { "/how-to/install/": "/r2x-reeds/getting-started/installation/" },
+  redirects: {
+    "/how-to/install/": "/r2x-reeds/getting-started/installation/",
+    "/versions/": "/r2x-reeds/changelog/",
+  },
   markdown: { processor: unified() },
   integrations: [
     mermaid({
@@ -90,7 +94,11 @@ export default defineConfig({
           items: [
             {
               label: "Python API",
-              link: "/reference/python-api/",
+              collapsed: true,
+              items: [
+                { label: "Overview", link: "/reference/python-api/" },
+                ...apiSidebar,
+              ],
             },
             {
               label: "Configuration",

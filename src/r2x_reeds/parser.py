@@ -246,18 +246,18 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
     Examples
     --------
-    Build a ReEDS system from test data:
+    After preparing the public Pacific fixture as described in the tutorial,
+    run from the tutorial workspace. Parsing can upgrade the working input copy.
 
     >>> from pathlib import Path
     >>> from r2x_core import PluginContext, DataStore
-    >>> from r2x_reeds import ReEDSConfig, ReEDSParser
-    >>>
-    >>> config = ReEDSConfig(solve_year=2030, weather_year=2012, case_name="High_Renewable")
-    >>> store = DataStore(path=Path("tests/data/test_Pacific"))
+    >>> from r2x_reeds import ReEDSConfig, ReEDSParser, ReEDSRegion
+    >>> config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    >>> store = DataStore.from_plugin_config(config, path=Path("tutorial-inputs/test_Pacific"))
     >>> ctx = PluginContext(config=config, store=store)
-    >>> parser = ReEDSParser.from_context(ctx)
-    >>> result_ctx = parser.run()
-    >>> system = result_ctx.system
+    >>> system = ReEDSParser.from_context(ctx).run().system
+    >>> assert system is not None
+    >>> assert len(list(system.get_components(ReEDSRegion))) == 11
 
     Notes
     -----

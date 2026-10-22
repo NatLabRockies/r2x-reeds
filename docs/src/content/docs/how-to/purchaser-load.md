@@ -34,51 +34,38 @@ For the ReEDS electricity-consuming technologies handled here (`electrolyzer`, `
 - `solve_year`
 - `weather_year`
 
-## Example
+<span id="example"></span>
 
-```python
-from pathlib import Path
+## Check a small data-center profile
 
-from r2x_core import DataStore, PluginContext
-from r2x_reeds import ReEDSConfig, ReEDSParser
-from r2x_reeds.sysmod.purchaser_load import PurchaserLoadConfig, add_purchaser_load
+Continue from the fixture tutorial in the same Python session. This three-hour
+synthetic example creates a separate data-center component in region `p1`.
+It demonstrates the input contract and is not a complete annual demand case.
+For hydrogen-production inputs, use the configuration reference and PCM handoff
+schemas above.
 
-run_path = Path("path/to/reeds_run")
-
-config = ReEDSConfig(
-    solve_year=2032,
-    weather_year=2012,
-    case_name="test",
-    scenario="base",
-)
-ctx = PluginContext(
-    config=config,
-    store=DataStore.from_plugin_config(config, path=run_path),
-)
-
-system = ReEDSParser.from_context(ctx).run().system
-if system is None:
-    raise RuntimeError("Parser returned no system")
-
-purchaser_cfg = PurchaserLoadConfig(
-    solve_year=2032,
-    weather_year=2012,
-    hour_map_myr_fpath=run_path / "inputs_case/rep/hmap_myr.csv",
-    hydrogen_production_capacity_fpath=run_path / "outputs/cap.csv",
-    consume_characteristics_fpath=run_path / "inputs_case/consume_char.csv",
-    hydrogen_production_load_fpath=run_path / "outputs/prod_load.csv",
-    hydrogen_production_annual_load_fpath=run_path / "outputs/prod_load_ann.csv",
-    loadsite_op_fpath=run_path / "outputs/loadsite_op.csv",
-)
-
-result = add_purchaser_load(system, purchaser_cfg)
-if result.is_err():
-    raise RuntimeError(result.unwrap_err())
-
-system = result.unwrap()
+```python doctest
+>>> from pathlib import Path
+>>> from tempfile import TemporaryDirectory
+>>> import polars as pl
+>>> from numpy.testing import assert_allclose
+>>> from r2x_reeds import ReEDSDataCenterDemand
+>>> from r2x_reeds.sysmod.purchaser_load import PurchaserLoadConfig, add_purchaser_load
+>>> with TemporaryDirectory() as folder:
+...     policy = Path(folder)
+...     pl.DataFrame({"yearhour": [1, 2, 3], "h": ["h1", "h2", "h3"]}).write_csv(policy / "hours.csv")
+...     pl.DataFrame({"r": ["p1", "p1", "p1"], "allh": ["h1", "h2", "h3"], "t": [2032, 2032, 2032], "Value": [5.0, 6.0, 7.0]}).write_csv(policy / "sites.csv")
+...     purchaser_cfg = PurchaserLoadConfig(solve_year=2032, weather_year=2012, hour_map_myr_fpath=policy / "hours.csv", loadsite_op_fpath=policy / "sites.csv")
+...     result = add_purchaser_load(system, purchaser_cfg)
+...     assert result.is_ok(), result.unwrap_err()
+...     demand = system.get_component(ReEDSDataCenterDemand, "p1_data_center_demand")
+...     assert demand.capacity == 7.0
+...     series = system.get_time_series(demand, name="max_active_power")
+...     assert_allclose(series.data, [5.0, 6.0, 7.0])
+...
 ```
 
-Inspect `list(system.get_components(ReEDSDataCenterDemand))` after importing that
-class from `r2x_reeds` when your input includes data-center load. Empty or omitted
-optional datasets need not produce new components. Compare the component names
-and profiles with the source files before exporting.
+The assertions check both component capacity and actual profile values. The
+original electric-demand component remains separate. For a production run,
+reconcile its complete year with the selected weather calendar and avoid adding
+the same site increments through `add-optimal-siting`.
