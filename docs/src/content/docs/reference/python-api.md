@@ -24,6 +24,78 @@ mechanism. The hooks themselves return `rust_ok.Result`, not the context.
 Source: [parser](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/parser.py),
 [config](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/plugin_config.py).
 
+## County membership and region alignment
+
+Import `load_county_membership`, `CountyMembership` and `align_regions` from
+`r2x_reeds`. The loader accepts ReEDS `county2zone.csv` files with `FIPS` and
+`ba` columns (and optional `county_name`) and `r_county.csv` files with `r` and
+`county` columns. County identifiers are normalized to five-digit FIPS keys;
+region labels and available county display labels remain available on the
+membership as `region_to_counties`, `county_to_region` and `county_labels`.
+
+`align_regions(left, right)` matches counties by normalized FIPS and returns
+region-pair matches with contributing counties, unmatched region labels, and
+per-run county coverage fractions. A balancing area can therefore match
+multiple county-level regions without choosing a direction-dependent hierarchy.
+Partial coverage is reported by default. Pass `require_complete=True` to raise
+`RegionAlignmentError` when either membership contains a county absent from the
+other. Duplicate assignments and counties assigned to multiple regions raise
+`CountyMembershipError` with the affected FIPS and source row.
+
+### Example
+
+Run this from a ReEDS run directory, or set `run_a` and `run_b` to the actual
+run-root paths. The example compares `county2zone.csv` from the left run with
+`r_county.csv` from the right run. Set `run_b = run_a` to inspect two mapping
+files in one run.
+
+```python
+from pathlib import Path
+
+from r2x_reeds import RegionAlignmentPolicy, align_regions, load_county_membership
+
+run_a = Path.cwd()
+run_b = run_a  # Replace with another run root to compare two runs.
+
+left = load_county_membership(run_a / "inputs_case" / "county2zone.csv")
+right = load_county_membership(run_b / "inputs_case" / "r_county.csv")
+
+alignment = align_regions(
+	left,
+	right,
+	policy=RegionAlignmentPolicy.NESTED,
+	require_complete=True,
+	# Treat the left mapping as the expected county set. For independent
+	# completeness validation, provide a trusted reference county universe.
+	county_universe=left.county_to_region,
+)
+
+print(f"Coverage: left={alignment.left_coverage:.1%}, right={alignment.right_coverage:.1%}")
+print(f"Region relationship: {alignment.resolution}")
+print(f"Unmatched left regions: {alignment.unmatched_left_regions}")
+print(f"Unmatched right regions: {alignment.unmatched_right_regions}")
+
+for match in alignment.matched_regions:
+	if match.left_region != match.right_region:
+		print(f"{match.left_region} -> {match.right_region}: {match.counties}")
+```
+
+This is useful before comparing or translating region-indexed inputs: it shows
+whether the county sets have complete coverage and whether region partitions
+are identical, nested, or crossing. The matched county lists make aggregation
+paths explicit. It does not aggregate load profiles or other numerical data;
+use the crosswalk to guide that separate operation.
+
+The `policy` argument makes the allowed relationship explicit: `"crosswalk"`
+allows any county-based overlap, `"nested"` allows aggregation in either
+direction but rejects crossing region boundaries, and `"same_partition"`
+requires identical county groupings (region labels may differ). The result's
+`resolution` reports `same_partition`, `left_coarser`, `right_coarser` or
+`crossing`; it is `None` when county coverage is incomplete. Strict policies
+require complete coverage. To check completeness against geography omitted from
+both inputs, pass `county_universe=` with FIPS keys from a trusted complete
+reference mapping; each input must match that expected set exactly.
+
 ## Components and enumerations
 
 The package exports `ReEDSRegion`, `ReEDSGenerator`, thermal, variable, hydro and
