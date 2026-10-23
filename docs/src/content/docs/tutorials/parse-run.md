@@ -28,8 +28,8 @@ Target conversion is a later step performed by [R2X translation plugins](https:/
 Complete [installation](/r2x-reeds/getting-started/installation/),
 [environment setup](/r2x-reeds/getting-started/environment/) and
 [verification](/r2x-reeds/getting-started/verify/). Keep that environment active and
-work in your empty `reeds-example` directory. This tutorial was tested with the
-published `r2x-reeds` 0.9.3 and `r2x-core` 0.9.0. No source checkout is required.
+work in your empty `reeds-example` directory. The examples use the public parser lifecycle and the `r2x-core` dependency
+specified by this checkout.
 
 ## Download sample data separately
 
@@ -80,7 +80,7 @@ config = ReEDSConfig(
     weather_year=2012,
     case_name="Pacific-2032",
 )
-store = DataStore.from_plugin_config(config, path=run_path)
+store = DataStore(path=run_path)
 context = PluginContext(config=config, store=store)
 system = ReEDSParser.from_context(context).run().system
 if system is None:
@@ -192,5 +192,4 @@ or [ReEDS to Sienna](https://natlabrockies.github.io/R2X/how-to/reeds-to-sienna/
 Those workflows add a translator and target exporter after the parser; the
 serialized ReEDS JSON above is not either target's native format.
 
-This tutorial was executed with the published r2x-reeds 0.9.3 package and r2x-core 0.9.0.
 The count/profile/reload checks apply to this fixture revision and selected years.

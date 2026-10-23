@@ -16,8 +16,9 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSGenerator
+from r2x_reeds.sysmod.utils import read_tabular_frame
 
 
 class ImportsConfig(PluginConfig):
@@ -121,7 +122,7 @@ def _prepare_daily_import_fractions(
 
 
 @expose_plugin
-def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
+def add_imports(system: System, config: ImportsConfig) -> Result[System, Exception]:
     """Add Canadian imports time series to the system.
 
     This function adds time series data for Canadian imports generators,
@@ -136,8 +137,8 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
 
     Returns
     -------
-    Result[System, str]
-        The updated system object or an error message.
+    Result[System, Exception]
+        The updated system object or the original input or processing error.
     """
     if config.weather_year is None:
         logger.warning("Weather year not specified. Skipping imports plugin.")
@@ -156,21 +157,9 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
     logger.info("Adding imports time series...")
 
     try:
-        # Load required data files using DataStore helper
-        hour_map = DataStore.load_file(config.hour_map_fpath, name="hour_map")
-        szn_frac = DataStore.load_file(config.canada_szn_frac_fpath, name="canada_szn_frac")
-        total_imports = DataStore.load_file(config.canada_imports_fpath, name="canada_imports")
-
-        if hour_map is None or szn_frac is None or total_imports is None:
-            logger.warning("Imports input data could not be loaded. Skipping imports plugin.")
-            return Ok(system)
-
-        if hour_map is not None:
-            hour_map = hour_map.collect()
-        if szn_frac is not None:
-            szn_frac = szn_frac.collect()
-        if total_imports is not None:
-            total_imports = total_imports.collect()
+        hour_map = read_tabular_frame(config.hour_map_fpath, name="hour_map")
+        szn_frac = read_tabular_frame(config.canada_szn_frac_fpath, name="canada_szn_frac")
+        total_imports = read_tabular_frame(config.canada_imports_fpath, name="canada_imports")
 
         if "*szn" in szn_frac.columns:
             szn_frac = szn_frac.rename({"*szn": "season"})
@@ -226,8 +215,8 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
             logger.debug("Added imports time series to generator: {}", generator.name)
 
         logger.info("Finished adding imports time series")
-    except Exception as e:
-        logger.error("Error in imports plugin: {}", e)
-        return Err(str(e))
+    except Exception as error:
+        logger.error("Error in imports plugin: {}", error)
+        return Err(error)
 
     return Ok(system)

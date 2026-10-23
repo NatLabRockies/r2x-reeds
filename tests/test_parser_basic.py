@@ -17,7 +17,7 @@ import pytest
 
 from tests.fixtures.data_fixtures import package_file_mapping
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 if TYPE_CHECKING:
     pass

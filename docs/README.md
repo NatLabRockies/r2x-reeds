@@ -26,7 +26,7 @@ Current API pages link to the verified main revision; edit links target main.
 
 There are no fabricated release archives or release metadata files.
 The versions page links to Git tags so readers can inspect actual tagged source docs.
-Keep `CHANGELOG.md` canonical and link to the unversioned PyPI project page.
+Use `CHANGELOG.md` as the project release history and link to the unversioned PyPI project page.
 
 Legacy Sphinx `.html` URLs are static redirect files in `public/`. The homepage
 continues to serve `index.html`; its existing URL needs no redirect.

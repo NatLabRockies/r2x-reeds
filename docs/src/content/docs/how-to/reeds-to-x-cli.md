@@ -27,8 +27,8 @@ config:
     case_name: example
 ```
 
-`path` supplies the CLI data-store root. It is not a `ReEDSConfig` field in Python;
-Python callers pass it to `DataStore.from_plugin_config`.
+`path` supplies the CLI data-store root. In Python, pass the run root to
+`DataStore(path=run_path)` and include that store in the `PluginContext`.
 Use one solve year and one weather year for this pipeline. The Python config
 accepts lists; downstream packages can impose narrower limits.
 

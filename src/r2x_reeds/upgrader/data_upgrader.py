@@ -100,65 +100,50 @@ class ReEDSUpgrader:
         strategy: VersionStrategy | None = None,
         upgrader_context: dict[str, object] | None = None,
         upgrade_type: UpgradeType = UpgradeType.FILE,
-    ) -> Result[Path, str]:
-        """Run ReEDS upgrade steps for the configured folder.
-
-        Parameters
-        ----------
-        current_version : str | None, optional
-            Override for the detected version. If None, use the version reader.
-        target_version : str | None, optional
-            Optional target version to stop upgrades at. If None, run all eligible steps.
-        strategy : VersionStrategy | None, optional
-            Optional version comparison strategy override.
-        upgrader_context : dict[str, object] | None, optional
-            Context passed to upgrade steps that accept `upgrader_context`.
-        upgrade_type : UpgradeType, optional
-            Upgrade type to apply (FILE or SYSTEM). Defaults to FILE.
-
-        Returns
-        -------
-        Result[Path, str]
-            Ok(path) when upgrades succeed, Err with message on failure.
-        """
+    ) -> Result[Path, Exception]:
+        """Run ReEDS upgrade steps, retaining expected failures as exceptions."""
         try:
             resolved_version = current_version or self.version_reader.read_version(self.path)
-        except FileNotFoundError as exc:
-            return Err(str(exc))
+        except OSError as error:
+            return Err(error)
 
         if resolved_version is None:
-            return Err("ReEDS version could not be determined from meta.csv.")
+            msg = "ReEDS version could not be determined from meta.csv."
+            return Err(ValueError(msg))
 
         active_strategy = strategy or self.version_strategy
-
-        data: Path = self.path
+        data = self.path
         for step in sorted(self.steps, key=lambda item: (item.priority, item.name)):
             if step.upgrade_type is not upgrade_type:
                 continue
 
             if target_version is not None and active_strategy is not None:
                 try:
-                    if active_strategy.compare_versions(step.target_version, target=target_version) > 0:
-                        continue
-                except Exception as exc:
-                    return Err(f"Invalid target_version '{target_version}': {exc}")
+                    target_is_after_step = (
+                        active_strategy.compare_versions(step.target_version, target=target_version) > 0
+                    )
+                except ValueError as error:
+                    return Err(error)
+                if target_is_after_step:
+                    continue
 
             try:
                 decision = shall_we_upgrade(step, current_version=resolved_version, strategy=active_strategy)
-            except Exception as exc:
-                return Err(str(exc))
+            except ValueError as error:
+                return Err(error)
             if decision.is_err():
-                return Err(str(decision.err()))
-            if not decision.unwrap():
+                return Err(decision.err())
+            if not decision.value:
                 continue
 
             result = run_upgrade_step(data, step=step, upgrader_context=upgrader_context)
             if result.is_err():
                 return Err(result.err())
 
-            upgraded = result.unwrap()
+            upgraded = result.value
             if not isinstance(upgraded, Path):
-                return Err(f"Upgrade step {step.name} did not return a Path")
+                msg = f"Upgrade step {step.name} did not return a Path"
+                return Err(TypeError(msg))
             data = upgraded
 
         return Ok(data)
@@ -168,17 +153,18 @@ def run_reeds_upgrades(
     *,
     store: DataStore,
     ctx: PluginContext["ReEDSConfig"],
-) -> Result[None, str]:
-    """Run ReEDS file upgrades using the plugin context."""
+) -> Result[None, Exception]:
+    """Run ReEDS file upgrades while preserving original exception values."""
     upgrader = ReEDSUpgrader(store.folder)
     current_version = ctx.current_version
     if current_version is None:
         try:
             current_version = upgrader.version_reader.read_version(store.folder)
-        except FileNotFoundError as exc:
-            return Err(str(exc))
+        except OSError as error:
+            return Err(error)
         if current_version is None:
-            return Err("ReEDS version could not be determined from meta.csv.")
+            msg = "ReEDS version could not be determined from meta.csv."
+            return Err(ValueError(msg))
         ctx.current_version = current_version
 
     result = upgrader.upgrade(
@@ -187,5 +173,5 @@ def run_reeds_upgrades(
         strategy=ctx.version_strategy,
     )
     if result.is_err():
-        return Err(str(result.err()))
+        return Err(result.err())
     return Ok(None)

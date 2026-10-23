@@ -16,7 +16,7 @@ from r2x_reeds.models.components import (
 )
 from r2x_reeds.sysmod import purchaser_load
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system() -> tuple[System, ReEDSRegion, ReEDSRegion]:

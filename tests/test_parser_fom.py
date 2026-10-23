@@ -12,7 +12,7 @@ from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models.components import ReEDSGenerator
 from tests.fixtures.data_fixtures import csv_file_mapping
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.mark.parametrize(

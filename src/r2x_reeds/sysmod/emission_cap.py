@@ -10,10 +10,11 @@ import polars as pl
 from infrasys import System
 from loguru import logger
 from pydantic import Field
-from rust_ok import Ok, Result
+from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator
+from r2x_reeds.sysmod.utils import read_tabular_frame
 from r2x_reeds.models.enums import EmissionType
 
 
@@ -43,7 +44,7 @@ class EmissionCapConfig(PluginConfig):
 def add_emission_cap(
     system: System,
     config: EmissionCapConfig,
-) -> Result[System, str]:
+) -> Result[System, Exception]:
     """Apply an emission cap constraint for the system.
 
     This function adds to the system a constraint object that is used to set the maximum
@@ -58,8 +59,8 @@ def add_emission_cap(
 
     Returns
     -------
-    Result[System, str]
-        The updated system object or an error message.
+    Result[System, Exception]
+        The updated system object or the original input or processing error.
 
     Notes
     -----
@@ -87,28 +88,23 @@ def add_emission_cap(
     emission_cap = config.emission_cap
     if emission_cap is None and config.co2_cap_fpath is not None:
         try:
-            co2_cap_data = DataStore.load_file(config.co2_cap_fpath, name="co2_cap")
-            if co2_cap_data is not None:
-                co2_cap_data = co2_cap_data.collect()
-            if co2_cap_data is not None and not co2_cap_data.is_empty():
+            co2_cap_data = read_tabular_frame(config.co2_cap_fpath, name="co2_cap")
+            if not co2_cap_data.is_empty():
                 emission_cap = co2_cap_data["value"].item()
-                logger.debug(f"Loaded emission cap from file: {emission_cap}")
-        except Exception as e:
-            logger.warning(f"Failed to extract emission cap value: {e}")
+                logger.debug("Loaded emission cap from file: {}", emission_cap)
+        except Exception as error:
+            logger.error("Failed to extract emission cap value: {}", error)
+            return Err(error)
 
     # Check for precombustion emissions if data files provided
     if config.switches_fpath is not None and config.emission_rates_fpath is not None:
         try:
-            switches = DataStore.load_file(config.switches_fpath, name="switches")
-            emit_rates = DataStore.load_file(config.emission_rates_fpath, name="emission_rates")
-            if switches is not None:
-                switches = switches.collect()
-            if emit_rates is not None:
-                emit_rates = emit_rates.collect()
-            if switches is not None and emit_rates is not None:
-                _add_precombustion_if_enabled(system, switches, emit_rates)
-        except Exception as e:
-            logger.debug(f"Could not process precombustion emissions: {e}")
+            switches = read_tabular_frame(config.switches_fpath, name="switches")
+            emit_rates = read_tabular_frame(config.emission_rates_fpath, name="emission_rates")
+        except Exception as error:
+            logger.error("Could not read precombustion inputs: {}", error)
+            return Err(error)
+        _add_precombustion_if_enabled(system, switches, emit_rates)
 
     system = set_emission_constraint(system, emission_cap, config.default_unit, emission_object)
     return Ok(system)

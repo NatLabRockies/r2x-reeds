@@ -10,5 +10,5 @@ To inspect documentation shipped with a release, choose its tag in the
 `README.md` and `docs/` at that tag. Those are source documents, not historical site builds.
 
 See the [unversioned PyPI project page](https://pypi.org/project/r2x-reeds/) for package release information
-and the [canonical changelog](https://github.com/NatLabRockies/r2x-reeds/blob/main/CHANGELOG.md) for changes.
+and the [project changelog](https://github.com/NatLabRockies/r2x-reeds/blob/main/CHANGELOG.md) for changes.
 Compare the documentation revision with your installed package before copying examples.

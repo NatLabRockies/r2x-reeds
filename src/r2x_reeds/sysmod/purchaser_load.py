@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TypeVar
 
-import h5py
 import numpy as np
 import polars as pl
 from infrasys import Component, SingleTimeSeries, System
@@ -14,13 +13,15 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expand_keyed_grid, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
+from r2x_core.exceptions import ReaderError
 from r2x_reeds.models.components import (
     ReEDSDataCenterDemand,
     ReEDSElectrolyzerDemand,
     ReEDSRegion,
     ReEDSSteamMethaneReformingDemand,
 )
+from r2x_reeds.sysmod.utils import read_tabular_frame
 
 TComponent = TypeVar("TComponent", bound=Component)
 HYDROGEN_PRODUCTION_COMPONENT_TYPES = {
@@ -75,62 +76,12 @@ class PurchaserLoadConfig(PluginConfig):
 
 
 def _read_optional_frame(path: Path | str | None, name: str) -> pl.DataFrame | None:
-    """Load an optional CSV/HDF-backed frame and collect it eagerly.
-
-    Parameters
-    ----------
-    path : Path | str | None
-        Input path to load. If ``None``, returns ``None``.
-    name : str
-        Logical dataset name used for DataStore reader selection.
-
-    Returns
-    -------
-    pl.DataFrame | None
-        Collected DataFrame if available, otherwise ``None``.
-    """
+    """Read a configured input, returning None only when no path was supplied."""
     if path is None:
         return None
-    path = Path(path)
-    if path.suffix.lower() in {".h5", ".hdf5"}:
-        dataset_key = H5_DATASET_KEYS.get(name, name)
-        with h5py.File(path, mode="r") as h5_file:
-            group = h5_file.get(dataset_key)
-            if not isinstance(group, h5py.Group):
-                logger.warning("Dataset '{}' not found in {}", dataset_key, path)
-                return None
-
-            columns_node = group.get("columns")
-            if columns_node is None:
-                logger.warning("Dataset '{}' is missing 'columns' in {}", dataset_key, path)
-                return None
-
-            columns = [_decode_h5_scalar(value) for value in np.asarray(columns_node[()]).tolist()]
-            data: dict[str, list[object]] = {}
-            for column in columns:
-                node = group.get(str(column))
-                if node is None:
-                    logger.warning("Dataset '{}' is missing column '{}' in {}", dataset_key, column, path)
-                    return None
-                values = np.asarray(node[()])
-                if values.ndim == 0:
-                    values = values.reshape(1)
-                data[str(column)] = [_decode_h5_scalar(value) for value in values.tolist()]
-            return pl.DataFrame(data, strict=False)
-
-    frame = DataStore.load_file(path, name=name)
-    if frame is None:
-        return None
-    return frame.collect()
-
-
-def _decode_h5_scalar(value: object) -> object:
-    """Decode byte-valued HDF5 columns to strings."""
-    if isinstance(value, bytes):
-        return value.decode("utf-8")
-    if isinstance(value, np.bytes_):
-        return value.tobytes().decode("utf-8")
-    return value
+    input_path = Path(path)
+    dataset_key = H5_DATASET_KEYS.get(name) if input_path.suffix.lower() in {".h5", ".hdf5"} else None
+    return read_tabular_frame(input_path, name=name, hdf5_group=dataset_key)
 
 
 def _normalize_hour_map_myr(frame: pl.DataFrame) -> pl.DataFrame:
@@ -228,7 +179,7 @@ def _component_exists(system: System, component_type: type[TComponent], name: st
 
 
 @expose_plugin
-def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[System, str]:
+def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[System, Exception]:
     """Attach purchaser-load consuming technologies to a pre-built system."""
 
     try:
@@ -238,6 +189,11 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
             return Ok(system)
 
         hour_map = _normalize_hour_map_myr(hour_map_raw)
+        if hour_map.select("sequential_hour").is_duplicated().any():
+            msg = "Hour map contains duplicate sequential hours"
+            raise ValueError(msg)
+
+        expanded_loadsite: pl.DataFrame | None = None
 
         # Hydrogen-production demand components from cap.csv + consume_char.csv.
         hydrogen_production_capacity_raw = _read_optional_frame(
@@ -315,20 +271,18 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
         loadsite_raw = _read_optional_frame(config.loadsite_op_fpath, "loadsite_op")
         if loadsite_raw is not None and not loadsite_raw.is_empty():
             loadsite = _normalize_loadsite(loadsite_raw, config.solve_year)
-            expanded_result = expand_keyed_grid(
-                loadsite,
-                hour_map,
-                group_columns=["region"],
-                value_keys=["hour_period"],
-                grid_keys=["hour_period"],
-                order_columns=["sequential_hour"],
-                value_columns=["value"],
-                fill_values={"value": 0.0},
-                round_digits=5,
+            if loadsite.select("region", "hour_period").is_duplicated().any():
+                msg = "Loadsite rows contain duplicate region/hour-period keys"
+                raise ValueError(msg)
+            expanded_loadsite = (
+                loadsite.select("region")
+                .unique(maintain_order=True)
+                .join(hour_map.select("hour_period", "sequential_hour"), how="cross")
+                .join(loadsite.select("region", "hour_period", "value"), on=["region", "hour_period"], how="left")
+                .with_columns(pl.col("value").fill_null(0.0).round(5))
+                .sort(["region", "sequential_hour"])
             )
-            if expanded_result.is_err():
-                return Err(str(expanded_result.unwrap_err()))
-            expanded = expanded_result.unwrap()
+            expanded = expanded_loadsite
 
             created = 0
             for region_name in expanded.select("region").unique().to_series().to_list():
@@ -392,6 +346,21 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
                 pl.col("technology").cast(pl.Utf8).str.to_lowercase().alias("technology")
             ).filter(pl.col("technology").is_in(HYDROGEN_PRODUCTION_TECHNOLOGIES))
             profile = profile.select("technology", "region", "hour_period", "value")
+            if profile.select("technology", "region", "hour_period").is_duplicated().any():
+                msg = "Hydrogen profiles contain duplicate technology/region/hour-period keys"
+                raise ValueError(msg)
+            expanded_profile = (
+                profile.select("technology", "region")
+                .unique(maintain_order=True)
+                .join(hour_map.select("hour_period", "sequential_hour"), how="cross")
+                .join(
+                    profile,
+                    on=["technology", "region", "hour_period"],
+                    how="left",
+                )
+                .with_columns(pl.col("value").fill_null(0.0).round(5))
+                .sort(["technology", "region", "sequential_hour"])
+            )
 
             annual_targets: dict[tuple[str, str], float] = {}
             if hydrogen_production_annual_raw is not None and not hydrogen_production_annual_raw.is_empty():
@@ -423,20 +392,7 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
                 if technology_profile.is_empty():
                     continue
 
-                expanded_result = expand_keyed_grid(
-                    _normalize_loadsite(technology_profile.select("region", "hour_period", "value"), None),
-                    hour_map,
-                    group_columns=["region"],
-                    value_keys=["hour_period"],
-                    grid_keys=["hour_period"],
-                    order_columns=["sequential_hour"],
-                    value_columns=["value"],
-                    fill_values={"value": 0.0},
-                    round_digits=5,
-                )
-                if expanded_result.is_err():
-                    return Err(str(expanded_result.unwrap_err()))
-                expanded = expanded_result.unwrap()
+                expanded = expanded_profile.filter(pl.col("technology") == technology)
 
                 for demand in system.get_components(component_type):
                     if demand.technology.casefold() != technology:
@@ -468,23 +424,8 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
                 logger.info("Attached hydrogen-production profiles to {} demand components", attached)
 
         # Attach data center profile time series from loadsite_op.
-        if loadsite_raw is not None and not loadsite_raw.is_empty():
-            loadsite = _normalize_loadsite(loadsite_raw, config.solve_year)
-            expanded_result = expand_keyed_grid(
-                loadsite,
-                hour_map,
-                group_columns=["region"],
-                value_keys=["hour_period"],
-                grid_keys=["hour_period"],
-                order_columns=["sequential_hour"],
-                value_columns=["value"],
-                fill_values={"value": 0.0},
-                round_digits=5,
-            )
-            if expanded_result.is_err():
-                return Err(str(expanded_result.unwrap_err()))
-            expanded = expanded_result.unwrap()
-
+        if expanded_loadsite is not None:
+            expanded = expanded_loadsite
             attached = 0
             for demand in system.get_components(ReEDSDataCenterDemand):
                 region_profile = (
@@ -508,8 +449,8 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
             if attached > 0:
                 logger.info("Attached data center load profiles to {} demand components", attached)
 
-    except Exception as exc:
+    except (OSError, ReaderError, ValueError, pl.exceptions.PolarsError) as exc:
         logger.error("Error in purchaser load modifier: {}", exc)
-        return Err(str(exc))
+        return Err(exc)
 
     return Ok(system)

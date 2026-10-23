@@ -86,7 +86,7 @@ def build_region_description(row: Any, *, context: PluginContext) -> Result[str,
 
 @_reeds_getter
 def build_region_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
-    """Build a canonical region name for parser records."""
+    """Build the ReEDS region identifier for parser records."""
 
     def _lookup(field: str) -> Any:
         """Return the requested field value using row_utils."""
@@ -186,7 +186,7 @@ def build_resource_geo_json(row: Any, *, context: PluginContext) -> Result[dict[
 
 @_reeds_getter
 def build_load_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
-    """Build canonical load name from region."""
+    """Build the ReEDS load name from its region."""
 
     try:
         region = get_row_field(row, "region")
@@ -320,7 +320,7 @@ def lookup_reserve_region(row: Any, *, context: PluginContext) -> Result[ReEDSRe
 
 @_reeds_getter
 def build_transmission_interface_name(row: Any, *, context: PluginContext) -> Result[str, Exception]:
-    """Create a canonical interface name by sorting region names."""
+    """Create a stable interface name by sorting the region names."""
 
     try:
         from_region = get_row_field(row, "from_region")
@@ -355,7 +355,7 @@ def build_transmission_line_name(row: Any, *, context: PluginContext) -> Result[
 
 @_reeds_getter
 def lookup_transmission_interface(row: Any, *, context: PluginContext) -> Result[ReEDSInterface, Exception]:
-    """Fetch transmission interface component by canonical name."""
+    """Fetch a transmission interface by its sorted region name."""
 
     if context.system is None:
         return Err(ValueError("System not available in context"))

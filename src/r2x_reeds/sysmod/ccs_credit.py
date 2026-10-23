@@ -11,8 +11,9 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSGenerator
+from r2x_reeds.sysmod.utils import read_tabular_frame
 
 
 def _cast_string_columns(frame: pl.DataFrame | None, string_columns: tuple[str, ...]) -> pl.DataFrame:
@@ -45,7 +46,7 @@ class CCSCreditConfig(PluginConfig):
 
 
 @expose_plugin
-def add_ccs_credit(system: System, config: CCSCreditConfig) -> Result[System, str]:
+def add_ccs_credit(system: System, config: CCSCreditConfig) -> Result[System, Exception]:
     """Apply CCS incentive to CCS eligible technologies.
 
     The incentive is calculated with the capture incentive ($/ton) and capture rate
@@ -61,8 +62,8 @@ def add_ccs_credit(system: System, config: CCSCreditConfig) -> Result[System, st
 
     Returns
     -------
-    Result[System, str]
-        The updated system object or an error message.
+    Result[System, Exception]
+        The updated system object or the original input or processing error.
 
     Notes
     -----
@@ -81,18 +82,11 @@ def add_ccs_credit(system: System, config: CCSCreditConfig) -> Result[System, st
         return Ok(system)
 
     try:
-        co2_incentive = DataStore.load_file(config.co2_incentive_fpath, name="co2_incentive")
-        emission_capture_rate = DataStore.load_file(
+        co2_incentive = read_tabular_frame(config.co2_incentive_fpath, name="co2_incentive")
+        emission_capture_rate = read_tabular_frame(
             config.emission_capture_rate_fpath, name="emission_capture_rate"
         )
-        upgrade_link = DataStore.load_file(config.upgrade_link_fpath, name="upgrade_link")
-
-        if isinstance(co2_incentive, pl.LazyFrame):
-            co2_incentive = co2_incentive.collect()
-        if isinstance(emission_capture_rate, pl.LazyFrame):
-            emission_capture_rate = emission_capture_rate.collect()
-        if isinstance(upgrade_link, pl.LazyFrame):
-            upgrade_link = upgrade_link.collect()
+        upgrade_link = read_tabular_frame(config.upgrade_link_fpath, name="upgrade_link")
 
         co2_incentive = _cast_string_columns(co2_incentive, ("tech", "region", "vintage"))
         emission_capture_rate = _cast_string_columns(emission_capture_rate, ("tech", "region", "vintage"))
@@ -102,7 +96,7 @@ def add_ccs_credit(system: System, config: CCSCreditConfig) -> Result[System, st
         system = _apply_ccs_credit(system, co2_incentive, emission_capture_rate, upgrade_link)
     except Exception as exc:
         logger.error("CCS credit plugin failed: {}", exc)
-        return Err(str(exc))
+        return Err(exc)
 
     return Ok(system)
 

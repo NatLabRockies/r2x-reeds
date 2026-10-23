@@ -2,11 +2,143 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from calendar import isleap
+from typing import Annotated, Literal
 
-from pydantic import Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, computed_field, field_validator
 
 from r2x_core import PluginConfig
+
+
+class GeneratorCategoryPattern(BaseModel):
+    """One ordered exact or prefix rule for generator categorization."""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    priority: int = Field(ge=0)
+    category: str = Field(min_length=1)
+    match_kind: Literal["exact", "prefix"]
+    pattern: str = Field(min_length=1)
+    is_dispatchable: bool
+    unsupported: bool
+
+
+class GeneratorDefaultValues(BaseModel):
+    """Validated generator fallback values used by the declarative mapping."""
+
+    model_config = ConfigDict(strict=True, extra="allow", frozen=True)
+
+    default_heat_rate: Annotated[float, Field(gt=0, allow_inf_nan=False)] = 10.0
+
+
+class ReserveProduct(BaseModel):
+    """One configured reserve product and its profile policy."""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    reserve_type: str = Field(min_length=1)
+    duration_seconds: int = Field(gt=0)
+    time_frame_seconds: int = Field(gt=0)
+    vors: float = Field(allow_inf_nan=False)
+    direction: Literal["Up", "Down"]
+    load_fraction: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+    wind_fraction: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+    solar_fraction: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+    default_load_percentage: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+    default_wind_percentage: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+    default_solar_percentage: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+
+    @field_validator("reserve_type")
+    @classmethod
+    def normalize_reserve_type(cls, value: str) -> str:
+        return value.upper()
+
+
+class ReserveProviderExclusion(BaseModel):
+    """One technology category excluded from a reserve product's membership."""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    reserve_type: str = Field(min_length=1)
+    technology_category: str = Field(min_length=1)
+
+    @field_validator("reserve_type")
+    @classmethod
+    def normalize_reserve_type(cls, value: str) -> str:
+        return value.upper()
+
+    @field_validator("technology_category")
+    @classmethod
+    def normalize_category(cls, value: str) -> str:
+        return value.casefold()
+
+
+class ReEDSDefaults(BaseModel):
+    """Typed subset of packaged ReEDS defaults consumed by ingestion."""
+
+    model_config = ConfigDict(strict=True, extra="ignore", frozen=True)
+
+    excluded_techs: list[str]
+    default_values: GeneratorDefaultValues
+    resource_supply_curve_datasets: list[str]
+    reserve_products: list[ReserveProduct]
+    reserve_provider_exclusions: list[ReserveProviderExclusion]
+
+    @field_validator("excluded_techs")
+    @classmethod
+    def normalize_excluded_technologies(cls, value: list[str]) -> list[str]:
+        """Match the case-insensitive category and exclusion contract."""
+        return [technology.casefold() for technology in value]
+
+    @field_validator("resource_supply_curve_datasets")
+    @classmethod
+    def validate_unique_resource_datasets(cls, value: list[str]) -> list[str]:
+        """Reject duplicate resource sources before declarative processing."""
+        if len(set(value)) != len(value):
+            msg = "resource_supply_curve_datasets cannot contain duplicates"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("reserve_products")
+    @classmethod
+    def validate_unique_reserve_products(cls, value: list[ReserveProduct]) -> list[ReserveProduct]:
+        """Reject repeated product types before generating components."""
+        reserve_types = [product.reserve_type.upper() for product in value]
+        if len(set(reserve_types)) != len(reserve_types):
+            msg = "reserve_products cannot contain duplicate reserve_type values"
+            raise ValueError(msg)
+        return value
+
+    @property
+    def default_heat_rate(self) -> float:
+        """Return the validated thermal heat-rate fallback."""
+        return self.default_values.default_heat_rate
+
+
+def validate_generator_category_patterns(file_mapping: object) -> None:
+    """Validate category rows from the declared inline table at the config boundary."""
+    if not isinstance(file_mapping, list):
+        msg = "ReEDS file mapping must be a list"
+        raise ValueError(msg)
+
+    declarations = [
+        declaration
+        for declaration in file_mapping
+        if isinstance(declaration, dict) and declaration.get("name") == "generator_category_patterns"
+    ]
+    if len(declarations) != 1:
+        msg = "ReEDS file mapping must declare generator_category_patterns exactly once"
+        raise ValueError(msg)
+
+    inline_table = declarations[0].get("inline_table")
+    if not isinstance(inline_table, dict):
+        msg = "generator_category_patterns must use an inline table"
+        raise ValueError(msg)
+
+    patterns = TypeAdapter(list[GeneratorCategoryPattern]).validate_python(inline_table.get("rows"))
+    if not patterns:
+        msg = "generator_category_patterns must include at least one row"
+        raise ValueError(msg)
 
 
 class ReEDSConfig(PluginConfig):
@@ -93,6 +225,14 @@ class ReEDSConfig(PluginConfig):
         ),
     ] = None
 
+    @field_validator("excluded_techs")
+    @classmethod
+    def normalize_excluded_technologies(cls, value: list[str] | None) -> list[str] | None:
+        """Normalize explicit exclusions consistently with packaged defaults."""
+        if value is None:
+            return None
+        return [technology.casefold() for technology in value]
+
     @property
     def primary_solve_year(self) -> int:
         """Get the primary (first) solve year.
@@ -119,3 +259,9 @@ class ReEDSConfig(PluginConfig):
         if isinstance(self.weather_year, list):
             return self.weather_year[0]
         return self.weather_year
+
+    @computed_field
+    @property
+    def primary_weather_year_is_leap(self) -> bool:
+        """Return whether the primary weather year includes leap day."""
+        return isleap(self.primary_weather_year)

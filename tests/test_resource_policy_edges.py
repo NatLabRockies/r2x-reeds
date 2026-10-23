@@ -1,10 +1,11 @@
 """Public resource precedence regressions with source-specific CSV schemas."""
 
-import copy
+import json
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import pytest
 from infrasys.location import GeographicInfo
@@ -12,8 +13,9 @@ from infrasys.location import GeographicInfo
 from r2x_core import DataStore, PluginContext
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models import ReEDSGenerator, ReEDSResourceBuild, ReEDSResourceSite
+from tests.test_parser_current_core import configure_csv_sources, copy_package_config, write_current_meta
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.fixture
@@ -35,34 +37,38 @@ def test_resource_precedence_uses_real_file_aliases_and_preserves_selected_value
     source_header = "sc_point_gid,class,capacity,cf,region,supply_curve_cost_per_mw\n"
     source_rows = "416,1,341,0.2,p1,10\n" if source_has_rows else ""
     (inputs / "supplycurve_upv.csv").write_text(source_header + source_rows)
+    candidate_rows = "0,416,48,-122,p1,1,18,254,0,0,0,20\n"
+    if source_has_rows:
+        candidate_rows += "1,417,47,-121,p1,1,19,300,0,0,0,25\n"
     (outputs / "df_sc_in_upv.csv").write_text(
         "sc_gid,sc_point_gid,latitude,longitude,region,class,bin,cap_avail,existing_capacity,"
-        "online_year,retire_year,supply_curve_cost_per_mw\n"
-        "0,416,48,-122,p1,1,18,254,0,0,0,20\n"
+        "online_year,retire_year,supply_curve_cost_per_mw\n" + candidate_rows
     )
     (outputs / "df_sc_out_upv_reduced.csv").write_text(
         "year,sc_gid,sc_point_gid,latitude,longitude,region,class,bin,supply_curve_cost_per_mw,"
         "built_capacity,investment_bool\n"
         "2009,0,416,50,-123,p1,1,18,30,0.37,1\n"
     )
-    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n")
-    (outputs / "heat_rate.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,10\n")
-    defaults = copy.deepcopy(reeds_config.load_config()["defaults"])
-    defaults["reserve_products"] = []
-    parser_rules = copy.deepcopy(reeds_config.load_config()["parser_rules"])
-    resource_stage = next(stage for stage in parser_rules["execution"] if stage["name"] == "resources")
-    resource_stage["rules"] = ["resource_site_upv", "resource_build_upv"]
-    config = reeds_config.model_copy(
-        update={
-            "asset_overrides": {
-                **reeds_config.asset_overrides,
-                "defaults": defaults,
-                "parser_rules": parser_rules,
-            }
-        }
+    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value\ncan-imports,init-1,p1,2032,100\n")
+    write_current_meta(resource_run_path)
+    config_path = copy_package_config(resource_run_path)
+    defaults_path = config_path / "defaults.json"
+    defaults = json.loads(defaults_path.read_text(encoding="utf-8"))
+    defaults["resource_supply_curve_datasets"] = ["upv"]
+    defaults_path.write_text(json.dumps(defaults), encoding="utf-8")
+    configure_csv_sources(
+        config_path,
+        {"online_capacity": "outputs/cap_ivrt.csv"},
+        include_all=True,
     )
-    store = DataStore.from_plugin_config(config, path=resource_run_path)
-    context = PluginContext(config=config, store=store)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="resource-precedence-test",
+        excluded_techs=[],
+        config_path_override=config_path,
+    )
+    context = PluginContext(config=config, store=DataStore(path=resource_run_path))
 
     result = ReEDSParser.from_context(context).run()
 

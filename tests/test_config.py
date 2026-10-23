@@ -74,6 +74,18 @@ def test_reeds_config_primary_weather_year():
     assert config.primary_weather_year == 2007
 
 
+@pytest.mark.parametrize(
+    ("weather_year", "is_leap"),
+    [(2012, True), ([2012, 2011], True), (2011, False), (2000, True), (1900, False)],
+)
+def test_reeds_config_primary_weather_year_leap_status(
+    weather_year: int | list[int], is_leap: bool
+) -> None:
+    config = ReEDSConfig(solve_year=2030, weather_year=weather_year)
+
+    assert config.primary_weather_year_is_leap is is_leap
+
+
 def test_reeds_config_default_case_name():
     """Test default case name."""
     config = ReEDSConfig(

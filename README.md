@@ -43,7 +43,7 @@ registered system modifiers, optional profiles, cost-unit checks and inspection.
 - [Configuration](docs/src/content/docs/reference/configuration.md) and [transforms](docs/src/content/docs/reference/transforms.md): settings and optional modifiers.
 - [Explanation](docs/src/content/docs/explanation/architecture.md): parser, transform and target boundaries.
 - [Troubleshooting](docs/src/content/docs/troubleshooting.md): common input and pipeline failures.
-- [Changelog](CHANGELOG.md): canonical release history.
+- [Changelog](CHANGELOG.md): project release history.
 
 ## Development
 

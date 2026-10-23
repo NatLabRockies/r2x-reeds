@@ -11,8 +11,9 @@ from r2x_core import DataStore, PluginContext
 from r2x_core.exceptions import PluginError
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models import ReEDSGenerator
+from tests.fixtures.data_fixtures import current_data_store
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.fixture
@@ -40,13 +41,15 @@ def test_water_input_requiredness_distinguishes_absent_from_existing_empty(
         water_path.write_text("*TO,FROM,DELTA\n")
     else:
         water_path.unlink(missing_ok=True)
-    store = DataStore.from_plugin_config(reeds_config, path=control_run_path)
+    store = current_data_store(control_run_path)
     context = PluginContext(config=reeds_config, store=store)
     parser = ReEDSParser.from_context(context)
 
     if enabled and not present:
-        with pytest.raises(PluginError, match="fom_water_upgrade_links"):
+        with pytest.raises(PluginError) as captured:
             parser.run()
+        assert isinstance(captured.value.__cause__, FileNotFoundError)
+        assert "upgradelink_water.csv" in str(captured.value.__cause__)
         return
 
     result = parser.run()
@@ -67,9 +70,9 @@ def test_fom_control_sources_reject_duplicate_singleton_values(
     source = control_run_path / "inputs_case" / filename
     with source.open("a") as handle:
         handle.write(duplicate_row)
-    store = DataStore.from_plugin_config(reeds_config, path=control_run_path)
+    store = current_data_store(control_run_path)
     context = PluginContext(config=reeds_config, store=store)
     parser = ReEDSParser.from_context(context)
 
-    with pytest.raises(PluginError, match=r"duplicate|unique|singleton|cardinality"):
+    with pytest.raises(PluginError, match=r"(?i)duplicate|unique|singleton|cardinality"):
         parser.run()

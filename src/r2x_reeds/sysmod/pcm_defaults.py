@@ -1,5 +1,6 @@
 """Augment results from CEM with PCM defaults."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -9,8 +10,6 @@ from pydantic import Field
 from rust_ok import Err, Ok, Result
 
 from r2x_core import PluginConfig, expose_plugin
-from r2x_core.datafile import DataFile
-from r2x_core.store import DataStore
 from r2x_reeds.models.components import ReEDSGenerator
 
 
@@ -35,7 +34,7 @@ class PCMDefaultsConfig(PluginConfig):
 def add_pcm_defaults(
     system: System,
     config: PCMDefaultsConfig,
-) -> Result[System, str]:
+) -> Result[System, Exception]:
     """Augment data model using PCM defaults dictionary.
 
     Parameters
@@ -47,8 +46,8 @@ def add_pcm_defaults(
 
     Returns
     -------
-    Result[System, str]
-        The updated system object or an error message.
+    Result[System, Exception]
+        The updated system object or the original JSON read or processing error.
 
     Notes
     -----
@@ -69,19 +68,17 @@ def add_pcm_defaults(
 
         logger.debug("Using PCM defaults from: {}", config.pcm_defaults_fpath)
 
-        # Read PCM defaults using DataStore
         try:
             pcm_path = Path(config.pcm_defaults_fpath)
-            pcm_data_file = DataFile(name="pcm_defaults", fpath=pcm_path)
-            data_store = DataStore(path=pcm_path.parent)
-            data_store.add_data([pcm_data_file])
-
-            pcm_defaults = data_store.read_data(name="pcm_defaults")
+            pcm_defaults = json.loads(pcm_path.read_text(encoding="utf-8"))
             if isinstance(pcm_defaults, list):
                 pcm_defaults = {item["name"]: item for item in pcm_defaults}
-        except Exception as exc:
-            logger.error("Failed to load PCM defaults: {}", exc)
-            return Err(str(exc))
+            if not isinstance(pcm_defaults, dict):
+                msg = "PCM defaults JSON must be an object or an array of named objects"
+                raise ValueError(msg)
+        except (OSError, TypeError, ValueError) as error:
+            logger.error("Failed to load PCM defaults: {}", error)
+            return Err(error)
 
     # Fields that need to be multiplied by generator capacity
     needs_multiplication = {"ramp_rate"}

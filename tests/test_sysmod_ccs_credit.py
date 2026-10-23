@@ -9,7 +9,7 @@ from infrasys import System
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import ccs_credit
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system() -> tuple[System, ReEDSRegion]:
@@ -203,26 +203,26 @@ def test_cast_string_columns_handles_empty_frame():
     assert result.is_empty()
 
 
-def test_add_ccs_credit_logs_load_failure(monkeypatch, caplog):
+def test_add_ccs_credit_missing_configured_file_preserves_error(tmp_path: Path, caplog) -> None:
     system, _ = _build_system()
-
-    def fail_load(*args, **kwargs):
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(ccs_credit.DataStore, "load_file", staticmethod(fail_load))
+    missing = tmp_path / "missing.csv"
     caplog.set_level("ERROR", logger="r2x_reeds.sysmod.ccs_credit")
 
     result = ccs_credit.add_ccs_credit(
         system,
         ccs_credit.CCSCreditConfig(
-            co2_incentive_fpath="co2",
-            emission_capture_rate_fpath="capture",
-            upgrade_link_fpath="upgrade",
+            co2_incentive_fpath=missing,
+            emission_capture_rate_fpath=missing,
+            upgrade_link_fpath=missing,
         ),
     )
 
     assert result.is_err()
     assert "CCS credit plugin failed" in caplog.text
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
 
 
 def test_apply_ccs_credit_logs_warning_on_incentive_item_error(caplog):

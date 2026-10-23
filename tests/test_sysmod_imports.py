@@ -9,7 +9,7 @@ from infrasys import System
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import imports
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_generator() -> tuple[System, ReEDSGenerator]:
@@ -152,7 +152,7 @@ def test_imports_scope_wide_data_requires_solve_year(tmp_path: Path) -> None:
     )
 
     assert result.is_err()
-    assert "Solve year is required" in result.unwrap_err()
+    assert "Solve year is required" in str(result.unwrap_err())
 
 
 def test_imports_scope_missing_weather_year(caplog) -> None:
@@ -171,6 +171,27 @@ def test_imports_scope_missing_files(caplog) -> None:
     _run_imports(system, weather_year=2024, canada_imports_fpath=None)
 
     assert "Missing required file paths for imports plugin" in caplog.text
+
+
+def test_imports_scope_missing_configured_file_preserves_cause(tmp_path: Path) -> None:
+    system, _ = _build_generator()
+    missing = str(tmp_path / "missing.csv")
+
+    result = imports.add_imports(
+        system,
+        imports.ImportsConfig(
+            weather_year=2024,
+            canada_imports_fpath=missing,
+            canada_szn_frac_fpath=missing,
+            hour_map_fpath=missing,
+        ),
+    )
+
+    assert result.is_err()
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
 
 
 def test_imports_scope_missing_region(tmp_path: Path, caplog) -> None:
@@ -218,7 +239,7 @@ def test_imports_scope_empty_join(tmp_path: Path) -> None:
     )
 
     assert result.is_err()
-    assert "hour map does not contain seasons" in result.unwrap_err().lower()
+    assert "hour map does not contain seasons" in str(result.unwrap_err()).lower()
     assert system.has_time_series(generator) is False
 
 

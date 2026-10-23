@@ -53,7 +53,7 @@ config = ReEDSConfig(
 )
 ctx = PluginContext(
     config=config,
-    store=DataStore.from_plugin_config(config, path=run_path),
+    store=DataStore(path=run_path),
 )
 
 system = ReEDSParser.from_context(ctx).run().system

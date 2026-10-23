@@ -95,7 +95,7 @@ def test_pcm_defaults_scope_override() -> None:
 
 
 def test_pcm_defaults_scope_file(tmp_path: Path) -> None:
-    """Defaults can be loaded from JSON files via DataStore."""
+    """Defaults can be loaded from a JSON file."""
     system, generator = _build_generator()
     defaults = {"GEN1": {"fuel_price": 4.5}}
     json_path = tmp_path / "pcm_defaults.json"
@@ -120,6 +120,17 @@ def test_pcm_defaults_scope_file_list_format(tmp_path: Path) -> None:
 
     assert generator.heat_rate == pytest.approx(8.5)
     assert generator.vom_cost == pytest.approx(3.0)
+
+
+def test_pcm_defaults_missing_configured_file_preserves_error(tmp_path: Path) -> None:
+    system, _ = _build_generator()
+    result = pcm_defaults.add_pcm_defaults(
+        system,
+        pcm_defaults.PCMDefaultsConfig(pcm_defaults_fpath=tmp_path / "missing.json"),
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), FileNotFoundError)
 
 
 def test_pcm_defaults_scope_no_inputs(caplog) -> None:

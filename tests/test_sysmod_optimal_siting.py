@@ -2,18 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-
 import numpy as np
 import polars as pl
 import pytest
 from infrasys import SingleTimeSeries, System
-from rust_ok import Err, Ok
-
 from r2x_reeds.models.components import ReEDSDemand, ReEDSRegion
 from r2x_reeds.sysmod import optimal_siting
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system_with_loads() -> tuple[System, dict[str, ReEDSDemand], np.ndarray]:
@@ -95,6 +91,22 @@ def test_optimal_siting_skips_when_paths_missing(caplog) -> None:
     assert "Missing loadsite_op_fpath or hour_map_myr_fpath" in caplog.text
 
 
+def test_optimal_siting_returns_missing_configured_file_error(tmp_path: Path) -> None:
+    system, _, _ = _build_system_with_loads()
+
+    result = optimal_siting.add_optimal_siting(
+        system,
+        optimal_siting.OptimalSitingConfig(
+            loadsite_op_fpath=tmp_path / "missing-loadsite.csv",
+            hour_map_myr_fpath=tmp_path / "missing-hour-map.csv",
+        ),
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), FileNotFoundError)
+    assert str(result.unwrap_err()).endswith("missing-loadsite.csv")
+
+
 def test_optimal_siting_skips_load_without_time_series(tmp_path: Path) -> None:
     system = System(name="test_optimal_siting_missing_ts")
     region = ReEDSRegion(name="p4")
@@ -131,33 +143,13 @@ def test_optimal_siting_skips_load_without_time_series(tmp_path: Path) -> None:
     assert system.has_time_series(demand) is False
 
 
-def test_optimal_siting_returns_err_when_expand_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_optimal_siting_returns_err_for_duplicate_region_hour_keys(tmp_path: Path) -> None:
     system, _, _ = _build_system_with_loads()
-
     loadsite_path = _write_csv(
         tmp_path / "loadsite_op.csv",
-        {
-            "r": ["p4"],
-            "allh": ["h1"],
-            "t": [2032],
-            "Value": [1.0],
-        },
+        {"r": ["p4", "p4"], "allh": ["h1", "h1"], "t": [2032, 2032], "Value": [1.0, 2.0]},
     )
-    hour_map_path = _write_csv(
-        tmp_path / "hmap_myr.csv",
-        {
-            "yearhour": [1],
-            "h": ["h1"],
-        },
-    )
-
-    def _boom_expand(values: pl.DataFrame, grid: pl.DataFrame, **kwargs: Any):
-        del values, grid, kwargs
-        return Err(ValueError("failed to expand"))
-
-    monkeypatch.setattr(optimal_siting, "expand_keyed_grid", _boom_expand)
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1], "h": ["h1"]})
 
     result = optimal_siting.add_optimal_siting(
         system,
@@ -169,48 +161,39 @@ def test_optimal_siting_returns_err_when_expand_fails(
     )
 
     assert result.is_err()
-    assert "failed to expand" in str(result.unwrap_err())
+    assert isinstance(result.unwrap_err(), ValueError)
+    assert "duplicate region/hour-period keys" in str(result.unwrap_err())
 
 
-def test_optimal_siting_handles_exception_from_data_store(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_optimal_siting_returns_original_error_for_malformed_csv(tmp_path: Path) -> None:
     system, _, _ = _build_system_with_loads()
-
-    def _raise_load_file(*args: Any, **kwargs: Any) -> None:
-        del args, kwargs
-        raise RuntimeError("store exploded")
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _raise_load_file)
+    loadsite_path = _write_csv(tmp_path / "loadsite_op.csv", {"unexpected": [1]})
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1], "h": ["h1"]})
 
     result = optimal_siting.add_optimal_siting(
         system,
         optimal_siting.OptimalSitingConfig(
-            loadsite_op_fpath="fake.csv",
-            hour_map_myr_fpath="fake2.csv",
+            loadsite_op_fpath=loadsite_path,
+            hour_map_myr_fpath=hour_map_path,
             solve_year=2032,
         ),
     )
 
     assert result.is_err()
-    assert "store exploded" in str(result.unwrap_err())
+    assert isinstance(result.unwrap_err(), pl.exceptions.PolarsError)
 
 
-def test_load_and_prepare_frames_handles_lazy_frames(monkeypatch: pytest.MonkeyPatch) -> None:
-    loadsite_df = pl.DataFrame({"r": ["p4"], "allh": ["h1"], "t": [2032], "Value": [10.0]})
-    hour_map_df = pl.DataFrame({"yearhour": [1], "h": ["h1"]})
-
-    calls = [loadsite_df.lazy(), hour_map_df.lazy()]
-
-    def _mock_load_file(*args: Any, **kwargs: Any) -> pl.LazyFrame:
-        del args, kwargs
-        return calls.pop(0)
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _mock_load_file)
-
+def test_load_and_prepare_frames_reads_csv_sources(tmp_path: Path) -> None:
+    loadsite_path = _write_csv(
+        tmp_path / "load.csv", {"r": ["p4"], "allh": ["h1"], "t": [2032], "Value": [10.0]}
+    )
+    hour_map_path = _write_csv(tmp_path / "hmap.csv", {"yearhour": [1], "h": ["h1"]})
     config = optimal_siting.OptimalSitingConfig(
-        loadsite_op_fpath="load.csv",
-        hour_map_myr_fpath="hmap.csv",
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
         solve_year=[2032],
     )
+
     prepared = optimal_siting._load_and_prepare_frames(config)
 
     assert prepared is not None
@@ -219,55 +202,39 @@ def test_load_and_prepare_frames_handles_lazy_frames(monkeypatch: pytest.MonkeyP
     assert hour_map.columns == ["sequential_hour", "hour_period"]
 
 
-def test_load_and_prepare_frames_returns_none_when_filtered_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    loadsite_df = pl.DataFrame({"r": ["p4"], "allh": ["h1"], "t": [2040], "Value": [10.0]})
-    hour_map_df = pl.DataFrame({"yearhour": [1], "h": ["h1"]})
-
-    calls = [loadsite_df, hour_map_df]
-
-    def _mock_load_file(*args: Any, **kwargs: Any) -> pl.DataFrame:
-        del args, kwargs
-        return calls.pop(0)
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _mock_load_file)
-
+def test_load_and_prepare_frames_returns_none_when_filtered_empty(tmp_path: Path) -> None:
+    loadsite_path = _write_csv(
+        tmp_path / "load.csv", {"r": ["p4"], "allh": ["h1"], "t": [2040], "Value": [10.0]}
+    )
+    hour_map_path = _write_csv(tmp_path / "hmap.csv", {"yearhour": [1], "h": ["h1"]})
     config = optimal_siting.OptimalSitingConfig(
-        loadsite_op_fpath="load.csv",
-        hour_map_myr_fpath="hmap.csv",
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
         solve_year=2032,
     )
+
     assert optimal_siting._load_and_prepare_frames(config) is None
 
 
-def test_load_and_prepare_frames_returns_none_on_empty_frames(monkeypatch: pytest.MonkeyPatch) -> None:
-    empty = pl.DataFrame({"r": [], "allh": [], "t": [], "Value": []}, schema_overrides={"r": pl.String})
-    hour_map_df = pl.DataFrame({"yearhour": [1], "h": ["h1"]})
-
-    calls = [empty, hour_map_df]
-
-    def _mock_load_file(*args: Any, **kwargs: Any) -> pl.DataFrame:
-        del args, kwargs
-        return calls.pop(0)
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _mock_load_file)
-
+def test_load_and_prepare_frames_returns_none_on_empty_file(tmp_path: Path) -> None:
+    loadsite_path = tmp_path / "load.csv"
+    loadsite_path.write_text("r,allh,t,Value\\n", encoding="utf-8")
+    hour_map_path = _write_csv(tmp_path / "hmap.csv", {"yearhour": [1], "h": ["h1"]})
     config = optimal_siting.OptimalSitingConfig(
-        loadsite_op_fpath="load.csv",
-        hour_map_myr_fpath="hmap.csv",
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
     )
+
     assert optimal_siting._load_and_prepare_frames(config) is None
 
 
-def test_build_region_increments_empty_expand(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _mock_expand(values: pl.DataFrame, grid: pl.DataFrame, **kwargs: Any):
-        del values, grid, kwargs
-        return Ok(pl.DataFrame({"region": [], "sequential_hour": [], "value": []}))
+def test_build_region_increments_returns_empty_for_empty_sources() -> None:
+    loadsite = pl.DataFrame(
+        schema={"region": pl.String, "hour_period": pl.String, "value": pl.Float64}
+    )
+    hour_map = pl.DataFrame(schema={"sequential_hour": pl.Int64, "hour_period": pl.String})
 
-    monkeypatch.setattr(optimal_siting, "expand_keyed_grid", _mock_expand)
-
-    result = optimal_siting._build_region_increments(pl.DataFrame(), pl.DataFrame())
-    assert result.is_ok()
-    assert result.unwrap() == {}
+    assert optimal_siting._build_region_increments(loadsite, hour_map) == {}
 
 
 def test_apply_increments_handles_min_len_zero() -> None:

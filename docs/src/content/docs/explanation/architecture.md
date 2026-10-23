@@ -19,11 +19,14 @@ flowchart TD
   T --> X["Target exporter<br/>native target files"]
 ```
 
-The parser's dataset mappings define names, source paths and preprocessing;
-its rules map normalized rows into ReEDS component fields. The defaults file
-supplies exclusions, categories and model constants. Read [configuration](/r2x-reeds/reference/configuration/)
-before overriding one of these assets: a filename change and a modeling change
-belong to different boundaries.
+The parser's `file_mapping.json` declares physical sources, ordered table
+processing and required-input policy. Typed instructions in `parser_rules.json`
+map prepared rows to components, references, supplemental attributes and time
+series. `defaults.json` supplies domain policy such as exclusions and category
+patterns. Core executes the generic processing and output instructions; ReEDS
+keeps its domain choices in these assets. Read [configuration](/r2x-reeds/reference/configuration/)
+before overriding an asset: a path change and a modeling change belong to
+different boundaries.
 
 [ReEDS-to-PLEXOS](https://github.com/NatLabRockies/R2X/tree/main/packages/r2x-reeds-to-plexos)
 and [ReEDS-to-Sienna](https://github.com/NatLabRockies/R2X/tree/main/packages/r2x-reeds-to-sienna)
@@ -69,8 +72,8 @@ remainders according to the selected threshold. Purchaser load, Canadian imports
 CCS credits and emission caps make other scenario-specific choices. Applying
 all transforms indiscriminately can duplicate or alter assumptions.
 
-Modifier functions mutate the system and return `Result[System, str]`. Check
-errors and save a baseline before a transformation when you need comparison.
+Modifier functions mutate the system and return `Result[System, Exception]`.
+Check errors and save a baseline before a transformation when you need comparison.
 There is no universal modifier order: optimal siting needs existing demand
 profiles, while an emissions calculation must see the fleet you intend to constrain.
 See [transform reference](/r2x-reeds/reference/transforms/) for each contract.

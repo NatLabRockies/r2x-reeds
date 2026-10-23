@@ -2,7 +2,7 @@
 
 import pytest
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def test_excluded_techs_can_be_overridden(reeds_run_path):

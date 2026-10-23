@@ -15,8 +15,9 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
+from r2x_reeds.sysmod.utils import read_tabular_frame
 
 
 class ElectrolyzerConfig(PluginConfig):
@@ -41,7 +42,7 @@ class ElectrolyzerConfig(PluginConfig):
 
 
 @expose_plugin
-def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[System, str]:
+def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[System, Exception]:
     """Modify infrasys system to include electrolyzer load and monthly hydrogen fuel price.
 
     Parameters
@@ -53,8 +54,8 @@ def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[
 
     Returns
     -------
-    Result[System, str]
-        The updated system object or an error message.
+    Result[System, Exception]
+        The updated system object or the original input or processing error.
     """
     logger.info("Adding electrolyzer representation to the system")
 
@@ -63,26 +64,21 @@ def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[
         return Ok(system)
 
     try:
-        # Load required data files
         hour_map = (
-            DataStore.load_file(config.hour_map_fpath, name="hour_map") if config.hour_map_fpath else None
+            read_tabular_frame(config.hour_map_fpath, name="hour_map")
+            if config.hour_map_fpath is not None
+            else None
         )
         electrolyzer_load = (
-            DataStore.load_file(config.electrolyzer_load_fpath, name="electrolyzer_load")
-            if config.electrolyzer_load_fpath
+            read_tabular_frame(config.electrolyzer_load_fpath, name="electrolyzer_load")
+            if config.electrolyzer_load_fpath is not None
             else None
         )
         h2_prices = (
-            DataStore.load_file(config.h2_fuel_price_fpath, name="h2_fuel_price")
-            if config.h2_fuel_price_fpath
+            read_tabular_frame(config.h2_fuel_price_fpath, name="h2_fuel_price")
+            if config.h2_fuel_price_fpath is not None
             else None
         )
-        if hour_map is not None:
-            hour_map = hour_map.collect()
-        if electrolyzer_load is not None:
-            electrolyzer_load = electrolyzer_load.collect()
-        if h2_prices is not None:
-            h2_prices = h2_prices.collect()
 
         if hour_map is None:
             logger.warning("hour_map data not available. Cannot add electrolyzer load.")
@@ -98,7 +94,7 @@ def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[
 
     except Exception as exc:
         logger.error("Error in electrolyzer plugin: {}", exc)
-        return Err(str(exc))
+        return Err(exc)
 
     return Ok(system)
 

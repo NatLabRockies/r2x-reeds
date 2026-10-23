@@ -4,7 +4,7 @@ import pytest
 
 from r2x_reeds.models.components import ReEDSHydroGenerator
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def test_hydro_time_series(example_system):

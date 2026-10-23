@@ -13,7 +13,7 @@ from r2x_core import DataStore, PluginContext
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models import ReEDSGenerator, ReEDSResourceBuild, ReEDSResourceSite
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def resource_config(

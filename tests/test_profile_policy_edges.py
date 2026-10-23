@@ -1,5 +1,6 @@
 """Public profile regressions independent of the parser's calendar implementation."""
 
+import json
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -11,8 +12,9 @@ import pytest
 from r2x_core import DataStore, PluginContext
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models import ReEDSHydroGenerator
+from tests.test_parser_current_core import configure_csv_sources, copy_package_config
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.mark.parametrize("weather_year", [2012, [2012, 2011]], ids=["single-weather", "primary-weather"])
@@ -48,15 +50,19 @@ def test_monthly_hydro_profiles_keep_budget_power_and_leap_year_expansion_distin
             adjustment_rows.append(f"hydED,{month},p1,{adjustment}\n")
         (inputs / "hydcf.csv").write_text("".join(hydro_rows))
         (inputs / "hydcapadj.csv").write_text("".join(adjustment_rows))
-        defaults = reeds_config.load_config()["defaults"]
+        config_path = copy_package_config(tmp_path)
+        defaults_path = config_path / "defaults.json"
+        defaults = json.loads(defaults_path.read_text(encoding="utf-8"))
         defaults["reserve_products"] = []
-        config = reeds_config.model_copy(
-            update={
-                "weather_year": weather_year,
-                "asset_overrides": {**reeds_config.asset_overrides, "defaults": defaults},
-            }
+        defaults_path.write_text(json.dumps(defaults), encoding="utf-8")
+        configure_csv_sources(config_path, include_all=True)
+        config = ReEDSConfig(
+            solve_year=2032,
+            weather_year=weather_year,
+            case_name="hydro-profile-policy-test",
+            config_path_override=config_path,
         )
-        store = DataStore.from_plugin_config(config, path=run_path)
+        store = DataStore(path=run_path)
         context = PluginContext(config=config, store=store)
 
         result = ReEDSParser.from_context(context).run()

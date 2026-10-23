@@ -6,6 +6,8 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import h5py
+import numpy as np
 import pytest
 from loguru import logger
 
@@ -14,22 +16,42 @@ if TYPE_CHECKING:
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
 
-def package_file_mapping() -> dict[str, Any]:
-    """Load the packaged file mapping for format-specific reader tests."""
+def write_unitspec_upgrades_h5(path: Path, technologies: list[str]) -> None:
+    """Write the required ReEDS HDF5 unitspec_upgrades set."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    string_dtype = h5py.string_dtype(encoding="utf-8")
+    with h5py.File(path, mode="w") as h5_file:
+        group = h5_file.create_group("unitspec_upgrades")
+        group.create_dataset("columns", data=np.asarray(["i"], dtype=string_dtype))
+        group.create_dataset("i", data=np.asarray(technologies, dtype=string_dtype))
+
+
+def package_file_mapping() -> list[dict[str, Any]]:
+    """Load the packaged current-core DataFile mapping."""
     mapping_path = Path(__file__).parents[2] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
-    mapping: dict[str, Any] = json.loads(mapping_path.read_text())
+    mapping: list[dict[str, Any]] = json.loads(mapping_path.read_text())
     return mapping
 
 
-def csv_file_mapping() -> dict[str, Any]:
-    """Return an explicit CSV mapping for the unpacked ReEDS test archive."""
+def csv_file_mapping() -> list[dict[str, Any]]:
+    """Return current DataFiles pointing at equivalent CSV fixture outputs."""
     mapping = package_file_mapping()
-    for data_file in mapping["files"]:
-        if data_file["fpath"] == "outputs/outputs.h5":
-            reader = data_file.pop("reader")
-            group_key = reader["kwargs"]["group_key"]
-            data_file["fpath"] = f"outputs/{group_key}.csv"
+    for data_file in mapping:
+        if data_file.get("relative_fpath") == "outputs/outputs.h5":
+            group_key = data_file["reader"]["options"]["group_key"]
+            data_file["relative_fpath"] = f"outputs/{group_key}.csv"
+            data_file["reader"] = {"format": "csv"}
     return mapping
+
+
+def current_data_store(path: Path, *, data_files: list[dict[str, Any]] | None = None) -> "DataStore":
+    """Create a current-core store from validated test input declarations."""
+    from pydantic import TypeAdapter
+    from r2x_core import DataFile, DataStore
+
+    store = DataStore(path=path)
+    store.add_data(TypeAdapter(list[DataFile]).validate_python(data_files or csv_file_mapping()))
+    return store
 
 
 @pytest.fixture(scope="session")
@@ -70,10 +92,10 @@ def reeds_run_path(
         "switches",
         "hintage_data",
         "upgrade_link",
-        "unitspec_upgrades",
         "tech-subset-table",
     ):
         shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
+    write_unitspec_upgrades_h5(run_path / "inputs_case" / "inputs.h5", [])
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
 
@@ -106,16 +128,13 @@ def reeds_config(reeds_run_path: Path) -> "ReEDSConfig":
         weather_year=2012,
         case_name="test",
         scenario="base",
-        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
 
 @pytest.fixture(scope="session")
 def data_store(reeds_run_path: Path, reeds_config: "ReEDSConfig") -> "DataStore":
     """DataStore from file mapping."""
-    from r2x_core import DataStore
-
-    return DataStore.from_plugin_config(reeds_config, path=reeds_run_path)
+    return current_data_store(reeds_run_path)
 
 
 @pytest.fixture(scope="session")

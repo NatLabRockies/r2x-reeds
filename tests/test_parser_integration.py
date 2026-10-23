@@ -12,7 +12,7 @@ from infrasys import Component
 
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def test_system_has_buses(example_system) -> None:

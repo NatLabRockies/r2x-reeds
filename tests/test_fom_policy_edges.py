@@ -5,16 +5,18 @@ from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import h5py
+import numpy as np
 import polars as pl
 import pytest
 
-from r2x_core import DataStore, PluginContext, System
+from r2x_core import PluginContext, System
 from r2x_core.exceptions import PluginError
 from r2x_reeds import ReEDSConfig, ReEDSParser
-from r2x_reeds.models.components import ReEDSGenerator
-from tests.fixtures.data_fixtures import csv_file_mapping
+from r2x_reeds.models.components import ReEDSGenerator, ReEDSVariableGenerator
+from tests.fixtures.data_fixtures import csv_file_mapping, current_data_store, write_unitspec_upgrades_h5
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.fixture
@@ -28,11 +30,91 @@ def fom_run_path(reeds_run_path: Path, tmp_path: Path) -> Iterator[Path]:
 
 def build_fom_system(run_path: Path, *, config: ReEDSConfig) -> System:
     """Run the real parser against one independently prepared source directory."""
-    store = DataStore.from_plugin_config(config, path=run_path)
+    store = current_data_store(run_path)
     context = PluginContext(config=config, store=store)
     result = ReEDSParser.from_context(context).run()
     assert result.system is not None
     return result.system
+
+
+@pytest.mark.parametrize("source_state", ["missing", "empty", "wrong-year"])
+def test_parser_validation_requires_cost_fom_for_the_solve_year(
+    fom_run_path: Path, source_state: str
+) -> None:
+    path = fom_run_path / "inputs_case" / "plantcharout.csv"
+    path.write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
+    if source_state == "missing":
+        path.unlink()
+    elif source_state == "empty":
+        path.write_text("*i,t,variable,value\n")
+    else:
+        path.write_text("*i,t,variable,value\nGas-CC,2029,fom,20081\n")
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    parser = ReEDSParser.from_context(
+        PluginContext(config=config, store=current_data_store(fom_run_path))
+    )
+
+    with pytest.raises(PluginError) as captured:
+        parser.run()
+
+    if source_state == "missing":
+        assert isinstance(captured.value.__cause__, FileNotFoundError)
+        assert "plantcharout.csv" in str(captured.value.__cause__)
+    else:
+        from r2x_core.exceptions import ReaderError
+
+        assert isinstance(captured.value.__cause__, ReaderError)
+        assert isinstance(captured.value.__cause__.__cause__, ValueError)
+        assert "cost_fom" in str(captured.value.__cause__)
+
+
+def test_cost_fom_must_cover_every_requested_solve_year(fom_run_path: Path) -> None:
+    inputs = fom_run_path / "inputs_case"
+    (inputs / "plantcharout.csv").write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
+    load_path = inputs / "load.h5"
+    with h5py.File(load_path, "r") as source:
+        columns = source["columns"][:]
+    with h5py.File(load_path, "w") as destination:
+        destination.create_dataset("columns", data=columns)
+        destination.create_dataset("data", data=np.zeros((2, len(columns)), dtype=np.float32))
+        destination.create_dataset("index_0", data=np.asarray([2032, 2035], dtype=np.int64))
+        destination.create_dataset(
+            "index_1",
+            data=np.asarray([b"2012-01-01T00:00:00", b"2012-01-01T00:00:00"], dtype="S19"),
+        )
+        destination.create_dataset("index_names", data=np.asarray([b"year", b"datetime"], dtype="S8"))
+    config = ReEDSConfig(solve_year=[2032, 2035], weather_year=2012)
+    parser = ReEDSParser.from_context(
+        PluginContext(config=config, store=current_data_store(fom_run_path))
+    )
+
+    with pytest.raises(PluginError, match="cost_fom"):
+        parser.run()
+
+
+def test_enabled_water_upgrade_requires_its_physical_file(
+    fom_run_path: Path, reeds_config: ReEDSConfig
+) -> None:
+    write_upgrade_inputs(
+        fom_run_path,
+        initial_rate=45000.0,
+        hydro_rate=0.0,
+        retrofit_enabled=False,
+    )
+    switches_path = fom_run_path / "inputs_case" / "switches.csv"
+    switches = switches_path.read_text()
+    assert "GSw_WaterMain,0" in switches
+    switches_path.write_text(switches.replace("GSw_WaterMain,0", "GSw_WaterMain,1"))
+    (fom_run_path / "inputs_case" / "upgradelink_water.csv").unlink(missing_ok=True)
+    parser = ReEDSParser.from_context(
+        PluginContext(config=reeds_config, store=current_data_store(fom_run_path))
+    )
+
+    with pytest.raises(PluginError) as captured:
+        parser.run()
+
+    assert isinstance(captured.value.__cause__, FileNotFoundError)
+    assert "upgradelink_water.csv" in str(captured.value.__cause__)
 
 
 def get_initial_upgrade(system: System, /) -> ReEDSGenerator:
@@ -81,6 +163,28 @@ def write_upgrade_inputs(
     )
     with (run_path / "outputs" / "cap_ivrt.csv").open("a") as output:
         output.write("CoalOldUns_Coal-CCS_mod,init-1,p1,2032,100\n")
+    if retrofit_enabled:
+        write_unitspec_upgrades_h5(inputs / "inputs.h5", ["coalolduns_coal-ccs_mod"])
+
+
+def test_distpv_fom_is_capacity_weighted_after_source_precedence(
+    fom_run_path: Path,
+    reeds_config: ReEDSConfig,
+) -> None:
+    outputs = fom_run_path / "outputs"
+    (outputs / "cap_ivrt.csv").write_text(
+        "i,v,r,t,Value\ndistpv,new1,p1,2032,10\ndistpv,new2,p1,2032,30\n"
+    )
+    history_path = fom_run_path / "inputs_case" / "hintage_data.csv"
+    history_path.write_text(
+        "TECH,bin,r,yr,cap,wFOM,wCCS_Retro_FOM\n"
+        "distpv,new1,p1,2032,10,100,0\ndistpv,new2,p1,2032,30,200,0\n"
+    )
+
+    system = build_fom_system(fom_run_path, config=reeds_config)
+
+    generators = [unit for unit in system.get_components(ReEDSVariableGenerator) if unit.technology == "distpv"]
+    assert [(unit.name, unit.capacity, unit.fom_cost) for unit in generators] == [("distpv_p1", 40.0, 175.0)]
 
 
 @pytest.mark.parametrize(
@@ -255,12 +359,12 @@ def test_initial_upgrade_costs_use_the_configured_characteristic_source_and_year
         "*i,t,variable,value\ncoal-ccs_mod,2028,fom,62000\ncoal-ccs_mod,2032,fom,99999\n"
     )
     mapping = csv_file_mapping()
-    initial_costs = next(item for item in mapping["files"] if item["name"] == "fom_upgrade_characteristics")
-    initial_costs["fpath"] = "inputs_case/alternate_upgrade_costs.csv"
-    config = reeds_config.model_copy(
-        update={"asset_overrides": {**reeds_config.asset_overrides, "file_mapping": mapping}}
-    )
-
-    system = build_fom_system(fom_run_path, config=config)
+    initial_costs = next(item for item in mapping if item["name"] == "fom_upgrade_characteristics")
+    initial_costs["relative_fpath"] = "inputs_case/alternate_upgrade_costs.csv"
+    store = current_data_store(fom_run_path, data_files=mapping)
+    context = PluginContext(config=reeds_config, store=store)
+    result = ReEDSParser.from_context(context).run()
+    assert result.system is not None
+    system = result.system
 
     assert get_initial_upgrade(system).fom_cost == 62000.0

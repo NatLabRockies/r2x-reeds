@@ -245,5 +245,13 @@
     "M10": 31,
     "M11": 30,
     "M12": 31
-  }
+  },
+  "resource_supply_curve_datasets": [
+    "csp",
+    "egs",
+    "geohydro",
+    "upv",
+    "wind-ons",
+    "wind-ofs"
+  ]
 }

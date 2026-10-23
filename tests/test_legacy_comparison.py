@@ -24,7 +24,7 @@ from r2x_core import DataStore
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from tests.fixtures.data_fixtures import csv_file_mapping
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.fixture

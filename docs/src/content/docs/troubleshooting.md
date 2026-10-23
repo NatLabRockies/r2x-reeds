@@ -46,7 +46,7 @@ print(sorted(path.name for path in (root / "outputs").glob("*")))
 ```
 
 Pass the root containing `meta.csv`, `inputs_case/` and `outputs/` to
-`DataStore.from_plugin_config`. Then compare the file mapping's path and HDF5
+`DataStore(path=run_path)` in the parser's `PluginContext`. Then compare the file mapping's path and HDF5
 `group_key`, `data_key` or `columns_key` with the run's actual report. Restore or
 regenerate the mapped report from that completed ReEDS run if it is absent or
 incomplete. Renaming an unrelated CSV or creating an empty placeholder does not
