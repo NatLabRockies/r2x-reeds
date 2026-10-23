@@ -42,7 +42,9 @@ class CountyMembership:
 
     ``region_to_counties`` maps each displayed region label to normalized,
     five-digit FIPS keys. ``county_to_region`` is its inverse, and
-    ``county_labels`` retains the source display label for each FIPS key.
+    ``county_labels`` retains the source display label for each FIPS key. Direct
+    construction requires the two mappings to be exact inverses with no repeated
+    or split county assignments.
     """
 
     region_to_counties: Mapping[str, tuple[str, ...]]
@@ -50,6 +52,23 @@ class CountyMembership:
     county_labels: Mapping[str, str]
 
     def __post_init__(self) -> None:
+        assignments: dict[str, str] = {}
+        for region, counties in self.region_to_counties.items():
+            for county in counties:
+                if county in assignments:
+                    previous_region = assignments[county]
+                    if previous_region == region:
+                        raise CountyMembershipError(
+                            f"Duplicate county assignment: FIPS {county!r} is repeated in region {region!r}."
+                        )
+                    raise CountyMembershipError(
+                        f"County FIPS {county!r} is split or ambiguously assigned to regions "
+                        f"{previous_region!r} and {region!r}."
+                    )
+                assignments[county] = region
+        if assignments != dict(self.county_to_region):
+            raise CountyMembershipError("County and region mappings must be exact inverses.")
+
         object.__setattr__(
             self,
             "region_to_counties",
@@ -95,7 +114,7 @@ def normalize_county_fips(value: str) -> str:
     text = value.strip()
     if text[:1].casefold() == "p":
         text = text[1:]
-    if not text.isdigit() or len(text) > 5:
+    if not text.isascii() or not text.isdigit() or len(text) > 5:
         raise CountyMembershipError(f"Invalid county FIPS value {value!r}; expected up to five digits.")
     return text.zfill(5)
 

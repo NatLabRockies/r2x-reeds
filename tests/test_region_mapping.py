@@ -28,6 +28,27 @@ def _county_level_membership(balancing_areas: CountyMembership) -> CountyMembers
     )
 
 
+@pytest.mark.parametrize(
+    ("region_to_counties", "county_to_region", "message"),
+    [
+        ({"a": ("53001",), "b": ("53001",)}, {"53001": "a"}, "split or ambiguously assigned"),
+        ({"a": ("53001", "53001")}, {"53001": "a"}, "Duplicate county assignment"),
+        ({"a": ("53001",)}, {"53001": "b"}, "exact inverses"),
+    ],
+)
+def test_direct_membership_rejects_duplicate_or_inconsistent_mappings(
+    region_to_counties: dict[str, tuple[str, ...]],
+    county_to_region: dict[str, str],
+    message: str,
+) -> None:
+    with pytest.raises(CountyMembershipError, match=message):
+        CountyMembership(
+            region_to_counties=region_to_counties,
+            county_to_region=county_to_region,
+            county_labels={},
+        )
+
+
 def test_load_county2zone_normalizes_fips_and_preserves_labels() -> None:
     membership = load_county_membership(INPUT_CASE / "county2zone.csv")
 
