@@ -31,7 +31,8 @@ def test_public_lifecycle_builds_regions_transmission_and_emission_outputs(examp
     assert all(interface.from_region is regions[interface.from_region.name] for interface in interfaces)
     assert all(line.interface in interfaces for line in lines)
 
-    line = system.get_component(ReEDSTransmissionLine, "p1_p2_ac")
+    line = system.get_component(ReEDSTransmissionLine, "p1_p2_ac_2032")
+    assert line.solve_year == 2032
     assert line.distance_miles == pytest.approx(132.46)
     assert line.line_cost_per_mw_mile == pytest.approx(2255.418390457496)
     assert line.losses == pytest.approx(0.01325)

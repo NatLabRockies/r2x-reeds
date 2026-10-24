@@ -1,89 +1,5 @@
 [
   {
-    "name": "generator_category_patterns",
-    "inline_table": {
-      "schema": {
-        "priority": "int64",
-        "category": "string",
-        "match_kind": "string",
-        "pattern": "string",
-        "is_dispatchable": "bool",
-        "unsupported": "bool"
-      },
-      "rows": [
-        {"priority": 0, "category": "solar", "match_kind": "prefix", "pattern": "upv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 0, "category": "solar", "match_kind": "prefix", "pattern": "distpv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 0, "category": "solar", "match_kind": "prefix", "pattern": "dupv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 0, "category": "solar", "match_kind": "prefix", "pattern": "csp", "is_dispatchable": false, "unsupported": false},
-        {"priority": 0, "category": "solar", "match_kind": "prefix", "pattern": "pvb", "is_dispatchable": false, "unsupported": false},
-        {"priority": 1, "category": "wind", "match_kind": "prefix", "pattern": "wind-ons", "is_dispatchable": false, "unsupported": false},
-        {"priority": 1, "category": "wind", "match_kind": "prefix", "pattern": "wind-ofs", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "coal", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "gas-cc", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "gas-ct", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "lfill-gas", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "nuclear", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "o-g-s", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "biopower", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "beccs", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "h2-ct", "is_dispatchable": false, "unsupported": false},
-        {"priority": 2, "category": "thermal", "match_kind": "prefix", "pattern": "h2-cc", "is_dispatchable": false, "unsupported": false},
-        {"priority": 3, "category": "hydro", "match_kind": "prefix", "pattern": "hyd", "is_dispatchable": false, "unsupported": false},
-        {"priority": 4, "category": "hydro_dispatchable", "match_kind": "prefix", "pattern": "hydro-d", "is_dispatchable": true, "unsupported": false},
-        {"priority": 4, "category": "hydro_dispatchable", "match_kind": "exact", "pattern": "hydd", "is_dispatchable": true, "unsupported": false},
-        {"priority": 4, "category": "hydro_dispatchable", "match_kind": "exact", "pattern": "hydsd", "is_dispatchable": true, "unsupported": false},
-        {"priority": 4, "category": "hydro_dispatchable", "match_kind": "exact", "pattern": "hydud", "is_dispatchable": true, "unsupported": false},
-        {"priority": 4, "category": "hydro_dispatchable", "match_kind": "exact", "pattern": "hydnpd", "is_dispatchable": true, "unsupported": false},
-        {"priority": 4, "category": "hydro_dispatchable", "match_kind": "exact", "pattern": "hyded", "is_dispatchable": true, "unsupported": false},
-        {"priority": 5, "category": "hydro_nondispatchable", "match_kind": "prefix", "pattern": "hydro-and", "is_dispatchable": false, "unsupported": false},
-        {"priority": 5, "category": "hydro_nondispatchable", "match_kind": "exact", "pattern": "hydnd", "is_dispatchable": false, "unsupported": false},
-        {"priority": 5, "category": "hydro_nondispatchable", "match_kind": "exact", "pattern": "hydsnd", "is_dispatchable": false, "unsupported": false},
-        {"priority": 5, "category": "hydro_nondispatchable", "match_kind": "exact", "pattern": "hydund", "is_dispatchable": false, "unsupported": false},
-        {"priority": 5, "category": "hydro_nondispatchable", "match_kind": "exact", "pattern": "hydnpnd", "is_dispatchable": false, "unsupported": false},
-        {"priority": 5, "category": "hydro_nondispatchable", "match_kind": "exact", "pattern": "hydend", "is_dispatchable": false, "unsupported": false},
-        {"priority": 6, "category": "pumped_storage", "match_kind": "prefix", "pattern": "pumped-hydro", "is_dispatchable": false, "unsupported": false},
-        {"priority": 7, "category": "storage", "match_kind": "prefix", "pattern": "battery", "is_dispatchable": false, "unsupported": false},
-        {"priority": 7, "category": "storage", "match_kind": "prefix", "pattern": "caes", "is_dispatchable": false, "unsupported": false},
-        {"priority": 8, "category": "electrolyzer", "match_kind": "prefix", "pattern": "electrolyzer", "is_dispatchable": false, "unsupported": true},
-        {"priority": 9, "category": "hydrogen", "match_kind": "prefix", "pattern": "smr", "is_dispatchable": false, "unsupported": true},
-        {"priority": 9, "category": "hydrogen", "match_kind": "exact", "pattern": "electrolyzer", "is_dispatchable": false, "unsupported": true},
-        {"priority": 10, "category": "imports", "match_kind": "exact", "pattern": "can-imports", "is_dispatchable": false, "unsupported": false},
-        {"priority": 11, "category": "geothermal", "match_kind": "prefix", "pattern": "geothermal", "is_dispatchable": false, "unsupported": false},
-        {"priority": 11, "category": "geothermal", "match_kind": "prefix", "pattern": "geohydro", "is_dispatchable": false, "unsupported": false},
-        {"priority": 11, "category": "geothermal", "match_kind": "prefix", "pattern": "egs", "is_dispatchable": false, "unsupported": false},
-        {"priority": 11, "category": "geothermal", "match_kind": "prefix", "pattern": "rtes", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "upv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "distpv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "dupv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "csp", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "pvb", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "wind-ons", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "wind-ofs", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "geothermal", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "geohydro", "is_dispatchable": false, "unsupported": false},
-        {"priority": 12, "category": "renewable", "match_kind": "prefix", "pattern": "egs", "is_dispatchable": false, "unsupported": false},
-        {"priority": 13, "category": "variable_renewable", "match_kind": "prefix", "pattern": "upv", "is_dispatchable": false, "unsupported": false},
-        {"priority": 13, "category": "variable_renewable", "match_kind": "prefix", "pattern": "wind-ons", "is_dispatchable": false, "unsupported": false},
-        {"priority": 13, "category": "variable_renewable", "match_kind": "prefix", "pattern": "wind-ofs", "is_dispatchable": false, "unsupported": false}
-      ]
-    },
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "with_columns",
-          "columns": {
-            "pattern": {
-              "lowercase": [
-                "pattern"
-              ]
-            }
-          }
-        }
-      ]
-    }
-  },
-  {
     "name": "reserve_products_config",
     "inline_table": {
       "schema": {
@@ -160,42 +76,52 @@
     }
   },
   {
-    "name": "reserve_hour_start",
+    "name": "requested_solve_weather_year_rows",
     "inline_table": {
       "schema": {
-        "start": "string"
+        "solve_year": "int64",
+        "weather_year": "int64"
       },
-      "rows": [
-        {
-          "start": "{primary_weather_year}-01-01T00:00:00"
-        }
-      ]
-    },
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "cast_columns",
-          "column_schema": {
-            "start": "datetime"
-          }
-        },
-        {
-          "op": "datetime_range",
-          "start": "start",
-          "column": "datetime",
-          "periods": 8760,
-          "resolution_seconds": 3600
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "datetime"
-          ]
-        }
-      ]
+      "rows": "{requested_solve_weather_year_rows}"
     }
   },
+  {
+  "name": "weather_hour_axis",
+  "inline_table": {
+    "schema": {
+      "start": "string"
+    },
+    "rows": [
+      {
+        "start": "{primary_weather_year}-01-01T00:00:00"
+      }
+    ]
+  },
+  "proc_spec": {
+    "kind": "tabular",
+    "steps": [
+      {
+        "op": "cast_columns",
+        "column_schema": {
+          "start": "datetime"
+        }
+      },
+      {
+        "op": "datetime_range",
+        "start": "start",
+        "column": "datetime",
+        "periods": 8760,
+        "resolution_seconds": 3600
+      },
+      {
+        "op": "select_columns",
+        "select_columns": [
+          "datetime"
+        ]
+      }
+    ]
+  }
+},
   {
     "name": "meta",
     "relative_fpath": "meta.csv",
@@ -765,12 +691,23 @@
       "kind": "tabular",
       "steps": [
         {
+          "op": "with_columns",
+          "columns": {
+            "weather_year": {
+              "year": [
+                "datetime"
+              ]
+            }
+          }
+        },
+        {
           "op": "aggregate",
           "aggregate_on": {
             "datetime": "count"
           },
           "group_by": [
-            "solve_year"
+            "solve_year",
+            "weather_year"
           ]
         },
         {
@@ -784,7 +721,7 @@
   },
   {
     "name": "load_profiles_required",
-    "source": "requested_solve_year_rows",
+    "source": "requested_solve_weather_year_rows",
     "proc_spec": {
       "kind": "tabular",
       "steps": [
@@ -793,7 +730,8 @@
           "source": "load_profile_solve_year_counts",
           "how": "left",
           "on": [
-            "solve_year"
+            "solve_year",
+            "weather_year"
           ]
         },
         {
@@ -810,7 +748,7 @@
               0
             ]
           },
-          "message": "Every requested solve year must have load profiles"
+          "message": "Every requested solve-year/weather-year pair must have load profiles"
         }
       ]
     }
@@ -868,7 +806,8 @@
             "value": "max"
           },
           "group_by": [
-            "region"
+            "region",
+            "solve_year"
           ]
         },
         {
@@ -897,7 +836,15 @@
               "concat_str": [
                 "region",
                 {
-                  "literal": "_load"
+                  "literal": "_load_"
+                },
+                {
+                  "cast": [
+                    "solve_year",
+                    {
+                      "literal": "string"
+                    }
+                  ]
                 }
               ]
             }
@@ -919,7 +866,15 @@
               "concat_str": [
                 "region",
                 {
-                  "literal": "_load"
+                  "literal": "_load_"
+                },
+                {
+                  "cast": [
+                    "solve_year",
+                    {
+                      "literal": "string"
+                    }
+                  ]
                 }
               ]
             },
@@ -1783,7 +1738,7 @@
     "name": "fom_technology_subsets",
     "relative_fpath": "inputs_case/tech-subset-table.csv",
     "info": {
-      "description": "Technology membership for fixed O&M family assignments"
+      "description": "ReEDS technology subset memberships for classification and policy"
     },
     "reader": {
       "options": {
@@ -1805,15 +1760,6 @@
             "distpv": "string",
             "ccs": "string"
           }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "technology",
-            "psh",
-            "distpv",
-            "ccs"
-          ]
         }
       ],
       "kind": "tabular"
@@ -2177,9 +2123,7 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
-            "cf": "capacity_factor",
             "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2207,9 +2151,6 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
-            "cf": "capacity_factor",
-            "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2268,7 +2209,6 @@
             "class": "resource_class",
             "cf": "capacity_factor",
             "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2296,9 +2236,6 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
-            "cf": "capacity_factor",
-            "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2355,9 +2292,7 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
-            "cf": "capacity_factor",
             "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2385,9 +2320,6 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
-            "cf": "capacity_factor",
-            "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2614,7 +2546,6 @@
             "class": "resource_class",
             "cf": "capacity_factor",
             "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2642,9 +2573,6 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
-            "cf": "capacity_factor",
-            "cap_avail": "available_capacity",
-            "cost_per_mw": "supply_curve_cost",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }
         }
@@ -2708,7 +2636,7 @@
             "etype": "emission_source",
             "i": "technology",
             "r": "region",
-            "t": "year",
+            "t": "solve_year",
             "v": "vintage",
             "value": "rate"
           }
@@ -2716,7 +2644,7 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "year": "{solve_year}"
+            "solve_year": "{solve_year}"
           }
         }
       ],
@@ -3526,12 +3454,7 @@
   },
   {
     "name": "generator_capacity_selected",
-    "source_selection": {
-      "mode": "first_present",
-      "sources": [
-        "online_capacity"
-      ]
-    }
+    "source": "{generator_capacity_source_name}"
   },
   {
     "name": "generator_capacity_included",
@@ -3600,6 +3523,21 @@
     }
   },
   {
+    "name": "generator_subset_metadata",
+    "source": "fom_technology_subsets",
+    "proc_spec": {
+      "kind": "tabular",
+      "steps": [
+        {
+          "op": "rename_columns",
+          "column_mapping": {
+            "technology": "subset_technology"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "generator_category_matches",
     "source": "generator_technologies",
     "proc_spec": {
@@ -3607,56 +3545,14 @@
       "steps": [
         {
           "op": "join",
-          "source": "generator_category_patterns",
+          "source": "generator_subset_metadata",
           "how": "cross"
         },
         {
-          "op": "filter",
-          "predicate": {
-            "any": [
-              {
-                "and": [
-                  {
-                    "eq": [
-                      "match_kind",
-                      {
-                        "literal": "exact"
-                      }
-                    ]
-                  },
-                  {
-                    "eq": [
-                      "technology",
-                      "pattern"
-                    ]
-                  }
-                ]
-              },
-              {
-                "and": [
-                  {
-                    "eq": [
-                      "match_kind",
-                      {
-                        "literal": "prefix"
-                      }
-                    ]
-                  },
-                  {
-                    "starts_with": [
-                      "technology",
-                      "pattern"
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "op": "sort",
-          "by": {
-            "priority": "asc"
+          "op": "custom",
+          "handler": "classify_generator_categories",
+          "kwargs": {
+            "overrides": "{generator_classification_override_rows}"
           }
         }
       ]
@@ -3669,27 +3565,43 @@
       "kind": "tabular",
       "steps": [
         {
-          "op": "group_by",
-          "by": [
-            "technology"
-          ],
-          "agg": {
-            "primary_category": {
-              "first": [
-                "category"
-              ]
-            },
-            "is_dispatchable": {
-              "max": [
-                "is_dispatchable"
-              ]
-            },
-            "unsupported": {
-              "first": [
-                "unsupported"
-              ]
-            }
+          "op": "select_columns",
+          "select_columns": [
+            "technology",
+            "component_family",
+            "category",
+            "is_dispatchable",
+            "parser_supported"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "generator_category_memberships",
+    "source": "generator_category_matches",
+    "proc_spec": {
+      "kind": "tabular",
+      "steps": [
+        {
+          "op": "select",
+          "columns": {
+            "technology": "technology",
+            "category": "memberships"
           }
+        },
+        {
+          "op": "explode",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "op": "unique",
+          "subset": [
+            "technology",
+            "category"
+          ]
         }
       ]
     }
@@ -3722,7 +3634,7 @@
             "eq": [
               {
                 "is_null": [
-                  "primary_category"
+                  "component_family"
                 ]
               },
               false
@@ -3733,8 +3645,8 @@
           "op": "assert",
           "predicate": {
             "eq": [
-              "unsupported",
-              false
+              "parser_supported",
+              true
             ]
           }
         }
@@ -3758,7 +3670,7 @@
   },
   {
     "name": "generator_excluded_reserve_pairs",
-    "source": "generator_category_matches",
+    "source": "generator_category_memberships",
     "proc_spec": {
       "kind": "tabular",
       "steps": [
@@ -3919,7 +3831,7 @@
             "and": [
               {
                 "eq": [
-                  "primary_category",
+                  "component_family",
                   {
                     "literal": "thermal"
                   }
@@ -4211,7 +4123,18 @@
                 {
                   "literal": "_"
                 },
-                "trtype"
+                "trtype",
+                {
+                  "literal": "_"
+                },
+                {
+                  "cast": [
+                    "year",
+                    {
+                      "literal": "string"
+                    }
+                  ]
+                }
               ]
             },
             "from_to": {
@@ -4344,6 +4267,7 @@
             "category": "trtype",
             "line_type": "trtype",
             "interface_name": "interface_name",
+            "solve_year": "year",
             "max_active_power": "max_active_power",
             "distance_miles": "distance_miles",
             "line_cost_per_mw_mile": "line_cost_per_mw_mile",
@@ -6377,168 +6301,10 @@
           ]
         },
         {
-          "op": "with_columns",
-          "columns": {
-            "fuel_type": {
-              "coalesce": [
-                "direct_fuel_type",
-                "fuel_type_full",
-                "fuel_type_base"
-              ]
-            }
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "heat_rate": {
-              "when": [
-                {
-                  "eq": [
-                    "primary_category",
-                    {
-                      "literal": "thermal"
-                    }
-                  ]
-                },
-                {
-                  "coalesce": [
-                    "heat_rate",
-                    "heat_rate_mean",
-                    {
-                      "literal": "{default_heat_rate}"
-                    }
-                  ]
-                },
-                "heat_rate"
-              ]
-            },
-            "fuel_type": {
-              "when": [
-                {
-                  "eq": [
-                    "primary_category",
-                    {
-                      "literal": "thermal"
-                    }
-                  ]
-                },
-                {
-                  "coalesce": [
-                    "fuel_type",
-                    {
-                      "literal": "OTHER"
-                    }
-                  ]
-                },
-                "fuel_type"
-              ]
-            }
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "fuel_price": {
-              "when": [
-                {
-                  "eq": [
-                    "fuel_type",
-                    {
-                      "literal": "biomass"
-                    }
-                  ]
-                },
-                {
-                  "coalesce": [
-                    "biofuel_price",
-                    "fuel_price"
-                  ]
-                },
-                "fuel_price"
-              ]
-            }
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "storage_duration": {
-              "coalesce": [
-                "storage_duration",
-                "duration_out_value"
-              ]
-            },
-            "round_trip_efficiency": {
-              "coalesce": [
-                "round_trip_efficiency",
-                1.0
-              ]
-            },
-            "max_age": "maxage_years",
-            "min_stable_level": "min_load_frac",
-            "category": {
-              "when": [
-                {
-                  "eq": [
-                    "primary_category",
-                    {
-                      "literal": "thermal"
-                    }
-                  ]
-                },
-                "technology",
-                "primary_category"
-              ]
-            },
-            "name": {
-              "when": [
-                {
-                  "is_null": [
-                    "vintage"
-                  ]
-                },
-                {
-                  "concat_str": [
-                    "technology",
-                    {
-                      "literal": "_"
-                    },
-                    "region"
-                  ]
-                },
-                {
-                  "concat_str": [
-                    "technology",
-                    {
-                      "literal": "_"
-                    },
-                    "vintage",
-                    {
-                      "literal": "_"
-                    },
-                    "region"
-                  ]
-                }
-              ]
-            }
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "capacity": {
-              "when": [
-                {
-                  "le": [
-                    "capacity",
-                    9.999999999999999e-09
-                  ]
-                },
-                0.0,
-                "capacity"
-              ]
-            }
+          "op": "custom",
+          "handler": "prepare_generator_rows",
+          "kwargs": {
+            "default_heat_rate": "{default_heat_rate}"
           }
         },
         {
@@ -6578,7 +6344,7 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "primary_category": [
+            "component_family": [
               "thermal"
             ]
           }
@@ -6600,6 +6366,7 @@
             "vom_cost": "vom_cost",
             "fom_cost": "fom_cost",
             "capital_cost": "capital_cost",
+            "solve_year": "year",
             "min_stable_level": "min_stable_level",
             "ramp_rate": "ramp_rate",
             "startup_cost": "startup_cost",
@@ -6619,10 +6386,8 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "primary_category": [
-              "geothermal",
-              "renewable",
-              "variable_renewable"
+            "category": [
+              "geothermal"
             ]
           }
         },
@@ -6643,6 +6408,7 @@
             "vom_cost": "vom_cost",
             "fom_cost": "fom_cost",
             "capital_cost": "capital_cost",
+            "solve_year": "year",
             "inverter_loading_ratio": "inverter_loading_ratio",
             "capacity_factor_adjustment": "capacity_factor_adjustment",
             "ext": "ext",
@@ -6661,7 +6427,7 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "primary_category": [
+            "component_family": [
               "hydro"
             ]
           }
@@ -6683,6 +6449,7 @@
             "vom_cost": "vom_cost",
             "fom_cost": "fom_cost",
             "capital_cost": "capital_cost",
+            "solve_year": "year",
             "is_dispatchable": "is_dispatchable",
             "ramp_rate": "ramp_rate",
             "ext": "ext",
@@ -6701,8 +6468,7 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "primary_category": [
-              "pumped_storage",
+            "component_family": [
               "storage"
             ]
           }
@@ -6737,6 +6503,7 @@
             "vom_cost": "vom_cost",
             "fom_cost": "fom_cost",
             "capital_cost": "capital_cost",
+            "solve_year": "year",
             "storage_duration": "storage_duration",
             "round_trip_efficiency": "round_trip_efficiency",
             "capital_cost_energy": "capital_cost_energy",
@@ -6756,8 +6523,8 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "primary_category": [
-              "imports"
+            "component_family": [
+              "generator"
             ]
           }
         },
@@ -6778,6 +6545,7 @@
             "vom_cost": "vom_cost",
             "fom_cost": "fom_cost",
             "capital_cost": "capital_cost",
+            "solve_year": "year",
             "ext": "ext",
             "region": "region"
           }
@@ -6794,7 +6562,7 @@
         {
           "op": "filter_columns",
           "filter_by": {
-            "primary_category": [
+            "category": [
               "solar",
               "wind"
             ]
@@ -6830,7 +6598,8 @@
           "op": "group_by",
           "by": [
             "technology",
-            "region"
+            "region",
+            "year"
           ],
           "agg": {
             "capacity": {
@@ -6838,9 +6607,14 @@
                 "capacity"
               ]
             },
-            "primary_category": {
+            "component_family": {
               "first": [
-                "primary_category"
+                "component_family"
+              ]
+            },
+            "category": {
+              "first": [
+                "category"
               ]
             },
             "is_dispatchable": {
@@ -6946,27 +6720,24 @@
         {
           "op": "with_columns",
           "columns": {
-            "category": {
-              "when": [
-                {
-                  "eq": [
-                    "primary_category",
-                    {
-                      "literal": "thermal"
-                    }
-                  ]
-                },
-                "technology",
-                "primary_category"
-              ]
-            },
             "name": {
               "concat_str": [
                 "technology",
                 {
                   "literal": "_"
                 },
-                "region"
+                "region",
+                {
+                  "literal": "_"
+                },
+                {
+                  "cast": [
+                    "year",
+                    {
+                      "literal": "string"
+                    }
+                  ]
+                }
               ]
             },
             "vintage": null
@@ -6980,6 +6751,7 @@
             "technology": "technology",
             "capacity": "capacity",
             "vintage": "vintage",
+            "solve_year": "year",
             "heat_rate": "heat_rate",
             "fuel_type": "fuel_type",
             "fuel_price": "fuel_price",
@@ -7004,15 +6776,41 @@
       "kind": "tabular",
       "steps": [
         {
-          "op": "filter_columns",
-          "filter_by": {
-            "primary_category": [
-              "thermal",
-              "geothermal",
-              "renewable",
-              "variable_renewable",
-              "hydro",
-              "imports"
+          "op": "filter",
+          "predicate": {
+            "any": [
+              {
+                "is_in": [
+                  "component_family",
+                  {
+                    "values": [
+                      "thermal",
+                      "hydro",
+                      "generator"
+                    ]
+                  }
+                ]
+              },
+              {
+                "and": [
+                  {
+                    "eq": [
+                      "component_family",
+                      {
+                        "literal": "variable"
+                      }
+                    ]
+                  },
+                  {
+                    "eq": [
+                      "category",
+                      {
+                        "literal": "geothermal"
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           }
         },
@@ -7023,7 +6821,7 @@
               "when": [
                 {
                   "eq": [
-                    "primary_category",
+                    "component_family",
                     {
                       "literal": "thermal"
                     }
@@ -7036,7 +6834,7 @@
                   "when": [
                     {
                       "eq": [
-                        "primary_category",
+                        "component_family",
                         {
                           "literal": "hydro"
                         }
@@ -7049,12 +6847,10 @@
                       "when": [
                         {
                           "is_in": [
-                            "primary_category",
+                            "component_family",
                             {
                               "values": [
-                                "geothermal",
-                                "renewable",
-                                "variable_renewable"
+                                "variable"
                               ]
                             }
                           ]
@@ -7090,6 +6886,7 @@
             "capacity": "capacity",
             "owner_name": "name",
             "category": "category",
+            "solve_year": "year",
             "owner_type": "owner_type"
           }
         }
@@ -7118,6 +6915,7 @@
             "capacity": "capacity",
             "owner_name": "name",
             "category": "category",
+            "solve_year": "solve_year",
             "owner_type": {
               "literal": "ReEDSStorage"
             }
@@ -7148,6 +6946,7 @@
             "capacity": "capacity",
             "owner_name": "name",
             "category": "category",
+            "solve_year": "solve_year",
             "owner_type": {
               "literal": "ReEDSVariableGenerator"
             }
@@ -7205,6 +7004,7 @@
             "owner_type",
             "technology",
             "region",
+            "solve_year",
             "category",
             "capacity",
             "capacity_factor",
@@ -7371,6 +7171,7 @@
           "op": "group_by",
           "by": [
             "transmission_region",
+            "solve_year",
             "datetime"
           ],
           "agg": {
@@ -7407,7 +7208,8 @@
         {
           "op": "group_by",
           "by": [
-            "transmission_region"
+            "transmission_region",
+            "solve_year"
           ],
           "agg": {
             "solar_capacity": {
@@ -7426,11 +7228,6 @@
     "proc_spec": {
       "kind": "tabular",
       "steps": [
-        {
-          "op": "join",
-          "source": "requested_solve_year_rows",
-          "how": "cross"
-        },
         {
           "op": "join",
           "source": "reserve_product_rows",
@@ -7492,6 +7289,7 @@
           "op": "group_by",
           "by": [
             "transmission_region",
+            "solve_year",
             "datetime"
           ],
           "agg": {
@@ -7518,7 +7316,8 @@
           "source": "reserve_solar_capacity",
           "how": "inner",
           "on": [
-            "transmission_region"
+            "transmission_region",
+            "solve_year"
           ]
         },
         {
@@ -7542,11 +7341,6 @@
     "proc_spec": {
       "kind": "tabular",
       "steps": [
-        {
-          "op": "join",
-          "source": "requested_solve_year_rows",
-          "how": "cross"
-        },
         {
           "op": "join",
           "source": "reserve_product_rows",
@@ -7631,62 +7425,62 @@
     }
   },
   {
-    "name": "reserve_requirement_rows",
-    "source": "reserve_component_rows",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "requested_solve_year_rows",
-          "how": "cross"
-        },
-        {
-          "op": "join",
-          "source": "reserve_hour_start",
-          "how": "cross"
-        },
-        {
-          "op": "join",
-          "source": "reserve_contributions_by_hour",
-          "how": "left",
-          "on": [
-            "name",
-            "solve_year",
-            "datetime"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "requirement": {
-              "coalesce": [
-                "contribution",
-                0.0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "name",
-            "solve_year",
-            "datetime",
-            "requirement"
-          ]
-        },
-        {
-          "op": "sort",
-          "by": {
-            "name": "asc",
-            "solve_year": "asc",
-            "datetime": "asc"
+  "name": "reserve_requirement_rows",
+  "source": "reserve_component_rows",
+  "proc_spec": {
+    "kind": "tabular",
+    "steps": [
+      {
+        "op": "join",
+        "source": "requested_solve_year_rows",
+        "how": "cross"
+      },
+      {
+        "op": "join",
+        "source": "weather_hour_axis",
+        "how": "cross"
+      },
+      {
+        "op": "join",
+        "source": "reserve_contributions_by_hour",
+        "how": "left",
+        "on": [
+          "name",
+          "solve_year",
+          "datetime"
+        ]
+      },
+      {
+        "op": "with_columns",
+        "columns": {
+          "requirement": {
+            "coalesce": [
+              "contribution",
+              0.0
+            ]
           }
         }
-      ]
-    }
-  },
+      },
+      {
+        "op": "select_columns",
+        "select_columns": [
+          "name",
+          "solve_year",
+          "datetime",
+          "requirement"
+        ]
+      },
+      {
+        "op": "sort",
+        "by": {
+          "name": "asc",
+          "solve_year": "asc",
+          "datetime": "asc"
+        }
+      }
+    ]
+  }
+},
   {
     "name": "emission_rate_rows",
     "source_selection": {
@@ -7700,7 +7494,7 @@
           "emission_source": "string",
           "technology": "string",
           "region": "string",
-          "year": "int64",
+          "solve_year": "int64",
           "vintage": "string",
           "rate": "float64"
         },
@@ -7774,7 +7568,8 @@
           "on": [
             "technology",
             "region",
-            "vintage_key"
+            "vintage_key",
+            "solve_year"
           ]
         }
       ]
@@ -8223,249 +8018,6 @@
     }
   },
   {
-    "name": "resource_supply_presence_csp",
-    "source": "resource_supply_rows_csp",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "aggregate",
-          "aggregate_on": {
-            "sc_point_gid": "count"
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "has_supply": {
-              "gt": [
-                "sc_point_gid",
-                0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "has_supply"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_candidate_enrichment_csp",
-    "source": "resource_candidate_rows_csp",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_supply_presence_csp",
-          "how": "cross"
-        },
-        {
-          "op": "filter",
-          "predicate": {
-            "eq": [
-              "has_supply",
-              true
-            ]
-          }
-        },
-        {
-          "op": "select",
-          "columns": {
-            "sc_point_gid": "sc_point_gid",
-            "resource_class": "resource_class",
-            "technology": "technology",
-            "candidate_sc_gid": {
-              "optional_column": "sc_gid"
-            },
-            "candidate_available_capacity": {
-              "optional_column": "available_capacity"
-            },
-            "candidate_capacity_factor": {
-              "optional_column": "capacity_factor"
-            },
-            "candidate_latitude": {
-              "optional_column": "latitude"
-            },
-            "candidate_longitude": {
-              "optional_column": "longitude"
-            },
-            "candidate_existing_capacity": {
-              "optional_column": "existing_capacity"
-            },
-            "candidate_online_year": {
-              "optional_column": "online_year"
-            },
-            "candidate_retire_year": {
-              "optional_column": "retire_year"
-            },
-            "candidate_bin": {
-              "optional_column": "bin"
-            },
-            "candidate_capacity": {
-              "optional_column": "capacity"
-            },
-            "candidate_supply_curve_cost": {
-              "optional_column": "supply_curve_cost"
-            }
-          }
-        },
-        {
-          "op": "unique",
-          "subset": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_primary_rows_csp",
-    "source_selection": {
-      "mode": "first_nonempty",
-      "sources": [
-        "resource_supply_rows_csp",
-        "resource_candidate_rows_csp"
-      ],
-      "empty_fallback": {
-        "schema": {
-          "sc_point_gid": "int64",
-          "resource_class": "string",
-          "technology": "string",
-          "region": "string",
-          "sc_gid": "int64",
-          "available_capacity": "float64",
-          "capacity_factor": "float64",
-          "latitude": "float64",
-          "longitude": "float64",
-          "existing_capacity": "float64",
-          "online_year": "int64",
-          "retire_year": "int64",
-          "bin": "int64",
-          "capacity": "float64",
-          "supply_curve_cost": "float64",
-          "year": "int64",
-          "built_capacity": "float64",
-          "investment_bool": "bool"
-        },
-        "rows": []
-      }
-    }
-  },
-  {
-    "name": "resource_reference_rows_csp",
-    "source": "resource_primary_rows_csp",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_candidate_enrichment_csp",
-          "how": "left",
-          "on": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "sc_gid": {
-              "coalesce": [
-                "sc_gid",
-                "candidate_sc_gid"
-              ]
-            },
-            "available_capacity": {
-              "coalesce": [
-                "available_capacity",
-                "candidate_available_capacity"
-              ]
-            },
-            "capacity_factor": {
-              "coalesce": [
-                "capacity_factor",
-                "candidate_capacity_factor"
-              ]
-            },
-            "latitude": {
-              "coalesce": [
-                "latitude",
-                "candidate_latitude"
-              ]
-            },
-            "longitude": {
-              "coalesce": [
-                "longitude",
-                "candidate_longitude"
-              ]
-            },
-            "existing_capacity": {
-              "coalesce": [
-                "existing_capacity",
-                "candidate_existing_capacity"
-              ]
-            },
-            "online_year": {
-              "coalesce": [
-                "online_year",
-                "candidate_online_year"
-              ]
-            },
-            "retire_year": {
-              "coalesce": [
-                "retire_year",
-                "candidate_retire_year"
-              ]
-            },
-            "bin": {
-              "coalesce": [
-                "bin",
-                "candidate_bin"
-              ]
-            },
-            "capacity": {
-              "coalesce": [
-                "capacity",
-                "candidate_capacity"
-              ]
-            },
-            "supply_curve_cost": {
-              "coalesce": [
-                "supply_curve_cost",
-                "candidate_supply_curve_cost"
-              ]
-            }
-          }
-        },
-        {
-          "op": "drop_columns",
-          "drop_columns": [
-            "candidate_sc_gid",
-            "candidate_available_capacity",
-            "candidate_capacity_factor",
-            "candidate_latitude",
-            "candidate_longitude",
-            "candidate_existing_capacity",
-            "candidate_online_year",
-            "candidate_retire_year",
-            "candidate_bin",
-            "candidate_capacity",
-            "candidate_supply_curve_cost"
-          ]
-        }
-      ]
-    }
-  },
-  {
     "name": "resource_supply_rows_egs",
     "source_selection": {
       "mode": "first_nonempty",
@@ -8806,249 +8358,6 @@
             "built_capacity": "float",
             "investment_bool": "bool"
           }
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_supply_presence_egs",
-    "source": "resource_supply_rows_egs",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "aggregate",
-          "aggregate_on": {
-            "sc_point_gid": "count"
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "has_supply": {
-              "gt": [
-                "sc_point_gid",
-                0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "has_supply"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_candidate_enrichment_egs",
-    "source": "resource_candidate_rows_egs",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_supply_presence_egs",
-          "how": "cross"
-        },
-        {
-          "op": "filter",
-          "predicate": {
-            "eq": [
-              "has_supply",
-              true
-            ]
-          }
-        },
-        {
-          "op": "select",
-          "columns": {
-            "sc_point_gid": "sc_point_gid",
-            "resource_class": "resource_class",
-            "technology": "technology",
-            "candidate_sc_gid": {
-              "optional_column": "sc_gid"
-            },
-            "candidate_available_capacity": {
-              "optional_column": "available_capacity"
-            },
-            "candidate_capacity_factor": {
-              "optional_column": "capacity_factor"
-            },
-            "candidate_latitude": {
-              "optional_column": "latitude"
-            },
-            "candidate_longitude": {
-              "optional_column": "longitude"
-            },
-            "candidate_existing_capacity": {
-              "optional_column": "existing_capacity"
-            },
-            "candidate_online_year": {
-              "optional_column": "online_year"
-            },
-            "candidate_retire_year": {
-              "optional_column": "retire_year"
-            },
-            "candidate_bin": {
-              "optional_column": "bin"
-            },
-            "candidate_capacity": {
-              "optional_column": "capacity"
-            },
-            "candidate_supply_curve_cost": {
-              "optional_column": "supply_curve_cost"
-            }
-          }
-        },
-        {
-          "op": "unique",
-          "subset": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_primary_rows_egs",
-    "source_selection": {
-      "mode": "first_nonempty",
-      "sources": [
-        "resource_supply_rows_egs",
-        "resource_candidate_rows_egs"
-      ],
-      "empty_fallback": {
-        "schema": {
-          "sc_point_gid": "int64",
-          "resource_class": "string",
-          "technology": "string",
-          "region": "string",
-          "sc_gid": "int64",
-          "available_capacity": "float64",
-          "capacity_factor": "float64",
-          "latitude": "float64",
-          "longitude": "float64",
-          "existing_capacity": "float64",
-          "online_year": "int64",
-          "retire_year": "int64",
-          "bin": "int64",
-          "capacity": "float64",
-          "supply_curve_cost": "float64",
-          "year": "int64",
-          "built_capacity": "float64",
-          "investment_bool": "bool"
-        },
-        "rows": []
-      }
-    }
-  },
-  {
-    "name": "resource_reference_rows_egs",
-    "source": "resource_primary_rows_egs",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_candidate_enrichment_egs",
-          "how": "left",
-          "on": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "sc_gid": {
-              "coalesce": [
-                "sc_gid",
-                "candidate_sc_gid"
-              ]
-            },
-            "available_capacity": {
-              "coalesce": [
-                "available_capacity",
-                "candidate_available_capacity"
-              ]
-            },
-            "capacity_factor": {
-              "coalesce": [
-                "capacity_factor",
-                "candidate_capacity_factor"
-              ]
-            },
-            "latitude": {
-              "coalesce": [
-                "latitude",
-                "candidate_latitude"
-              ]
-            },
-            "longitude": {
-              "coalesce": [
-                "longitude",
-                "candidate_longitude"
-              ]
-            },
-            "existing_capacity": {
-              "coalesce": [
-                "existing_capacity",
-                "candidate_existing_capacity"
-              ]
-            },
-            "online_year": {
-              "coalesce": [
-                "online_year",
-                "candidate_online_year"
-              ]
-            },
-            "retire_year": {
-              "coalesce": [
-                "retire_year",
-                "candidate_retire_year"
-              ]
-            },
-            "bin": {
-              "coalesce": [
-                "bin",
-                "candidate_bin"
-              ]
-            },
-            "capacity": {
-              "coalesce": [
-                "capacity",
-                "candidate_capacity"
-              ]
-            },
-            "supply_curve_cost": {
-              "coalesce": [
-                "supply_curve_cost",
-                "candidate_supply_curve_cost"
-              ]
-            }
-          }
-        },
-        {
-          "op": "drop_columns",
-          "drop_columns": [
-            "candidate_sc_gid",
-            "candidate_available_capacity",
-            "candidate_capacity_factor",
-            "candidate_latitude",
-            "candidate_longitude",
-            "candidate_existing_capacity",
-            "candidate_online_year",
-            "candidate_retire_year",
-            "candidate_bin",
-            "candidate_capacity",
-            "candidate_supply_curve_cost"
-          ]
         }
       ]
     }
@@ -9399,249 +8708,6 @@
     }
   },
   {
-    "name": "resource_supply_presence_geohydro",
-    "source": "resource_supply_rows_geohydro",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "aggregate",
-          "aggregate_on": {
-            "sc_point_gid": "count"
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "has_supply": {
-              "gt": [
-                "sc_point_gid",
-                0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "has_supply"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_candidate_enrichment_geohydro",
-    "source": "resource_candidate_rows_geohydro",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_supply_presence_geohydro",
-          "how": "cross"
-        },
-        {
-          "op": "filter",
-          "predicate": {
-            "eq": [
-              "has_supply",
-              true
-            ]
-          }
-        },
-        {
-          "op": "select",
-          "columns": {
-            "sc_point_gid": "sc_point_gid",
-            "resource_class": "resource_class",
-            "technology": "technology",
-            "candidate_sc_gid": {
-              "optional_column": "sc_gid"
-            },
-            "candidate_available_capacity": {
-              "optional_column": "available_capacity"
-            },
-            "candidate_capacity_factor": {
-              "optional_column": "capacity_factor"
-            },
-            "candidate_latitude": {
-              "optional_column": "latitude"
-            },
-            "candidate_longitude": {
-              "optional_column": "longitude"
-            },
-            "candidate_existing_capacity": {
-              "optional_column": "existing_capacity"
-            },
-            "candidate_online_year": {
-              "optional_column": "online_year"
-            },
-            "candidate_retire_year": {
-              "optional_column": "retire_year"
-            },
-            "candidate_bin": {
-              "optional_column": "bin"
-            },
-            "candidate_capacity": {
-              "optional_column": "capacity"
-            },
-            "candidate_supply_curve_cost": {
-              "optional_column": "supply_curve_cost"
-            }
-          }
-        },
-        {
-          "op": "unique",
-          "subset": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_primary_rows_geohydro",
-    "source_selection": {
-      "mode": "first_nonempty",
-      "sources": [
-        "resource_supply_rows_geohydro",
-        "resource_candidate_rows_geohydro"
-      ],
-      "empty_fallback": {
-        "schema": {
-          "sc_point_gid": "int64",
-          "resource_class": "string",
-          "technology": "string",
-          "region": "string",
-          "sc_gid": "int64",
-          "available_capacity": "float64",
-          "capacity_factor": "float64",
-          "latitude": "float64",
-          "longitude": "float64",
-          "existing_capacity": "float64",
-          "online_year": "int64",
-          "retire_year": "int64",
-          "bin": "int64",
-          "capacity": "float64",
-          "supply_curve_cost": "float64",
-          "year": "int64",
-          "built_capacity": "float64",
-          "investment_bool": "bool"
-        },
-        "rows": []
-      }
-    }
-  },
-  {
-    "name": "resource_reference_rows_geohydro",
-    "source": "resource_primary_rows_geohydro",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_candidate_enrichment_geohydro",
-          "how": "left",
-          "on": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "sc_gid": {
-              "coalesce": [
-                "sc_gid",
-                "candidate_sc_gid"
-              ]
-            },
-            "available_capacity": {
-              "coalesce": [
-                "available_capacity",
-                "candidate_available_capacity"
-              ]
-            },
-            "capacity_factor": {
-              "coalesce": [
-                "capacity_factor",
-                "candidate_capacity_factor"
-              ]
-            },
-            "latitude": {
-              "coalesce": [
-                "latitude",
-                "candidate_latitude"
-              ]
-            },
-            "longitude": {
-              "coalesce": [
-                "longitude",
-                "candidate_longitude"
-              ]
-            },
-            "existing_capacity": {
-              "coalesce": [
-                "existing_capacity",
-                "candidate_existing_capacity"
-              ]
-            },
-            "online_year": {
-              "coalesce": [
-                "online_year",
-                "candidate_online_year"
-              ]
-            },
-            "retire_year": {
-              "coalesce": [
-                "retire_year",
-                "candidate_retire_year"
-              ]
-            },
-            "bin": {
-              "coalesce": [
-                "bin",
-                "candidate_bin"
-              ]
-            },
-            "capacity": {
-              "coalesce": [
-                "capacity",
-                "candidate_capacity"
-              ]
-            },
-            "supply_curve_cost": {
-              "coalesce": [
-                "supply_curve_cost",
-                "candidate_supply_curve_cost"
-              ]
-            }
-          }
-        },
-        {
-          "op": "drop_columns",
-          "drop_columns": [
-            "candidate_sc_gid",
-            "candidate_available_capacity",
-            "candidate_capacity_factor",
-            "candidate_latitude",
-            "candidate_longitude",
-            "candidate_existing_capacity",
-            "candidate_online_year",
-            "candidate_retire_year",
-            "candidate_bin",
-            "candidate_capacity",
-            "candidate_supply_curve_cost"
-          ]
-        }
-      ]
-    }
-  },
-  {
     "name": "resource_supply_rows_upv",
     "source_selection": {
       "mode": "first_nonempty",
@@ -9982,249 +9048,6 @@
             "built_capacity": "float",
             "investment_bool": "bool"
           }
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_supply_presence_upv",
-    "source": "resource_supply_rows_upv",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "aggregate",
-          "aggregate_on": {
-            "sc_point_gid": "count"
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "has_supply": {
-              "gt": [
-                "sc_point_gid",
-                0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "has_supply"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_candidate_enrichment_upv",
-    "source": "resource_candidate_rows_upv",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_supply_presence_upv",
-          "how": "cross"
-        },
-        {
-          "op": "filter",
-          "predicate": {
-            "eq": [
-              "has_supply",
-              true
-            ]
-          }
-        },
-        {
-          "op": "select",
-          "columns": {
-            "sc_point_gid": "sc_point_gid",
-            "resource_class": "resource_class",
-            "technology": "technology",
-            "candidate_sc_gid": {
-              "optional_column": "sc_gid"
-            },
-            "candidate_available_capacity": {
-              "optional_column": "available_capacity"
-            },
-            "candidate_capacity_factor": {
-              "optional_column": "capacity_factor"
-            },
-            "candidate_latitude": {
-              "optional_column": "latitude"
-            },
-            "candidate_longitude": {
-              "optional_column": "longitude"
-            },
-            "candidate_existing_capacity": {
-              "optional_column": "existing_capacity"
-            },
-            "candidate_online_year": {
-              "optional_column": "online_year"
-            },
-            "candidate_retire_year": {
-              "optional_column": "retire_year"
-            },
-            "candidate_bin": {
-              "optional_column": "bin"
-            },
-            "candidate_capacity": {
-              "optional_column": "capacity"
-            },
-            "candidate_supply_curve_cost": {
-              "optional_column": "supply_curve_cost"
-            }
-          }
-        },
-        {
-          "op": "unique",
-          "subset": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_primary_rows_upv",
-    "source_selection": {
-      "mode": "first_nonempty",
-      "sources": [
-        "resource_supply_rows_upv",
-        "resource_candidate_rows_upv"
-      ],
-      "empty_fallback": {
-        "schema": {
-          "sc_point_gid": "int64",
-          "resource_class": "string",
-          "technology": "string",
-          "region": "string",
-          "sc_gid": "int64",
-          "available_capacity": "float64",
-          "capacity_factor": "float64",
-          "latitude": "float64",
-          "longitude": "float64",
-          "existing_capacity": "float64",
-          "online_year": "int64",
-          "retire_year": "int64",
-          "bin": "int64",
-          "capacity": "float64",
-          "supply_curve_cost": "float64",
-          "year": "int64",
-          "built_capacity": "float64",
-          "investment_bool": "bool"
-        },
-        "rows": []
-      }
-    }
-  },
-  {
-    "name": "resource_reference_rows_upv",
-    "source": "resource_primary_rows_upv",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_candidate_enrichment_upv",
-          "how": "left",
-          "on": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "sc_gid": {
-              "coalesce": [
-                "sc_gid",
-                "candidate_sc_gid"
-              ]
-            },
-            "available_capacity": {
-              "coalesce": [
-                "available_capacity",
-                "candidate_available_capacity"
-              ]
-            },
-            "capacity_factor": {
-              "coalesce": [
-                "capacity_factor",
-                "candidate_capacity_factor"
-              ]
-            },
-            "latitude": {
-              "coalesce": [
-                "latitude",
-                "candidate_latitude"
-              ]
-            },
-            "longitude": {
-              "coalesce": [
-                "longitude",
-                "candidate_longitude"
-              ]
-            },
-            "existing_capacity": {
-              "coalesce": [
-                "existing_capacity",
-                "candidate_existing_capacity"
-              ]
-            },
-            "online_year": {
-              "coalesce": [
-                "online_year",
-                "candidate_online_year"
-              ]
-            },
-            "retire_year": {
-              "coalesce": [
-                "retire_year",
-                "candidate_retire_year"
-              ]
-            },
-            "bin": {
-              "coalesce": [
-                "bin",
-                "candidate_bin"
-              ]
-            },
-            "capacity": {
-              "coalesce": [
-                "capacity",
-                "candidate_capacity"
-              ]
-            },
-            "supply_curve_cost": {
-              "coalesce": [
-                "supply_curve_cost",
-                "candidate_supply_curve_cost"
-              ]
-            }
-          }
-        },
-        {
-          "op": "drop_columns",
-          "drop_columns": [
-            "candidate_sc_gid",
-            "candidate_available_capacity",
-            "candidate_capacity_factor",
-            "candidate_latitude",
-            "candidate_longitude",
-            "candidate_existing_capacity",
-            "candidate_online_year",
-            "candidate_retire_year",
-            "candidate_bin",
-            "candidate_capacity",
-            "candidate_supply_curve_cost"
-          ]
         }
       ]
     }
@@ -10575,249 +9398,6 @@
     }
   },
   {
-    "name": "resource_supply_presence_wind-ons",
-    "source": "resource_supply_rows_wind-ons",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "aggregate",
-          "aggregate_on": {
-            "sc_point_gid": "count"
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "has_supply": {
-              "gt": [
-                "sc_point_gid",
-                0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "has_supply"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_candidate_enrichment_wind-ons",
-    "source": "resource_candidate_rows_wind-ons",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_supply_presence_wind-ons",
-          "how": "cross"
-        },
-        {
-          "op": "filter",
-          "predicate": {
-            "eq": [
-              "has_supply",
-              true
-            ]
-          }
-        },
-        {
-          "op": "select",
-          "columns": {
-            "sc_point_gid": "sc_point_gid",
-            "resource_class": "resource_class",
-            "technology": "technology",
-            "candidate_sc_gid": {
-              "optional_column": "sc_gid"
-            },
-            "candidate_available_capacity": {
-              "optional_column": "available_capacity"
-            },
-            "candidate_capacity_factor": {
-              "optional_column": "capacity_factor"
-            },
-            "candidate_latitude": {
-              "optional_column": "latitude"
-            },
-            "candidate_longitude": {
-              "optional_column": "longitude"
-            },
-            "candidate_existing_capacity": {
-              "optional_column": "existing_capacity"
-            },
-            "candidate_online_year": {
-              "optional_column": "online_year"
-            },
-            "candidate_retire_year": {
-              "optional_column": "retire_year"
-            },
-            "candidate_bin": {
-              "optional_column": "bin"
-            },
-            "candidate_capacity": {
-              "optional_column": "capacity"
-            },
-            "candidate_supply_curve_cost": {
-              "optional_column": "supply_curve_cost"
-            }
-          }
-        },
-        {
-          "op": "unique",
-          "subset": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_primary_rows_wind-ons",
-    "source_selection": {
-      "mode": "first_nonempty",
-      "sources": [
-        "resource_supply_rows_wind-ons",
-        "resource_candidate_rows_wind-ons"
-      ],
-      "empty_fallback": {
-        "schema": {
-          "sc_point_gid": "int64",
-          "resource_class": "string",
-          "technology": "string",
-          "region": "string",
-          "sc_gid": "int64",
-          "available_capacity": "float64",
-          "capacity_factor": "float64",
-          "latitude": "float64",
-          "longitude": "float64",
-          "existing_capacity": "float64",
-          "online_year": "int64",
-          "retire_year": "int64",
-          "bin": "int64",
-          "capacity": "float64",
-          "supply_curve_cost": "float64",
-          "year": "int64",
-          "built_capacity": "float64",
-          "investment_bool": "bool"
-        },
-        "rows": []
-      }
-    }
-  },
-  {
-    "name": "resource_reference_rows_wind-ons",
-    "source": "resource_primary_rows_wind-ons",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_candidate_enrichment_wind-ons",
-          "how": "left",
-          "on": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "sc_gid": {
-              "coalesce": [
-                "sc_gid",
-                "candidate_sc_gid"
-              ]
-            },
-            "available_capacity": {
-              "coalesce": [
-                "available_capacity",
-                "candidate_available_capacity"
-              ]
-            },
-            "capacity_factor": {
-              "coalesce": [
-                "capacity_factor",
-                "candidate_capacity_factor"
-              ]
-            },
-            "latitude": {
-              "coalesce": [
-                "latitude",
-                "candidate_latitude"
-              ]
-            },
-            "longitude": {
-              "coalesce": [
-                "longitude",
-                "candidate_longitude"
-              ]
-            },
-            "existing_capacity": {
-              "coalesce": [
-                "existing_capacity",
-                "candidate_existing_capacity"
-              ]
-            },
-            "online_year": {
-              "coalesce": [
-                "online_year",
-                "candidate_online_year"
-              ]
-            },
-            "retire_year": {
-              "coalesce": [
-                "retire_year",
-                "candidate_retire_year"
-              ]
-            },
-            "bin": {
-              "coalesce": [
-                "bin",
-                "candidate_bin"
-              ]
-            },
-            "capacity": {
-              "coalesce": [
-                "capacity",
-                "candidate_capacity"
-              ]
-            },
-            "supply_curve_cost": {
-              "coalesce": [
-                "supply_curve_cost",
-                "candidate_supply_curve_cost"
-              ]
-            }
-          }
-        },
-        {
-          "op": "drop_columns",
-          "drop_columns": [
-            "candidate_sc_gid",
-            "candidate_available_capacity",
-            "candidate_capacity_factor",
-            "candidate_latitude",
-            "candidate_longitude",
-            "candidate_existing_capacity",
-            "candidate_online_year",
-            "candidate_retire_year",
-            "candidate_bin",
-            "candidate_capacity",
-            "candidate_supply_curve_cost"
-          ]
-        }
-      ]
-    }
-  },
-  {
     "name": "resource_supply_rows_wind-ofs",
     "source_selection": {
       "mode": "first_nonempty",
@@ -11163,263 +9743,74 @@
     }
   },
   {
-    "name": "resource_supply_presence_wind-ofs",
-    "source": "resource_supply_rows_wind-ofs",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "aggregate",
-          "aggregate_on": {
-            "sc_point_gid": "count"
-          }
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "has_supply": {
-              "gt": [
-                "sc_point_gid",
-                0
-              ]
-            }
-          }
-        },
-        {
-          "op": "select_columns",
-          "select_columns": [
-            "has_supply"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_candidate_enrichment_wind-ofs",
-    "source": "resource_candidate_rows_wind-ofs",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_supply_presence_wind-ofs",
-          "how": "cross"
-        },
-        {
-          "op": "filter",
-          "predicate": {
-            "eq": [
-              "has_supply",
-              true
-            ]
-          }
-        },
-        {
-          "op": "select",
-          "columns": {
-            "sc_point_gid": "sc_point_gid",
-            "resource_class": "resource_class",
-            "technology": "technology",
-            "candidate_sc_gid": {
-              "optional_column": "sc_gid"
-            },
-            "candidate_available_capacity": {
-              "optional_column": "available_capacity"
-            },
-            "candidate_capacity_factor": {
-              "optional_column": "capacity_factor"
-            },
-            "candidate_latitude": {
-              "optional_column": "latitude"
-            },
-            "candidate_longitude": {
-              "optional_column": "longitude"
-            },
-            "candidate_existing_capacity": {
-              "optional_column": "existing_capacity"
-            },
-            "candidate_online_year": {
-              "optional_column": "online_year"
-            },
-            "candidate_retire_year": {
-              "optional_column": "retire_year"
-            },
-            "candidate_bin": {
-              "optional_column": "bin"
-            },
-            "candidate_capacity": {
-              "optional_column": "capacity"
-            },
-            "candidate_supply_curve_cost": {
-              "optional_column": "supply_curve_cost"
-            }
-          }
-        },
-        {
-          "op": "unique",
-          "subset": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_primary_rows_wind-ofs",
-    "source_selection": {
-      "mode": "first_nonempty",
-      "sources": [
-        "resource_supply_rows_wind-ofs",
-        "resource_candidate_rows_wind-ofs"
-      ],
-      "empty_fallback": {
-        "schema": {
-          "sc_point_gid": "int64",
-          "resource_class": "string",
-          "technology": "string",
-          "region": "string",
-          "sc_gid": "int64",
-          "available_capacity": "float64",
-          "capacity_factor": "float64",
-          "latitude": "float64",
-          "longitude": "float64",
-          "existing_capacity": "float64",
-          "online_year": "int64",
-          "retire_year": "int64",
-          "bin": "int64",
-          "capacity": "float64",
-          "supply_curve_cost": "float64",
-          "year": "int64",
-          "built_capacity": "float64",
-          "investment_bool": "bool"
-        },
-        "rows": []
-      }
-    }
-  },
-  {
-    "name": "resource_reference_rows_wind-ofs",
-    "source": "resource_primary_rows_wind-ofs",
-    "proc_spec": {
-      "kind": "tabular",
-      "steps": [
-        {
-          "op": "join",
-          "source": "resource_candidate_enrichment_wind-ofs",
-          "how": "left",
-          "on": [
-            "technology",
-            "sc_point_gid",
-            "resource_class"
-          ]
-        },
-        {
-          "op": "with_columns",
-          "columns": {
-            "sc_gid": {
-              "coalesce": [
-                "sc_gid",
-                "candidate_sc_gid"
-              ]
-            },
-            "available_capacity": {
-              "coalesce": [
-                "available_capacity",
-                "candidate_available_capacity"
-              ]
-            },
-            "capacity_factor": {
-              "coalesce": [
-                "capacity_factor",
-                "candidate_capacity_factor"
-              ]
-            },
-            "latitude": {
-              "coalesce": [
-                "latitude",
-                "candidate_latitude"
-              ]
-            },
-            "longitude": {
-              "coalesce": [
-                "longitude",
-                "candidate_longitude"
-              ]
-            },
-            "existing_capacity": {
-              "coalesce": [
-                "existing_capacity",
-                "candidate_existing_capacity"
-              ]
-            },
-            "online_year": {
-              "coalesce": [
-                "online_year",
-                "candidate_online_year"
-              ]
-            },
-            "retire_year": {
-              "coalesce": [
-                "retire_year",
-                "candidate_retire_year"
-              ]
-            },
-            "bin": {
-              "coalesce": [
-                "bin",
-                "candidate_bin"
-              ]
-            },
-            "capacity": {
-              "coalesce": [
-                "capacity",
-                "candidate_capacity"
-              ]
-            },
-            "supply_curve_cost": {
-              "coalesce": [
-                "supply_curve_cost",
-                "candidate_supply_curve_cost"
-              ]
-            }
-          }
-        },
-        {
-          "op": "drop_columns",
-          "drop_columns": [
-            "candidate_sc_gid",
-            "candidate_available_capacity",
-            "candidate_capacity_factor",
-            "candidate_latitude",
-            "candidate_longitude",
-            "candidate_existing_capacity",
-            "candidate_online_year",
-            "candidate_retire_year",
-            "candidate_bin",
-            "candidate_capacity",
-            "candidate_supply_curve_cost"
-          ]
-        }
-      ]
-    }
-  },
-  {
-    "name": "resource_reference_rows",
-    "source": "resource_reference_rows_csp",
+    "name": "resource_supply_rows",
+    "source": "resource_supply_rows_csp",
     "proc_spec": {
       "kind": "tabular",
       "steps": [
         {
           "op": "concat",
           "sources": [
-            "resource_reference_rows_egs",
-            "resource_reference_rows_geohydro",
-            "resource_reference_rows_upv",
-            "resource_reference_rows_wind-ons",
-            "resource_reference_rows_wind-ofs"
+            "resource_supply_rows_egs",
+            "resource_supply_rows_geohydro",
+            "resource_supply_rows_upv",
+            "resource_supply_rows_wind-ons",
+            "resource_supply_rows_wind-ofs"
           ]
+        },
+        {
+          "op": "with_columns",
+          "columns": {
+            "resource_source": {
+              "literal": "supply"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "resource_candidate_rows",
+    "source": "resource_candidate_rows_csp",
+    "proc_spec": {
+      "kind": "tabular",
+      "steps": [
+        {
+          "op": "concat",
+          "sources": [
+            "resource_candidate_rows_egs",
+            "resource_candidate_rows_geohydro",
+            "resource_candidate_rows_upv",
+            "resource_candidate_rows_wind-ons",
+            "resource_candidate_rows_wind-ofs"
+          ]
+        },
+        {
+          "op": "with_columns",
+          "columns": {
+            "resource_source": {
+              "literal": "candidate"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "resource_reference_rows",
+    "source": "resource_supply_rows",
+    "proc_spec": {
+      "kind": "tabular",
+      "steps": [
+        {
+          "op": "concat",
+          "sources": [
+            "resource_candidate_rows"
+          ]
+        },
+        {
+          "op": "custom",
+          "handler": "resolve_resource_references"
         }
       ]
     }
@@ -12046,176 +10437,51 @@
   },
   {
     "name": "hydro_weather_calendar",
-    "inline_table": {
-      "schema": {
-        "month": "string",
-        "month_number": "int64",
-        "hours": "int64",
-        "is_leap": "bool"
-      },
-      "rows": [
-        {
-          "month": "jan",
-          "month_number": 1,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "feb",
-          "month_number": 2,
-          "hours": 672,
-          "is_leap": false
-        },
-        {
-          "month": "mar",
-          "month_number": 3,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "apr",
-          "month_number": 4,
-          "hours": 720,
-          "is_leap": false
-        },
-        {
-          "month": "may",
-          "month_number": 5,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "jun",
-          "month_number": 6,
-          "hours": 720,
-          "is_leap": false
-        },
-        {
-          "month": "jul",
-          "month_number": 7,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "aug",
-          "month_number": 8,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "sep",
-          "month_number": 9,
-          "hours": 720,
-          "is_leap": false
-        },
-        {
-          "month": "oct",
-          "month_number": 10,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "nov",
-          "month_number": 11,
-          "hours": 720,
-          "is_leap": false
-        },
-        {
-          "month": "dec",
-          "month_number": 12,
-          "hours": 744,
-          "is_leap": false
-        },
-        {
-          "month": "jan",
-          "month_number": 1,
-          "hours": 744,
-          "is_leap": true
-        },
-        {
-          "month": "feb",
-          "month_number": 2,
-          "hours": 696,
-          "is_leap": true
-        },
-        {
-          "month": "mar",
-          "month_number": 3,
-          "hours": 744,
-          "is_leap": true
-        },
-        {
-          "month": "apr",
-          "month_number": 4,
-          "hours": 720,
-          "is_leap": true
-        },
-        {
-          "month": "may",
-          "month_number": 5,
-          "hours": 744,
-          "is_leap": true
-        },
-        {
-          "month": "jun",
-          "month_number": 6,
-          "hours": 720,
-          "is_leap": true
-        },
-        {
-          "month": "jul",
-          "month_number": 7,
-          "hours": 744,
-          "is_leap": true
-        },
-        {
-          "month": "aug",
-          "month_number": 8,
-          "hours": 744,
-          "is_leap": true
-        },
-        {
-          "month": "sep",
-          "month_number": 9,
-          "hours": 720,
-          "is_leap": true
-        },
-        {
-          "month": "oct",
-          "month_number": 10,
-          "hours": 744,
-          "is_leap": true
-        },
-        {
-          "month": "nov",
-          "month_number": 11,
-          "hours": 720,
-          "is_leap": true
-        },
-        {
-          "month": "dec",
-          "month_number": 12,
-          "hours": 720,
-          "is_leap": true
-        }
-      ]
-    },
+    "source": "weather_hour_axis",
     "proc_spec": {
       "kind": "tabular",
       "steps": [
         {
-          "op": "filter_columns",
-          "filter_by": {
-            "is_leap": "{primary_weather_year_is_leap}"
+          "op": "select",
+          "columns": {
+            "month_number": {
+              "month": [
+                "datetime"
+              ]
+            },
+            "month": {
+              "lowercase": [
+                {
+                  "strftime": [
+                    "datetime",
+                    {
+                      "literal": "%b"
+                    }
+                  ]
+                }
+              ]
+            }
           }
         },
         {
-          "op": "select_columns",
-          "select_columns": [
+          "op": "group_by",
+          "by": [
             "month",
-            "month_number",
-            "hours"
-          ]
+            "month_number"
+          ],
+          "agg": {
+            "hours": {
+              "count": [
+                "month_number"
+              ]
+            }
+          }
+        },
+        {
+          "op": "sort",
+          "by": {
+            "month_number": "asc"
+          }
         }
       ]
     }
@@ -12355,7 +10621,8 @@
           "how": "inner",
           "on": [
             "technology",
-            "region"
+            "region",
+            "solve_year"
           ]
         },
         {
@@ -12623,7 +10890,8 @@
           "how": "inner",
           "on": [
             "technology",
-            "region"
+            "region",
+            "solve_year"
           ]
         },
         {

@@ -14,16 +14,16 @@ pytestmark = [pytest.mark.integration]
 
 
 @pytest.fixture
-def upgraded_system(reeds_run_path, example_reeds_config, caplog, tmp_path):
+def upgraded_system(reeds_run_path, reeds_config, caplog, tmp_path):
 
-    from r2x_core import DataStore, PluginContext
+    from r2x_core import PluginContext
     from r2x_reeds.parser import ReEDSParser
 
     run_path = tmp_path / "run"
     shutil.copytree(reeds_run_path, run_path)
     store = current_data_store(run_path)
 
-    ctx = PluginContext(config=example_reeds_config, store=store)
+    ctx = PluginContext(config=reeds_config, store=store)
     parser = ReEDSParser.from_context(ctx)
     result_ctx = parser.run()
     system = result_ctx.system

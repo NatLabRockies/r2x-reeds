@@ -131,16 +131,24 @@ class ReEDSUpgrader:
                 decision = shall_we_upgrade(step, current_version=resolved_version, strategy=active_strategy)
             except ValueError as error:
                 return Err(error)
-            if decision.is_err():
-                return Err(decision.err())
-            if not decision.value:
-                continue
+            match decision:
+                case Err(error):
+                    if error is None:
+                        return Err(RuntimeError(f"Upgrade decision for {step.name} failed without an error"))
+                    return Err(error)
+                case Ok(should_upgrade):
+                    if not should_upgrade:
+                        continue
 
             result = run_upgrade_step(data, step=step, upgrader_context=upgrader_context)
-            if result.is_err():
-                return Err(result.err())
+            match result:
+                case Err(error):
+                    if error is None:
+                        return Err(RuntimeError(f"Upgrade step {step.name} failed without an error"))
+                    return Err(error)
+                case Ok(upgraded):
+                    pass
 
-            upgraded = result.value
             if not isinstance(upgraded, Path):
                 msg = f"Upgrade step {step.name} did not return a Path"
                 return Err(TypeError(msg))

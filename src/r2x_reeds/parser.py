@@ -14,7 +14,8 @@ from r2x_core.exceptions import ReaderError
 from r2x_core.models import ParserInstruction
 from r2x_core.processors import substitute_placeholders
 
-from .plugin_config import ReEDSConfig, ReEDSDefaults, validate_generator_category_patterns
+from .plugin_config import ReEDSConfig, ReEDSDefaults
+from .processing import reeds_step_handlers
 from .upgrader.data_upgrader import run_reeds_upgrades
 
 
@@ -50,7 +51,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 return Err(substituted_rules.err())
             instructions = TypeAdapter(list[ParserInstruction]).validate_python(substituted_rules.value)
             self._generator_defaults = ReEDSDefaults.model_validate(defaults)
-            validate_generator_category_patterns(assets.get("file_mapping"))
         except ValueError as error:
             return Err(error)
         self._instructions = instructions
@@ -79,39 +79,58 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         configured_files = tuple(self.store.data_files.values())
         defaults = self._generator_defaults
         instructions = self._instructions
+        classification_overrides = self.config.generator_classification_overrides
         if defaults is None or instructions is None:
             msg = "Parser configuration was not validated before building"
             return Err(RuntimeError(msg))
 
-        solve_years = (
-            (self.config.solve_year,)
-            if isinstance(self.config.solve_year, int)
-            else tuple(self.config.solve_year)
+        solve_years = tuple(
+            dict.fromkeys(
+                (self.config.solve_year,)
+                if isinstance(self.config.solve_year, int)
+                else self.config.solve_year
+            )
         )
+        weather_years = tuple(
+            dict.fromkeys(
+                (self.config.weather_year,)
+                if isinstance(self.config.weather_year, int)
+                else self.config.weather_year
+            )
+        )
+        capacity_sources = {
+            "standard": "online_capacity",
+            "degraded": "online_capacity_degraded",
+        }
         placeholders = self.config.model_dump(mode="json")
         placeholders.update(
             {
                 "default_heat_rate": defaults.default_heat_rate,
+                "generator_classification_override_rows": [
+                    override.model_dump(mode="json") for override in classification_overrides
+                ],
                 "excluded_techs": (
                     self.config.excluded_techs
                     if self.config.excluded_techs is not None
                     else defaults.excluded_techs
                 ),
-                "solve_year_count": len(set(solve_years)),
-                "solve_year_rows": [
-                    {"solve_year": year} for year in dict.fromkeys(solve_years)
+                "solve_year_count": len(solve_years),
+                "solve_year_rows": [{"solve_year": year} for year in solve_years],
+                "requested_solve_weather_year_rows": [
+                    {"solve_year": solve_year, "weather_year": weather_year}
+                    for solve_year in solve_years
+                    for weather_year in weather_years
                 ],
+                "generator_capacity_source_name": capacity_sources[self.config.generator_capacity_source],
                 "resource_supply_curve_datasets": defaults.resource_supply_curve_datasets,
-                "reserve_product_rows": [
-                    row.model_dump(mode="json") for row in defaults.reserve_products
-                ],
+                "reserve_product_rows": [row.model_dump(mode="json") for row in defaults.reserve_products],
                 "reserve_provider_exclusion_rows": [
                     row.model_dump(mode="json") for row in defaults.reserve_provider_exclusions
                 ],
             }
         )
         try:
-            sources = DataReader().read_data_files(
+            sources = DataReader(step_handlers=reeds_step_handlers()).read_data_files(
                 configured_files,
                 folder_path=self.store.folder,
                 placeholders=placeholders,

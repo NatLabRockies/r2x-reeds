@@ -10,13 +10,17 @@ title: Configuration Reference
 | `weather_year` | `int \| list[int]` | required | Weather years used for profiles |
 | `case_name` | `str \| None` | `None` | Optional case label |
 | `scenario` | `str` | `"base"` | Scenario label |
+| `generator_capacity_source` | `Literal["standard", "degraded"]` | `"standard"` | Selects `online_capacity` or `online_capacity_degraded`; the chosen source does not fall back if missing |
+| `generator_classification_overrides` | `list[GeneratorClassificationOverride]` | `[]` | Optional exact technology-specific classification exceptions |
 | `excluded_techs` | `list[str] \| None` | `None` | `None` uses package exclusions; an explicit list, including `[]`, replaces them |
 | `config_path_override` | `Path \| None` | `None` | Complete configuration directory override |
 
-`primary_solve_year` and `primary_weather_year` return the first configured year.
-The parser still validates that requested years exist in the mapped data. Load
-profiles must cover every requested solve year; weather profiles use the
-configured weather-year policy.
+A parsed `System` retains each configured solve year as a separate state.
+Year-qualified component identities and `solve_year` fields let consumers select
+one state with `System.get_components(..., filter_func=...)`. The parser
+validates requested years against mapped data. Load profiles must cover every
+requested solve/weather-year pair. The weather calendar uses the first
+configured weather year and its first 8,760 hourly timestamps.
 
 The run directory is supplied separately to `DataStore(path=run_path)`. It must
 contain the ReEDS run inputs, such as `meta.csv`, `inputs_case/` and `outputs/`.
@@ -33,18 +37,20 @@ modifier assets are separate concerns.
 
 This file provides typed domain values consumed by configuration placeholders,
 including default thermal values, resource source names, reserve products and
-reserve-provider exclusions. Generator category patterns and their priorities
-are declared in `file_mapping.json` under
-`generator_category_patterns.inline_table.rows`. An explicit `excluded_techs`
-list in `ReEDSConfig` overrides the package list, even when it is empty.
+reserve-provider exclusions. Generator classifications derive from the ReEDS
+technology-subset input. `ReEDSConfig.generator_classification_overrides`
+provides optional exact exceptions. An explicit `excluded_techs` list in
+`ReEDSConfig` overrides the package list, even when it is empty.
 
 ### `file_mapping.json`
 
 This asset is a JSON list of core `DataFile` declarations. A declaration can
 name a physical input, typed inline table, ordered source selection, or prepared
 table with an ordered `proc_spec`. Processing includes filtering, joins,
-aggregations, projections, calendar expansion and validation. It is declarative:
-ReEDS does not run a separate row-processing or component-construction stage.
+aggregations, projections, weather-axis derivation and validation. Typed ReEDS
+functions handle domain policies such as generator preparation, FOM precedence,
+classification and resource-source enrichment. Core executes these through its
+existing mapping-step extension point.
 
 Physical inputs retain their availability semantics. A missing optional file is
 absent; a present empty file is still present; malformed present data is an
@@ -57,11 +63,11 @@ and [ordered table processing](https://natlabrockies.github.io/r2x-core/referenc
 
 The packaged load declarations derive peaks and profile rows from the same
 physical load source. Requested solve years are validated before construction.
-The selected capacity source is explicit in the generator table declarations;
-changing it never silently falls back when the chosen source is missing. The
-resource supply-curve declarations select a source per technology before
-joining candidate enrichments, so candidate-only sites do not become new
-resource sites when a primary source is populated.
+`generator_capacity_source` selects `online_capacity` (`"standard"`) or
+`online_capacity_degraded` (`"degraded"`). The chosen source never silently
+falls back when missing. The resource supply-curve declarations select a source
+per technology before joining candidate enrichments, so candidate-only sites do
+not become new resource sites when a primary source is populated.
 
 To customize a mapping, copy the complete package configuration directory and
 set `config_path_override`. The override is a directory, not a partial JSON
@@ -88,9 +94,10 @@ if system is None:
     raise RuntimeError("Parser returned no system")
 ```
 
-Edit the copied `file_mapping.json` or `defaults.json` using their declared
-schemas. For example, change the generator-capacity source selection to choose a
-different configured source. Keep all required assets in the directory. Core's
+Set `generator_capacity_source` on `ReEDSConfig` to choose standard or degraded
+capacity. Edit the copied `file_mapping.json` only when changing input layouts or
+source recipes, and edit `defaults.json` for packaged policy values. Keep all
+required assets in the directory. Core's
 [parser construction guide](https://natlabrockies.github.io/r2x-core/how-tos/build-parsers/)
 describes the shared typed output instructions.
 

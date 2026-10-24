@@ -190,6 +190,9 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, Excepti
             ReEDSGenerator,
             filter_func=lambda x: "can-imports" in x.name.lower() or "canada" in x.technology.lower(),
         ):
+            if config.solve_year is not None and generator.solve_year != config.solve_year:
+                continue
+
             # Get region name from the generator's region
             region_name = generator.region.name
 

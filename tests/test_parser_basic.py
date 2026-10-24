@@ -7,6 +7,7 @@ a minimal test data set.
 from __future__ import annotations
 
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,22 +16,24 @@ import numpy as np
 import polars as pl
 import pytest
 
-from tests.fixtures.data_fixtures import package_file_mapping
+from r2x_core.types import JSONValue
+from tests.fixtures.data_fixtures import csv_file_mapping, package_file_mapping
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 if TYPE_CHECKING:
-    pass
+    from r2x_core import DataStore
 
 
 def build_parser(
     run_path: Path,
     *,
-    file_mapping: dict[str, object] | None = None,
+    file_mapping: list[dict[str, object]] | None = None,
 ):
-    from r2x_core import DataStore, PluginContext
+    from pydantic import TypeAdapter
+
+    from r2x_core import DataFile, DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
-    from tests.fixtures.data_fixtures import csv_file_mapping
 
     selected_mapping = csv_file_mapping() if file_mapping is None else file_mapping
     config = ReEDSConfig(
@@ -38,11 +41,40 @@ def build_parser(
         weather_year=2012,
         case_name="test",
         scenario="base",
-        asset_overrides={"file_mapping": selected_mapping},
     )
-    store = DataStore.from_plugin_config(config, path=run_path)
+    store = DataStore(path=run_path)
+    store.add_data(TypeAdapter(list[DataFile]).validate_python(selected_mapping))
     ctx = PluginContext(config=config, store=store)
     return ReEDSParser.from_context(ctx)
+
+
+def create_store(run_path: Path, records: list[dict[str, object]]):
+    from pydantic import TypeAdapter
+
+    from r2x_core import DataFile, DataStore
+
+    store = DataStore(path=run_path)
+    store.add_data(TypeAdapter(list[DataFile]).validate_python(records))
+    return store
+
+
+def read_source(
+    store: DataStore,
+    name: str,
+    *,
+    placeholders: Mapping[str, JSONValue] | None = None,
+) -> pl.LazyFrame:
+    from r2x_core import DataReader, TabularSource
+
+    sources = DataReader().read_data_files([store[name]], folder_path=store.folder, placeholders=placeholders)
+    source = sources[name]
+    if not isinstance(source, TabularSource):
+        msg = f"Source {name!r} is not a tabular source"
+        raise TypeError(msg)
+    if not isinstance(source.data, pl.LazyFrame):
+        msg = f"Source {name!r} does not contain a Polars LazyFrame"
+        raise TypeError(msg)
+    return source.data
 
 
 def write_minimal_outputs_h5_from_fuel_price(csv_path: Path, h5_path: Path) -> None:
@@ -77,9 +109,8 @@ def test_store_reads_explicit_csv_mapping(reeds_run_path: Path) -> None:
     """Explicit CSV file mappings read the CSV outputs in the unpacked test archive."""
     parser = build_parser(reeds_run_path)
 
-    result = parser.store.read_data("fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
+    result = read_source(parser.store, "fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
 
-    assert result is not None
     df = result.collect()
     assert not df.is_empty()
     assert {"technology", "region", "year", "fuel_price"}.issubset(set(df.columns))
@@ -98,9 +129,8 @@ def test_datastore_reads_configured_h5_output_group(tmp_path: Path, reeds_run_pa
     fuel_price_csv.unlink()
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = parser.store.read_data("fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
+    result = read_source(parser.store, "fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
 
-    assert result is not None
     frame = result.collect()
     assert frame.select("technology", "region", "fuel_price").to_dict(as_series=False) == {
         "technology": ["ngas"],
@@ -123,9 +153,8 @@ def test_store_reads_outputs_h5_instead_of_csv(tmp_path: Path, reeds_run_path: P
     fuel_price_csv.unlink()
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = parser.store.read_data("fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
+    result = read_source(parser.store, "fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
 
-    assert result is not None
     df = result.collect()
     assert not df.is_empty()
     assert {"technology", "region", "year", "fuel_price"}.issubset(set(df.columns))
@@ -136,27 +165,15 @@ def test_store_reads_outputs_h5_instead_of_csv(tmp_path: Path, reeds_run_path: P
 
 
 def test_modeled_years_mapping_reads_headerless_csv(tmp_path: Path) -> None:
-    import json
-
-    from r2x_core import DataStore
-    from r2x_reeds import ReEDSConfig
+    from tests.fixtures.data_fixtures import package_file_mapping
 
     input_case = tmp_path / "inputs_case"
     input_case.mkdir()
     (input_case / "modeledyears.csv").write_text("2010,2020,2030\n")
-    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
-    mapping = json.loads(mapping_path.read_text())
-    modeled_years = next(item for item in mapping["files"] if item["name"] == "modeled_years")
-    config = ReEDSConfig(
-        solve_year=2032,
-        weather_year=2012,
-        case_name="test",
-        scenario="base",
-        asset_overrides={"file_mapping": {"files": [modeled_years], "tables": []}},
-    )
-    store = DataStore.from_plugin_config(config, path=tmp_path)
+    modeled_years = next(item for item in package_file_mapping() if item["name"] == "modeled_years")
+    store = create_store(tmp_path, [modeled_years])
 
-    result = store.read_data("modeled_years").collect()
+    result = read_source(store, "modeled_years").collect()
 
     assert result.schema["modeled_years"] == pl.Int32
     assert result.to_dicts() == [
@@ -175,10 +192,18 @@ def test_fuel_tech_map_preserves_base_and_full_technology_keys(tmp_path: Path, r
     write_fuel2tech_outputs_h5(outputs_h5)
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = parser.store.read_data("fuel_tech_map", placeholders={"solve_year": 2032, "weather_year": 2012})
+    from r2x_core import DataReader, TabularSource
 
-    assert result is not None
-    assert result.collect().to_dict(as_series=False) == {
+    # This test isolates the physical HDF5 mapping from its graph-level required_when predicate.
+    fuel_map = parser.store["fuel_tech_map"].model_copy(update={"required_when": None})
+    sources = DataReader().read_data_files(
+        [fuel_map],
+        folder_path=parser.store.folder,
+        placeholders={"solve_year": 2032, "weather_year": 2012},
+    )
+    result = sources["fuel_tech_map"]
+    assert isinstance(result, TabularSource)
+    assert result.data.collect().to_dict(as_series=False) == {
         "fuel_type": ["ngas", "coal"],
         "technology_base": ["gas-cc", "coal"],
         "technology_full": ["gas-cc", "coal"],
@@ -189,9 +214,8 @@ def test_store_reads_non_outputs_dataset(reeds_run_path: Path) -> None:
     """Non-output mappings should still be read through DataStore directly."""
     parser = build_parser(reeds_run_path)
 
-    result = parser.store.read_data("hierarchy")
+    result = read_source(parser.store, "hierarchy")
 
-    assert result is not None
     df = result.collect()
     assert not df.is_empty()
     assert "region_id" in df.columns
@@ -199,42 +223,28 @@ def test_store_reads_non_outputs_dataset(reeds_run_path: Path) -> None:
 
 def test_read_existing_capacity_with_configured_source_columns(tmp_path: Path) -> None:
     """Existing capacity maps the source schema directly through its file recipe."""
-    import json
-
-    from r2x_core import DataFile, DataStore
-
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
     (inputs_case / "capnonrsc.csv").write_text("*i,r,value\nsolar,p1,100.0\n")
 
-    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
-    records = json.loads(mapping_path.read_text())["files"]
-    record = next(item for item in records if item["name"] == "existing_capacity")
-    store = DataStore(path=tmp_path)
-    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    record = next(item for item in package_file_mapping() if item["name"] == "existing_capacity")
+    store = create_store(tmp_path, [record])
 
-    result = store.read_data("existing_capacity")
+    result = read_source(store, "existing_capacity")
 
     assert result.collect().to_dicts() == [{"technology": "solar", "region": "p1", "capacity": 100.0}]
 
 
 def test_read_marked_transmission_region_from_configured_source_column(tmp_path: Path) -> None:
     """The marked source header is explicitly mapped without runtime registration."""
-    import json
-
-    from r2x_core import DataFile, DataStore
-
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
     (inputs_case / "trancap_init_energy.csv").write_text("*r,rr,trtype,MW\np1,p2,AC,10.7\n")
 
-    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
-    records = json.loads(mapping_path.read_text())["files"]
-    record = next(item for item in records if item["name"] == "existing_transmission_capacity")
-    store = DataStore(path=tmp_path)
-    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    record = next(item for item in package_file_mapping() if item["name"] == "existing_transmission_capacity")
+    store = create_store(tmp_path, [record])
 
-    result = store.read_data("existing_transmission_capacity")
+    result = read_source(store, "existing_transmission_capacity")
 
     assert result.collect().to_dicts() == [
         {"from_region": "p1", "to_region": "p2", "trtype": "ac", "capacity": 10.7}
@@ -243,31 +253,20 @@ def test_read_marked_transmission_region_from_configured_source_column(tmp_path:
 
 def test_read_marked_renewable_supply_curve_technology_from_configured_source_column(tmp_path: Path) -> None:
     """The marked technology header is explicitly mapped by the file recipe."""
-    import json
-
-    from r2x_core import DataFile, DataStore
-
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
     (inputs_case / "caprsc.csv").write_text("*i,r,value\nupv,p1,10.0\n")
 
-    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
-    records = json.loads(mapping_path.read_text())["files"]
-    record = next(item for item in records if item["name"] == "renewable_supply_curves")
-    store = DataStore(path=tmp_path)
-    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    record = next(item for item in package_file_mapping() if item["name"] == "renewable_supply_curves")
+    store = create_store(tmp_path, [record])
 
-    result = store.read_data("renewable_supply_curves")
+    result = read_source(store, "renewable_supply_curves")
 
     assert result.collect().to_dicts() == [{"technology": "upv", "region": "p1", "capacity": 10.0}]
 
 
 def test_read_original_hierarchy_with_r_column(tmp_path: Path) -> None:
     """Current original hierarchy inputs use 'r' instead of 'ba' and 'aggreg'."""
-    import json
-
-    from r2x_core import DataFile, DataStore
-
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir()
     (inputs_case / "hierarchy_original.csv").write_text(
@@ -277,13 +276,10 @@ def test_read_original_hierarchy_with_r_column(tmp_path: Path) -> None:
         "pacific,pacific,northwest,northwest,0\n"
     )
 
-    mapping_path = Path(__file__).parents[1] / "src" / "r2x_reeds" / "config" / "file_mapping.json"
-    records = json.loads(mapping_path.read_text())["files"]
-    record = next(item for item in records if item["name"] == "hierarchy_original")
-    store = DataStore(path=tmp_path)
-    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+    record = next(item for item in package_file_mapping() if item["name"] == "hierarchy_original")
+    store = create_store(tmp_path, [record])
 
-    result = store.read_data("hierarchy_original")
+    result = read_source(store, "hierarchy_original")
 
     assert result.collect().to_dicts() == [
         {

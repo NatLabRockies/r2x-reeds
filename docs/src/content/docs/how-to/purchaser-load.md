@@ -31,8 +31,13 @@ For the ReEDS electricity-consuming technologies handled here (`electrolyzer`, `
 - `hydrogen_production_load_fpath`: path to `prod_load.csv` with hydrogen-production demand profiles
 - `hydrogen_production_annual_load_fpath`: path to `prod_load_ann.csv` with annual hydrogen-production demand
 - `loadsite_op_fpath`: path to `loadsite_op.csv`
-- `solve_year`
-- `weather_year`
+- `solve_year`: optional scalar year used to select both input rows and the matching owner state
+- `weather_year`: profile timestamp year
+
+A yearless load input is associated with an explicitly configured scalar
+`solve_year`. Without it, the rows remain unscoped and do not automatically
+broadcast to every year-qualified owner. Use year-keyed inputs or configure the
+target solve year.
 
 ## Example
 

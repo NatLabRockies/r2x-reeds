@@ -10,8 +10,6 @@ from loguru import logger
 
 __version__ = version("r2x_reeds")
 
-# Import getters to register them with r2x-core
-from . import getters  # noqa: F401
 from .models import (
     EmissionRate,
     EmissionType,

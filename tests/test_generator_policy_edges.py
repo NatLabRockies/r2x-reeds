@@ -10,6 +10,7 @@ import pytest
 from r2x_core import PluginError
 from r2x_reeds import ReEDSConfig
 from r2x_reeds.models import ReEDSGenerator, ReEDSStorage, ReEDSThermalGenerator, ReEDSVariableGenerator
+from r2x_reeds.plugin_config import GeneratorClassificationOverride
 from tests.test_parser_current_core import build_generator_system
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
@@ -28,17 +29,13 @@ def test_configured_capacity_source_selects_degradation_adjusted_values(
     generator_run_path: Path, reeds_config: ReEDSConfig
 ) -> None:
     outputs = generator_run_path / "outputs"
-    (outputs / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value,fuel_type\nGas-CC,init-1,p1,2032,100,gas\n"
-    )
-    (outputs / "cap_deg_ivrt.csv").write_text(
-        "i,v,r,t,Value,fuel_type\nGas-CC,init-1,p1,2032,250,gas\n"
-    )
+    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value,fuel_type\nGas-CC,init-1,p1,2032,100,gas\n")
+    (outputs / "cap_deg_ivrt.csv").write_text("i,v,r,t,Value,fuel_type\nGas-CC,init-1,p1,2032,250,gas\n")
 
     system = build_generator_system(
         generator_run_path,
         config=reeds_config,
-        capacity_source="online_capacity_degraded",
+        generator_capacity_source="degraded",
     )
 
     generator = next(iter(system.get_components(ReEDSThermalGenerator)))
@@ -48,16 +45,14 @@ def test_configured_capacity_source_selects_degradation_adjusted_values(
 def test_missing_configured_capacity_source_does_not_fall_back(
     generator_run_path: Path, reeds_config: ReEDSConfig
 ) -> None:
-    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n"
-    )
+    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n")
     (generator_run_path / "outputs" / "cap_deg_ivrt.csv").unlink(missing_ok=True)
 
     with pytest.raises(PluginError) as captured:
         build_generator_system(
             generator_run_path,
             config=reeds_config,
-            capacity_source="online_capacity_degraded",
+            generator_capacity_source="degraded",
             required_capacity_source=True,
         )
 
@@ -69,9 +64,7 @@ def test_inline_fuel_type_satisfies_thermal_mapping_without_fuel_map(
     generator_run_path: Path, reeds_config: ReEDSConfig
 ) -> None:
     outputs = generator_run_path / "outputs"
-    (outputs / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value,fuel_type\nGas-CC,init-1,p1,2032,100,GAS\n"
-    )
+    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value,fuel_type\nGas-CC,init-1,p1,2032,100,GAS\n")
     (outputs / "fuel2tech.csv").unlink(missing_ok=True)
 
     system = build_generator_system(generator_run_path, config=reeds_config)
@@ -81,9 +74,7 @@ def test_inline_fuel_type_satisfies_thermal_mapping_without_fuel_map(
 
 
 def test_unresolved_thermal_fuel_requires_the_physical_mapping(generator_run_path: Path) -> None:
-    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n"
-    )
+    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n")
     (generator_run_path / "outputs" / "fuel2tech.csv").unlink(missing_ok=True)
 
     with pytest.raises(PluginError) as captured:
@@ -96,9 +87,7 @@ def test_unresolved_thermal_fuel_requires_the_physical_mapping(generator_run_pat
 def test_present_empty_fuel_mapping_is_valid_and_uses_other_fallback(
     generator_run_path: Path, reeds_config: ReEDSConfig
 ) -> None:
-    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n"
-    )
+    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n")
     (generator_run_path / "outputs" / "fuel2tech.csv").write_text("f,i,Value\n")
 
     system = build_generator_system(generator_run_path, config=reeds_config)
@@ -107,26 +96,19 @@ def test_present_empty_fuel_mapping_is_valid_and_uses_other_fallback(
     assert generator.fuel_type == "OTHER"
 
 
-def test_generator_category_patterns_are_case_insensitive(
+def test_generator_classification_override_matches_technology_case_insensitively(
     generator_run_path: Path, reeds_config: ReEDSConfig
 ) -> None:
-    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n"
-    )
-    category_patterns: list[dict[str, object]] = [
-        {
-            "priority": 0,
-            "category": "thermal",
-            "match_kind": "prefix",
-            "pattern": "GAS-CC",
-            "is_dispatchable": False,
-            "unsupported": False,
+    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n")
+    config = reeds_config.model_copy(
+        update={
+            "generator_classification_overrides": [
+                GeneratorClassificationOverride(technology="GAS-CC", category="thermal")
+            ]
         }
-    ]
-
-    system = build_generator_system(
-        generator_run_path, config=reeds_config, generator_category_patterns=category_patterns
     )
+
+    system = build_generator_system(generator_run_path, config=config)
 
     thermal = list(system.get_components(ReEDSThermalGenerator))
     assert [(generator.technology, generator.capacity) for generator in thermal] == [("gas-cc", 100.0)]
@@ -145,40 +127,28 @@ def test_category_classification_keeps_all_repeated_technology_capacity_rows(
         system.get_components(ReEDSThermalGenerator),
         key=lambda generator: generator.name,
     )
-    assert [(generator.name, generator.region.name, generator.vintage, generator.capacity) for generator in generators] == [
-        ("gas-cc_init-1_p1", "p1", "init-1", 100.0),
-        ("gas-cc_init-2_p3", "p3", "init-2", 200.0),
+    assert [
+        (generator.name, generator.region.name, generator.vintage, generator.capacity)
+        for generator in generators
+    ] == [
+        ("gas-cc_init-1_p1_2032", "p1", "init-1", 100.0),
+        ("gas-cc_init-2_p3_2032", "p3", "init-2", 200.0),
     ]
 
 
-def test_only_the_highest_priority_generator_category_controls_unsupported_policy(
+def test_exact_classification_override_changes_the_component_family(
     generator_run_path: Path, reeds_config: ReEDSConfig
 ) -> None:
-    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\ngas-cc,init-1,p1,2032,100\n"
+    (generator_run_path / "outputs" / "cap_ivrt.csv").write_text("i,v,r,t,Value\ngas-cc,init-1,p1,2032,100\n")
+    config = reeds_config.model_copy(
+        update={
+            "generator_classification_overrides": [
+                GeneratorClassificationOverride(technology="gas-cc", category="wind")
+            ]
+        }
     )
-    category_patterns: list[dict[str, object]] = [
-        {
-            "priority": 0,
-            "category": "wind",
-            "match_kind": "prefix",
-            "pattern": "gas-cc",
-            "is_dispatchable": False,
-            "unsupported": False,
-        },
-        {
-            "priority": 1,
-            "category": "hydrogen",
-            "match_kind": "prefix",
-            "pattern": "gas",
-            "is_dispatchable": False,
-            "unsupported": True,
-        },
-    ]
 
-    system = build_generator_system(
-        generator_run_path, config=reeds_config, generator_category_patterns=category_patterns
-    )
+    system = build_generator_system(generator_run_path, config=config)
 
     variable = list(system.get_components(ReEDSVariableGenerator))
     assert [(generator.technology, generator.capacity) for generator in variable] == [("gas-cc", 100.0)]
@@ -208,10 +178,10 @@ def test_thermal_heat_rate_fill_is_grouped_by_vintage_and_does_not_fill_renewabl
     system = build_generator_system(generator_run_path, config=reeds_config)
 
     thermal = {generator.name: generator for generator in system.get_components(ReEDSThermalGenerator)}
-    assert set(thermal) == {"gas-cc_init-1_p1", "gas-cc_init-1_p3", "gas-cc_init-2_p1"}
-    assert thermal["gas-cc_init-1_p1"].heat_rate == 12.0
-    assert thermal["gas-cc_init-1_p3"].heat_rate == 12.0
-    assert thermal["gas-cc_init-2_p1"].heat_rate == 10.0
+    assert set(thermal) == {"gas-cc_init-1_p1_2032", "gas-cc_init-1_p3_2032", "gas-cc_init-2_p1_2032"}
+    assert thermal["gas-cc_init-1_p1_2032"].heat_rate == 12.0
+    assert thermal["gas-cc_init-1_p3_2032"].heat_rate == 12.0
+    assert thermal["gas-cc_init-2_p1_2032"].heat_rate == 10.0
     assert all(generator.ramp_rate == 0.25 for generator in thermal.values())
     assert sum(generator.capacity for generator in thermal.values()) == 350.0
     renewable = list(system.get_components(ReEDSVariableGenerator))
@@ -329,7 +299,7 @@ def test_fuel_mapping_uses_base_technology_and_defaults_only_unmapped_thermal_ro
     generators = list(system.get_components(ReEDSThermalGenerator))
     assert len(generators) == 1
     assert generators[0].technology == "gas-cc_case"
-    assert generators[0].name == "gas-cc_case_init-1_p1"
+    assert generators[0].name == "gas-cc_case_init-1_p1_2032"
     assert generators[0].fuel_type == expected_fuel
     assert generators[0].fuel_price == 7.0
     assert generators[0].capacity == 100.0

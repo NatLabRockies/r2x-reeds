@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from r2x_core import DataStore, PluginContext
+from r2x_core import PluginContext
 from r2x_core.exceptions import PluginError
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models import ReEDSGenerator

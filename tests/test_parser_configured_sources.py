@@ -24,6 +24,7 @@ from r2x_reeds.models import (
     ReEDSThermalGenerator,
     ReEDSVariableGenerator,
 )
+from r2x_reeds.plugin_config import GeneratorClassificationOverride
 from tests.test_parser_current_core import configure_csv_sources, copy_package_config
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
@@ -52,11 +53,18 @@ def prepare_case(reeds_run_path: Path, tmp_path: Path) -> tuple[Path, Path]:
     return run_path, config_path
 
 
-def run_parser(run_path: Path, config_path: Path, *, excluded_techs: list[str] | None = None) -> System:
+def run_parser(
+    run_path: Path,
+    config_path: Path,
+    *,
+    excluded_techs: list[str] | None = None,
+    classification_overrides: list[GeneratorClassificationOverride] | None = None,
+) -> System:
     config = ReEDSConfig(
         solve_year=2032,
         weather_year=2012,
         excluded_techs=excluded_techs,
+        generator_classification_overrides=classification_overrides or [],
         config_path_override=config_path,
     )
     context = PluginContext(config=config, store=DataStore(path=run_path))
@@ -81,12 +89,8 @@ def test_parser_uses_configured_generator_sources_and_field_mapping(
     )
     (outputs / "forced-outages-selected.csv").write_text("i,Value\nGas-CC,0.31\n", encoding="utf-8")
     (outputs / "planned-outages-selected.csv").write_text("i,Value\nGas-CC,0.42\n", encoding="utf-8")
-    (outputs / "vom-selected.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,23.5\n", encoding="utf-8"
-    )
-    (outputs / "startup-selected.csv").write_text(
-        "*i,$2004/MW\nGas-CC,17.5\n", encoding="utf-8"
-    )
+    (outputs / "vom-selected.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,23.5\n", encoding="utf-8")
+    (outputs / "startup-selected.csv").write_text("*i,$2004/MW\nGas-CC,17.5\n", encoding="utf-8")
     (inputs / "maxage-selected.csv").write_text("Gas-CC,99\n", encoding="utf-8")
     (inputs / "ramprate-selected.csv").write_text("Gas-CC,0.25\n", encoding="utf-8")
 
@@ -103,9 +107,7 @@ def test_parser_uses_configured_generator_sources_and_field_mapping(
         update_csv_source(mapping, name, path)
     maxage = next(record for record in mapping if record["name"] == "maxage")
     maxage["relative_fpath"] = "inputs_case/maxage-selected.csv"
-    generator_thermal_rows = next(
-        record for record in mapping if record["name"] == "generator_thermal_rows"
-    )
+    generator_thermal_rows = next(record for record in mapping if record["name"] == "generator_thermal_rows")
     generator_thermal_rows["proc_spec"]["steps"].append(
         {
             "op": "with_columns",
@@ -126,7 +128,7 @@ def test_parser_uses_configured_generator_sources_and_field_mapping(
 
     system = run_parser(run_path, config_path, excluded_techs=[])
 
-    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1")
+    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1_2032")
     assert generator.capacity == 100.0
     assert generator.heat_rate == 123456.0
     assert generator.forced_outage_rate == 0.31
@@ -149,36 +151,24 @@ def test_category_and_exclusion_overrides_control_generator_outputs(
     defaults = json.loads(defaults_path.read_text(encoding="utf-8"))
     defaults["reserve_products"] = []
     defaults_path.write_text(json.dumps(defaults), encoding="utf-8")
-    mapping_path = config_path / "file_mapping.json"
-    mapping = load_records(mapping_path)
-    category_source = next(record for record in mapping if record["name"] == "generator_category_patterns")
-    category_source["inline_table"]["rows"] = [
-        {
-            "priority": 0,
-            "category": "wind",
-            "match_kind": "prefix",
-            "pattern": "gas-cc",
-            "is_dispatchable": False,
-            "unsupported": False,
-        }
-    ]
-    write_records(mapping_path, mapping)
-
-    system = run_parser(run_path, config_path, excluded_techs=["gas-ct"])
+    system = run_parser(
+        run_path,
+        config_path,
+        excluded_techs=["gas-ct"],
+        classification_overrides=[GeneratorClassificationOverride(technology="gas-cc", category="wind")],
+    )
 
     generators = list(system.get_components(ReEDSGenerator))
     assert len(generators) == 1
     assert type(generators[0]) is ReEDSVariableGenerator
     assert (generators[0].name, generators[0].category, generators[0].capacity) == (
-        "gas-cc_p1",
+        "gas-cc_p1_2032",
         "wind",
         100.0,
     )
 
 
-def write_renewable_profile(
-    path: Path, /, *, columns: list[str], values: np.ndarray
-) -> None:
+def write_renewable_profile(path: Path, /, *, columns: list[str], values: np.ndarray) -> None:
     """Write the named-index HDF5 layout used by ReEDS capacity-factor profiles."""
     timestamps = (
         (np.datetime64("2012-01-01") + np.arange(values.shape[0]) * np.timedelta64(1, "h"))
@@ -215,23 +205,23 @@ def test_renewable_profile_attaches_to_a_matched_thermal_category_override(
     defaults_path.write_text(json.dumps(defaults), encoding="utf-8")
     mapping_path = config_path / "file_mapping.json"
     mapping = load_records(mapping_path)
-    category_source = next(record for record in mapping if record["name"] == "generator_category_patterns")
-    category_source["inline_table"]["rows"] = [
-        {
-            "priority": 0,
-            "category": "thermal",
-            "match_kind": "prefix",
-            "pattern": "gas-cc",
-            "is_dispatchable": True,
-            "unsupported": False,
-        }
-    ]
     update_csv_source(mapping, "heat_rate", "outputs/heat-rate-renewable.csv")
     write_records(mapping_path, mapping)
 
-    system = run_parser(run_path, config_path, excluded_techs=[])
+    system = run_parser(
+        run_path,
+        config_path,
+        excluded_techs=[],
+        classification_overrides=[
+            GeneratorClassificationOverride(
+                technology="gas-cc",
+                category="thermal",
+                is_dispatchable=True,
+            )
+        ],
+    )
 
-    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1")
+    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1_2032")
     series = system.get_time_series(generator, name="max_active_power")
     assert generator.category == "gas-cc"
     assert series.length == 8760
@@ -244,18 +234,10 @@ def test_storage_source_override_keeps_duration_and_energy_cost_mapping(
 ) -> None:
     run_path, config_path = prepare_case(reeds_run_path, tmp_path)
     outputs = run_path / "outputs"
-    (outputs / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\nbattery_4,init-1,p1,2032,100\n", encoding="utf-8"
-    )
-    (outputs / "storage-duration-selected.csv").write_text(
-        "i,value\nbattery_4,5\n", encoding="utf-8"
-    )
-    (outputs / "cost_cap.csv").write_text(
-        "i,t,Value\nbattery_4,2032,200\n", encoding="utf-8"
-    )
-    (outputs / "cost_cap_energy.csv").write_text(
-        "i,t,Value\nbattery_4,2032,30\n", encoding="utf-8"
-    )
+    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value\nbattery_4,init-1,p1,2032,100\n", encoding="utf-8")
+    (outputs / "storage-duration-selected.csv").write_text("i,value\nbattery_4,5\n", encoding="utf-8")
+    (outputs / "cost_cap.csv").write_text("i,t,Value\nbattery_4,2032,200\n", encoding="utf-8")
+    (outputs / "cost_cap_energy.csv").write_text("i,t,Value\nbattery_4,2032,30\n", encoding="utf-8")
 
     mapping_path = config_path / "file_mapping.json"
     mapping = load_records(mapping_path)
@@ -275,7 +257,7 @@ def test_storage_source_override_keeps_duration_and_energy_cost_mapping(
 
     system = run_parser(run_path, config_path, excluded_techs=[])
 
-    storage = system.get_component(ReEDSStorage, "battery_4_init-1_p1")
+    storage = system.get_component(ReEDSStorage, "battery_4_init-1_p1_2032")
     assert storage.capacity == 100.0
     assert storage.storage_duration == 5.0
     assert storage.capital_cost == 200.0
@@ -285,19 +267,15 @@ def test_storage_source_override_keeps_duration_and_energy_cost_mapping(
 def test_parser_uses_configured_biofuel_price_mapping(reeds_run_path: Path, tmp_path: Path) -> None:
     run_path, config_path = prepare_case(reeds_run_path, tmp_path)
     outputs = run_path / "outputs"
-    (outputs / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n", encoding="utf-8"
-    )
-    (outputs / "heat_rate.csv").write_text(
-        "i,v,r,t,Value\nGas-CC,init-1,p1,2032,10\n", encoding="utf-8"
-    )
+    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\n", encoding="utf-8")
+    (outputs / "heat_rate.csv").write_text("i,v,r,t,Value\nGas-CC,init-1,p1,2032,10\n", encoding="utf-8")
     (outputs / "fuel2tech.csv").write_text("f,i,Value\nbiomass,Gas-CC,True\n", encoding="utf-8")
     (outputs / "fuel_price.csv").write_text("i,r,t,Value\n", encoding="utf-8")
     (outputs / "repbioprice.csv").write_text("r,t,value\np1,2032,2.5\n", encoding="utf-8")
 
     system = run_parser(run_path, config_path, excluded_techs=[])
 
-    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1")
+    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1_2032")
     assert generator.fuel_type == "biomass"
     assert generator.fuel_price == 2.5
 
@@ -338,7 +316,7 @@ def test_parser_routes_alternate_hierarchy_and_load_profile_sources(
     system = run_parser(run_path, config_path, excluded_techs=[])
 
     assert system.get_component(ReEDSRegion, "source-selected") is not None
-    demand = system.get_component(ReEDSDemand, "p1_load")
+    demand = system.get_component(ReEDSDemand, "p1_load_2032")
     assert demand.max_active_power == 22.0
     series = system.get_time_series(demand, name="max_active_power")
     assert list(series.data) == [20.0, 22.0]
@@ -359,7 +337,7 @@ def test_emission_rows_normalize_types_and_default_missing_sources(
 
     system = run_parser(run_path, config_path, excluded_techs=[])
 
-    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1")
+    generator = system.get_component(ReEDSThermalGenerator, "gas-cc_init-1_p1_2032")
     emissions = system.get_supplemental_attributes_with_component(generator, ReEDSEmission)
     assert [(item.type.value, item.source.value, item.rate) for item in emissions] == [
         ("CO2", "COMBUSTION", 0.25)

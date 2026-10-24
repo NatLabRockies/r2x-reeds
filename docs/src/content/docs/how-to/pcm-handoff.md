@@ -212,8 +212,10 @@ the same demand, not in addition to it.
 ## 6. Add cost-optimal siting increments to existing electric load
 
 `add-optimal-siting` needs `loadsite_op_fpath` and `hour_map_myr_fpath`.
-Select `solve_year` when filtering a multi-year file; the config also accepts a
-list and selects its first year. Source aliases such as `r,allh,t,Value` are
+`solve_year` may select one year or a list of years. The modifier filters a
+multi-year loadsite file and updates only demand components for those years. A
+yearless input is associated with the configured solve year(s), so it does not
+bypass explicit owner selection. Source aliases such as `r,allh,t,Value` are
 normalized before representative periods expand into sequential hours.
 
 The modifier adds increments to existing `ReEDSDemand` profiles. It does not
@@ -232,8 +234,10 @@ length, timestamp and resolution.
 `co2_incentive_fpath`, `emission_capture_rate_fpath` and `upgrade_link_fpath`.
 Use normalized columns `tech,region,vintage,incentive`,
 `tech,region,vintage,capture_rate`, and `from,to,region,vintage`, respectively.
-Resolve any multi-year selection before supplying these inputs. Unknown or
-unmatched technologies can remain unchanged.
+When values vary by solve year, include `t` or `solve_year` in all applicable
+sources. Upgrade matching includes year, region and vintage when supplied, and
+the modifier selects each matching generator state. Yearless rows represent
+shared policy values. Unknown or unmatched technologies can remain unchanged.
 
 The modifier writes `generator.ext["UoS Charge"]` as **negative $/MWh**, computed
 from incentive $/ton times capture rate ton/MWh. This is a credit, not a startup

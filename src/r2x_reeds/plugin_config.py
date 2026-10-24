@@ -2,25 +2,31 @@
 
 from __future__ import annotations
 
-from calendar import isleap
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from r2x_core import PluginConfig
 
 
-class GeneratorCategoryPattern(BaseModel):
-    """One ordered exact or prefix rule for generator categorization."""
+class GeneratorClassificationOverride(BaseModel):
+    """Exact exception to metadata-derived generator classification."""
 
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
-    priority: int = Field(ge=0)
-    category: str = Field(min_length=1)
-    match_kind: Literal["exact", "prefix"]
-    pattern: str = Field(min_length=1)
-    is_dispatchable: bool
-    unsupported: bool
+    technology: str = Field(min_length=1)
+    category: Literal[
+        "thermal",
+        "solar",
+        "wind",
+        "geothermal",
+        "hydro",
+        "storage",
+        "pumped_storage",
+        "imports",
+    ]
+    is_dispatchable: bool | None = None
+    parser_supported: bool | None = None
 
 
 class GeneratorDefaultValues(BaseModel):
@@ -115,32 +121,6 @@ class ReEDSDefaults(BaseModel):
         return self.default_values.default_heat_rate
 
 
-def validate_generator_category_patterns(file_mapping: object) -> None:
-    """Validate category rows from the declared inline table at the config boundary."""
-    if not isinstance(file_mapping, list):
-        msg = "ReEDS file mapping must be a list"
-        raise ValueError(msg)
-
-    declarations = [
-        declaration
-        for declaration in file_mapping
-        if isinstance(declaration, dict) and declaration.get("name") == "generator_category_patterns"
-    ]
-    if len(declarations) != 1:
-        msg = "ReEDS file mapping must declare generator_category_patterns exactly once"
-        raise ValueError(msg)
-
-    inline_table = declarations[0].get("inline_table")
-    if not isinstance(inline_table, dict):
-        msg = "generator_category_patterns must use an inline table"
-        raise ValueError(msg)
-
-    patterns = TypeAdapter(list[GeneratorCategoryPattern]).validate_python(inline_table.get("rows"))
-    if not patterns:
-        msg = "generator_category_patterns must include at least one row"
-        raise ValueError(msg)
-
-
 class ReEDSConfig(PluginConfig):
     """Configuration for ReEDS model parser.
 
@@ -200,6 +180,8 @@ class ReEDSConfig(PluginConfig):
     r2x_reeds.parser.ReEDSParser : Parser that uses this configuration
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     models: Annotated[
         tuple[str, ...],
         Field(description="Module paths used to resolve configured ReEDS component types."),
@@ -214,6 +196,14 @@ class ReEDSConfig(PluginConfig):
     ]
     case_name: Annotated[str | None, Field(default=None, description="Case name")] = None
     scenario: Annotated[str, Field(default="base", description="Scenario identifier")] = "base"
+    generator_capacity_source: Literal["standard", "degraded"] = Field(
+        default="standard",
+        description="Capacity source used to build generator components",
+    )
+    generator_classification_overrides: list[GeneratorClassificationOverride] = Field(
+        default_factory=list,
+        description="Exact technology-specific classification exceptions",
+    )
     excluded_techs: Annotated[
         list[str] | None,
         Field(
@@ -225,6 +215,17 @@ class ReEDSConfig(PluginConfig):
         ),
     ] = None
 
+    @field_validator("generator_classification_overrides")
+    @classmethod
+    def validate_unique_classification_overrides(
+        cls, value: list[GeneratorClassificationOverride]
+    ) -> list[GeneratorClassificationOverride]:
+        technologies = [override.technology.casefold() for override in value]
+        if len(set(technologies)) != len(technologies):
+            msg = "Generator classification overrides must name each technology once"
+            raise ValueError(msg)
+        return value
+
     @field_validator("excluded_techs")
     @classmethod
     def normalize_excluded_technologies(cls, value: list[str] | None) -> list[str] | None:
@@ -232,19 +233,6 @@ class ReEDSConfig(PluginConfig):
         if value is None:
             return None
         return [technology.casefold() for technology in value]
-
-    @property
-    def primary_solve_year(self) -> int:
-        """Get the primary (first) solve year.
-
-        Returns
-        -------
-        int
-            The first solve year in the list
-        """
-        if isinstance(self.solve_year, list):
-            return self.solve_year[0]
-        return self.solve_year
 
     @computed_field
     @property
@@ -259,9 +247,3 @@ class ReEDSConfig(PluginConfig):
         if isinstance(self.weather_year, list):
             return self.weather_year[0]
         return self.weather_year
-
-    @computed_field
-    @property
-    def primary_weather_year_is_leap(self) -> bool:
-        """Return whether the primary weather year includes leap day."""
-        return isleap(self.primary_weather_year)

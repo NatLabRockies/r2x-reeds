@@ -14,8 +14,8 @@ from rust_ok import Err, Ok, Result
 
 from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator
-from r2x_reeds.sysmod.utils import read_tabular_frame
 from r2x_reeds.models.enums import EmissionType
+from r2x_reeds.sysmod.utils import read_tabular_frame
 
 
 class EmissionCapConfig(PluginConfig):

@@ -50,9 +50,7 @@ def test_parser_validation_requires_cost_fom_for_the_solve_year(
     else:
         path.write_text("*i,t,variable,value\nGas-CC,2029,fom,20081\n")
     config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    parser = ReEDSParser.from_context(
-        PluginContext(config=config, store=current_data_store(fom_run_path))
-    )
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=current_data_store(fom_run_path)))
 
     with pytest.raises(PluginError) as captured:
         parser.run()
@@ -84,9 +82,7 @@ def test_cost_fom_must_cover_every_requested_solve_year(fom_run_path: Path) -> N
         )
         destination.create_dataset("index_names", data=np.asarray([b"year", b"datetime"], dtype="S8"))
     config = ReEDSConfig(solve_year=[2032, 2035], weather_year=2012)
-    parser = ReEDSParser.from_context(
-        PluginContext(config=config, store=current_data_store(fom_run_path))
-    )
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=current_data_store(fom_run_path)))
 
     with pytest.raises(PluginError, match="cost_fom"):
         parser.run()
@@ -122,7 +118,7 @@ def get_initial_upgrade(system: System, /) -> ReEDSGenerator:
     matches = [
         generator
         for generator in system.get_components(ReEDSGenerator)
-        if generator.name == "coalolduns_coal-ccs_mod_init-1_p1"
+        if generator.name == "coalolduns_coal-ccs_mod_init-1_p1_2032"
     ]
     assert len(matches) == 1
     return matches[0]
@@ -172,19 +168,20 @@ def test_distpv_fom_is_capacity_weighted_after_source_precedence(
     reeds_config: ReEDSConfig,
 ) -> None:
     outputs = fom_run_path / "outputs"
-    (outputs / "cap_ivrt.csv").write_text(
-        "i,v,r,t,Value\ndistpv,new1,p1,2032,10\ndistpv,new2,p1,2032,30\n"
-    )
+    (outputs / "cap_ivrt.csv").write_text("i,v,r,t,Value\ndistpv,new1,p1,2032,10\ndistpv,new2,p1,2032,30\n")
     history_path = fom_run_path / "inputs_case" / "hintage_data.csv"
     history_path.write_text(
-        "TECH,bin,r,yr,cap,wFOM,wCCS_Retro_FOM\n"
-        "distpv,new1,p1,2032,10,100,0\ndistpv,new2,p1,2032,30,200,0\n"
+        "TECH,bin,r,yr,cap,wFOM,wCCS_Retro_FOM\ndistpv,new1,p1,2032,10,100,0\ndistpv,new2,p1,2032,30,200,0\n"
     )
 
     system = build_fom_system(fom_run_path, config=reeds_config)
 
-    generators = [unit for unit in system.get_components(ReEDSVariableGenerator) if unit.technology == "distpv"]
-    assert [(unit.name, unit.capacity, unit.fom_cost) for unit in generators] == [("distpv_p1", 40.0, 175.0)]
+    generators = [
+        unit for unit in system.get_components(ReEDSVariableGenerator) if unit.technology == "distpv"
+    ]
+    assert [(unit.name, unit.capacity, unit.fom_cost) for unit in generators] == [
+        ("distpv_p1_2032", 40.0, 175.0)
+    ]
 
 
 @pytest.mark.parametrize(

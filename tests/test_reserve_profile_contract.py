@@ -15,7 +15,8 @@ from r2x_core import PluginContext
 from r2x_core.exceptions import PluginError, ReaderError
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models import ReEDSDemand, ReEDSGenerator, ReEDSReserve
-from tests.fixtures.data_fixtures import current_data_store, csv_file_mapping
+from r2x_reeds.models.enums import ReserveDirection, ReserveType
+from tests.fixtures.data_fixtures import csv_file_mapping, current_data_store
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
@@ -171,6 +172,8 @@ def test_reserve_requirements_and_provider_membership_are_distinct_policies(
         assert set(reserves) == {"controlled_SPINNING", "rest_SPINNING"}
         controlled = reserves["controlled_SPINNING"]
         for reserve in reserves.values():
+            assert reserve.reserve_type is ReserveType.SPINNING
+            assert reserve.direction is ReserveDirection.UP
             expected_percentages = (0.6, 0.5, 0.4) if source_policy == "no-percentages" else (0.9, 0.8, 0.7)
             assert (reserve.or_load_percentage, reserve.or_wind_percentage, reserve.or_pv_percentage) == (
                 expected_percentages

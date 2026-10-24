@@ -238,6 +238,35 @@ def test_emission_optional_pollutants():
     assert emission.source == EmissionSource.COMBUSTION
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("type", "unrecognized"), ("source", "unrecognized")],
+)
+def test_emission_model_rejects_unknown_enum_values(field: str, value: str) -> None:
+    from r2x_reeds.models.components import ReEDSEmission
+
+    with pytest.raises(ValidationError):
+        ReEDSEmission.model_validate({"rate": 0.5, "type": "CO2", field: value})
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("reserve_type", "unrecognized"), ("direction", "sideways")],
+)
+def test_reserve_model_rejects_unknown_enum_values(field: str, value: str) -> None:
+    from r2x_reeds.models.components import ReEDSReserve
+
+    values: dict[str, object] = {
+        "name": "reserve",
+        "reserve_type": "SPINNING",
+        "direction": "Up",
+    }
+    values[field] = value
+
+    with pytest.raises(ValidationError):
+        ReEDSReserve.model_validate(values)
+
+
 def test_base_generator_inheritance(thermal_generator):
     from r2x_reeds.models.components import ReEDSGenerator
 

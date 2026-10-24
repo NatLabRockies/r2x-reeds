@@ -57,12 +57,14 @@ series on the same component answer different questions; inspect both.
 
 ## Solve year versus weather year
 
-`solve_year` selects an investment/capacity snapshot. `weather_year` selects the
-weather-driven profile inputs. The Pacific fixture uses a 2032 fleet with 2012
-profiles; its demand series therefore starts in 2012. Do not infer a solve year
-from the series timestamp alone. The config accepts lists, but downstream
-transforms/exporters may accept only scalar selections; start with one of each
-as in the [tutorial](/r2x-reeds/tutorials/parse-run/).
+`solve_year` identifies an investment/capacity state. `weather_year` selects the
+weather-driven profile inputs. A `System` built with several solve years keeps
+separate year-qualified component states and profile associations. Consumers
+select a state with `System.get_components(..., filter_func=...)` or pass the
+solve-year feature when reading its time series. The Pacific fixture uses a
+2032 fleet with 2012 profiles; its demand series therefore starts in 2012. Do
+not infer a solve year from the series timestamp alone. Modifier contracts
+specify whether their input selects one solve year or carries year keys.
 
 ## Why modifiers are explicit
 

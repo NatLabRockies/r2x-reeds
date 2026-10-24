@@ -5,7 +5,6 @@ import shutil
 from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
 
 import pytest
 from infrasys.location import GeographicInfo

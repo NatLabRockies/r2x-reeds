@@ -3,13 +3,17 @@
 import json
 import shutil
 import zipfile
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import h5py
 import numpy as np
+import polars as pl
 import pytest
 from loguru import logger
+
+from r2x_core.types import JSONValue
 
 if TYPE_CHECKING:
     from r2x_core import DataStore
@@ -47,11 +51,34 @@ def csv_file_mapping() -> list[dict[str, Any]]:
 def current_data_store(path: Path, *, data_files: list[dict[str, Any]] | None = None) -> "DataStore":
     """Create a current-core store from validated test input declarations."""
     from pydantic import TypeAdapter
+
     from r2x_core import DataFile, DataStore
 
     store = DataStore(path=path)
     store.add_data(TypeAdapter(list[DataFile]).validate_python(data_files or csv_file_mapping()))
     return store
+
+
+def read_source_frame(
+    store: "DataStore", name: str, *, placeholders: Mapping[str, JSONValue] | None = None
+) -> pl.DataFrame:
+    """Read one named tabular source through its public record-access methods."""
+    from r2x_core import DataReader, TabularSource
+    from r2x_reeds.processing import reeds_step_handlers
+
+    sources = DataReader(step_handlers=reeds_step_handlers()).read_data_files(
+        [store[name]],
+        folder_path=store.folder,
+        placeholders=placeholders,
+    )
+    source = sources[name]
+    if not isinstance(source, TabularSource):
+        msg = f"Source {name!r} is not a tabular source"
+        raise TypeError(msg)
+    if not isinstance(source.data, pl.LazyFrame):
+        msg = f"Source {name!r} does not contain a Polars LazyFrame"
+        raise TypeError(msg)
+    return source.data.collect()
 
 
 @pytest.fixture(scope="session")
@@ -145,22 +172,3 @@ def parser(reeds_config: "ReEDSConfig", data_store: "DataStore") -> "ReEDSParser
 
     ctx = PluginContext(config=reeds_config, store=data_store)
     return ReEDSParser.from_context(ctx)
-
-
-# Backward compatibility aliases for tests using old fixture names
-@pytest.fixture(scope="session")
-def example_reeds_config(reeds_config: "ReEDSConfig") -> "ReEDSConfig":
-    """Alias for reeds_config (backward compatibility)."""
-    return reeds_config
-
-
-@pytest.fixture(scope="session")
-def example_data_store(data_store: "DataStore") -> "DataStore":
-    """Alias for the configured ReEDS data store."""
-    return data_store
-
-
-@pytest.fixture(scope="session")
-def example_parser(parser: "ReEDSParser") -> "ReEDSParser":
-    """Alias for parser (backward compatibility)."""
-    return parser

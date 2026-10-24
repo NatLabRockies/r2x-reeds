@@ -12,16 +12,18 @@ from r2x_reeds.sysmod import imports
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
-def _build_generator() -> tuple[System, ReEDSGenerator]:
+def _build_generator(solve_year: int | None = None) -> tuple[System, ReEDSGenerator]:
     system = System(name="test_imports")
     region = ReEDSRegion(name="west")
     system.add_component(region)
+    suffix = f"_{solve_year}" if solve_year is not None else ""
     generator = ReEDSGenerator(
-        name="can-imports_west",
+        name=f"can-imports_west{suffix}",
         region=region,
         capacity=50.0,
         technology="canada_import",
         category="imports",
+        solve_year=solve_year,
     )
     system.add_component(generator)
     return system, generator
@@ -77,7 +79,7 @@ def test_imports_scope_full_flow(tmp_path: Path) -> None:
 
 def test_imports_scope_reeds_input_shapes(tmp_path: Path) -> None:
     """Canadian imports plugin accepts the native ReEDS input shapes."""
-    system, generator = _build_generator()
+    system, generator = _build_generator(solve_year=2035)
 
     hour_map_path = _write_csv(
         tmp_path / "hmap_myr.csv",
@@ -123,6 +125,51 @@ def test_imports_scope_reeds_input_shapes(tmp_path: Path) -> None:
     time_series = system.get_time_series(generator, name="hydro_budget")
     assert time_series.initial_timestamp.year == 2024
     assert time_series.data.tolist() == pytest.approx([0.6, 0.6, 0.8])
+
+
+def test_imports_scope_selected_year_only_attaches_to_matching_generators(tmp_path: Path) -> None:
+    system = System(name="two_year_imports")
+    region = ReEDSRegion(name="west")
+    system.add_component(region)
+    generators = {
+        year: ReEDSGenerator(
+            name=f"can-imports_west_{year}",
+            region=region,
+            capacity=50.0,
+            technology="canada_import",
+            category="imports",
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    for generator in generators.values():
+        system.add_component(generator)
+
+    hour_map_path = _write_csv(
+        tmp_path / "hour_map.csv",
+        {
+            "time_index": ["2024-01-01T00:00:00", "2024-01-02T00:00:00"],
+            "season": ["winter", "winter"],
+        },
+    )
+    szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", {"season": ["winter"], "value": [1.0]})
+    imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "2032": [1000.0], "2035": [2000.0]})
+
+    _run_imports(
+        system,
+        solve_year=2035,
+        weather_year=2024,
+        canada_imports_fpath=imports_path,
+        canada_szn_frac_fpath=szn_frac_path,
+        hour_map_fpath=hour_map_path,
+    )
+
+    assert system.has_time_series(generators[2032]) is False
+    assert system.get_time_series(generators[2035], name="hydro_budget", solve_year=2035).data.tolist() == [
+        1.0,
+        1.0,
+    ]
+    assert system.list_time_series_keys(generators[2035])[0].features == {"solve_year": 2035}
 
 
 def test_imports_scope_wide_data_requires_solve_year(tmp_path: Path) -> None:

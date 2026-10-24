@@ -103,6 +103,7 @@
       "name": "name",
       "category": "category",
       "line_type": "line_type",
+      "solve_year": "solve_year",
       "max_active_power": "max_active_power",
       "distance_miles": "distance_miles",
       "line_cost_per_mw_mile": "line_cost_per_mw_mile",
@@ -302,7 +303,8 @@
     "fields": {
       "type": "emission_type",
       "source": "emission_source",
-      "rate": "rate"
+      "rate": "rate",
+      "solve_year": "solve_year"
     },
     "owners": [
       {
@@ -318,7 +320,8 @@
     "fields": {
       "type": "emission_type",
       "source": "emission_source",
-      "rate": "rate"
+      "rate": "rate",
+      "solve_year": "solve_year"
     },
     "owners": [
       {
@@ -334,7 +337,8 @@
     "fields": {
       "type": "emission_type",
       "source": "emission_source",
-      "rate": "rate"
+      "rate": "rate",
+      "solve_year": "solve_year"
     },
     "owners": [
       {
@@ -350,7 +354,8 @@
     "fields": {
       "type": "emission_type",
       "source": "emission_source",
-      "rate": "rate"
+      "rate": "rate",
+      "solve_year": "solve_year"
     },
     "owners": [
       {
@@ -366,7 +371,8 @@
     "fields": {
       "type": "emission_type",
       "source": "emission_source",
-      "rate": "rate"
+      "rate": "rate",
+      "solve_year": "solve_year"
     },
     "owners": [
       {
@@ -544,6 +550,7 @@
       "weather_year": "{primary_weather_year}"
     },
     "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
     "owners": [{"component_type": "ReEDSThermalGenerator", "name_field": "owner_name"}]
   },
   {
@@ -560,6 +567,7 @@
       "weather_year": "{primary_weather_year}"
     },
     "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
     "owners": [{"component_type": "ReEDSVariableGenerator", "name_field": "owner_name"}]
   },
   {
@@ -576,6 +584,7 @@
       "weather_year": "{primary_weather_year}"
     },
     "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
     "owners": [{"component_type": "ReEDSHydroGenerator", "name_field": "owner_name"}]
   },
   {
@@ -592,6 +601,7 @@
       "weather_year": "{primary_weather_year}"
     },
     "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
     "owners": [{"component_type": "ReEDSStorage", "name_field": "owner_name"}]
   },
   {
@@ -608,6 +618,7 @@
       "weather_year": "{primary_weather_year}"
     },
     "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
     "owners": [{"component_type": "ReEDSGenerator", "name_field": "owner_name"}]
   },
   {

@@ -60,11 +60,13 @@ for the CSV files present in your run. The configured extension selects the
 reader, while the mapping selects the source. Rerun the parser alone and inspect
 regions, generators and demand before adding modifiers.
 
-Choose the capacity series in the effective `file_mapping`: set the
-`generator_inputs` table's `source` to `online_capacity_degraded` (HDF5 group
-`cap_deg_ivrt`) or `online_capacity` (`cap_ivrt`). Verify the selected file and
-group exist. A missing selected source is an input error, not a request to use the
-other capacity series. The two series need not have the same MW values.
+Choose the capacity series explicitly with
+`ReEDSConfig(generator_capacity_source="degraded")` or
+`ReEDSConfig(generator_capacity_source="standard")`. These select
+`online_capacity_degraded` (HDF5 group `cap_deg_ivrt`) or `online_capacity`
+(`cap_ivrt`) respectively. Verify the selected file and group exist. A missing
+selected source is an input error, not a request to use the other capacity
+series. The two series need not have the same MW values.
 
 ## `invalid HDF5 signature` or `file signature not found`
 
@@ -88,12 +90,27 @@ replacing good data. Source paths and input constraints are declared in
 
 ## A requested year is absent
 
-The solve year selects capacity. The profile calendar uses
-`config.primary_weather_year`, the first configured weather year. After the same
-`config` and `store` setup as the tutorial, inspect the mapped modeled years:
+A `System` retains one component state per requested solve year. Component
+identities include the solve year, so select a year's components through
+`System.get_components(..., filter_func=...)`. Profiles retain their solve-year
+association as well. The weather calendar still uses `config.primary_weather_year`,
+the first configured weather year. To inspect the modeled years through the
+current public reader API:
 
 ```python
-print(store.read_data("modeled_years").collect())
+from pathlib import Path
+from pydantic import TypeAdapter
+from r2x_core import DataFile, DataReader
+from r2x_reeds import ReEDSConfig
+
+run_path = Path("tutorial-inputs/test_Pacific")
+config = ReEDSConfig(solve_year=2032, weather_year=2012)
+files = TypeAdapter(list[DataFile]).validate_json(config.fmap_path.read_bytes())
+modeled_years_file = next(item for item in files if item.name == "modeled_years")
+source = DataReader().read_data_files(
+    [modeled_years_file], folder_path=run_path
+)["modeled_years"]
+print(list(source.iter_rows()))
 print(config.solve_year, config.primary_weather_year)
 ```
 

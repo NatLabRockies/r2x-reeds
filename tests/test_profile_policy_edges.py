@@ -2,6 +2,7 @@
 
 import json
 import shutil
+from calendar import monthrange
 from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -17,7 +18,28 @@ from tests.test_parser_current_core import configure_csv_sources, copy_package_c
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
-@pytest.mark.parametrize("weather_year", [2012, [2012, 2011]], ids=["single-weather", "primary-weather"])
+def bounded_weather_month_hours(weather_year: int) -> list[int]:
+    """Return calendar month hours represented by the first 8,760 weather samples."""
+    remaining_hours = 8760
+    month_hours: list[int] = []
+    for month in range(1, 13):
+        calendar_hours = monthrange(weather_year, month)[1] * 24
+        bounded_hours = min(calendar_hours, remaining_hours)
+        month_hours.append(bounded_hours)
+        remaining_hours -= bounded_hours
+    assert remaining_hours == 0
+    return month_hours
+
+
+@pytest.mark.parametrize(
+    ("weather_year", "primary_weather_year"),
+    [
+        (2012, 2012),
+        ([2012, 2011], 2012),
+        ([2011, 2012], 2011),
+    ],
+    ids=["single-leap", "primary-leap", "primary-nonleap"],
+)
 @pytest.mark.parametrize("complete_dispatchable_months", [True, False], ids=["complete", "incomplete"])
 def test_monthly_hydro_profiles_keep_budget_power_and_leap_year_expansion_distinct(
     reeds_run_path: Path,
@@ -25,6 +47,7 @@ def test_monthly_hydro_profiles_keep_budget_power_and_leap_year_expansion_distin
     tmp_path: Path,
     complete_dispatchable_months: bool,
     weather_year: int | list[int],
+    primary_weather_year: int,
 ) -> None:
     """Capacity scales power but not budget, and February retains its weather-year hours."""
     with TemporaryDirectory(prefix="profiles-", dir=tmp_path) as directory:
@@ -77,12 +100,16 @@ def test_monthly_hydro_profiles_keep_budget_power_and_leap_year_expansion_distin
             assert not system.has_time_series(hydro["hyded"])
             nondispatchable_power = system.get_time_series(hydro["hydnd"], name="max_active_power")
             assert nondispatchable_power.length == 8760
-            assert nondispatchable_power.initial_timestamp == datetime(2012, 1, 1)
+            assert nondispatchable_power.initial_timestamp == datetime(primary_weather_year, 1, 1)
             return
         budget = system.get_time_series(hydro["hyded"], name="hydro_budget")
         dispatchable_power = system.get_time_series(hydro["hyded"], name="max_active_power")
         nondispatchable_power = system.get_time_series(hydro["hydnd"], name="max_active_power")
-        weather_year_month_hours = [744, 696, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744]
+        weather_year_month_hours = bounded_weather_month_hours(primary_weather_year)
+        assert sum(weather_year_month_hours) == 8760
+        assert weather_year_month_hours[0] == 744
+        assert weather_year_month_hours[1] == (696 if monthrange(primary_weather_year, 2)[1] == 29 else 672)
+        assert weather_year_month_hours[-1] == (720 if monthrange(primary_weather_year, 2)[1] == 29 else 744)
         expected_budget = np.repeat(dispatchable_factors, weather_year_month_hours)[:8760]
         expected_dispatchable_power = np.repeat(
             [95.0, 90.0, 85.0, 80.0, 75.0, 70.0, 65.0, 60.0, 55.0, 50.0, 45.0, 40.0],
@@ -97,7 +124,7 @@ def test_monthly_hydro_profiles_keep_budget_power_and_leap_year_expansion_distin
         np.testing.assert_allclose(nondispatchable_power.data, expected_nondispatchable_power)
         assert budget.length == dispatchable_power.length == nondispatchable_power.length == 8760
         for profile in (budget, dispatchable_power, nondispatchable_power):
-            assert profile.initial_timestamp == datetime(2012, 1, 1)
+            assert profile.initial_timestamp == datetime(primary_weather_year, 1, 1)
             assert profile.resolution == timedelta(hours=1)
         for technology, variable in (
             ("hyded", "hydro_budget"),

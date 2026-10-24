@@ -22,7 +22,7 @@ from infrasys import Component, System
 
 from r2x_core import DataStore
 from r2x_reeds import ReEDSConfig, ReEDSParser
-from tests.fixtures.data_fixtures import csv_file_mapping
+from tests.fixtures.data_fixtures import current_data_store
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
@@ -72,14 +72,13 @@ def reeds_config() -> ReEDSConfig:
     return ReEDSConfig(
         solve_year=2032,
         weather_year=2012,
-        asset_overrides={"file_mapping": csv_file_mapping()},
     )
 
 
 @pytest.fixture
 def data_store(reeds_run_path: Path, reeds_config: ReEDSConfig) -> DataStore:
     """Create DataStore from file mapping."""
-    return DataStore.from_plugin_config(reeds_config, path=reeds_run_path)
+    return current_data_store(reeds_run_path)
 
 
 @pytest.fixture
