@@ -7,6 +7,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import h5py
+import numpy as np
 from loguru import logger
 
 from r2x_core import UpgradeStep, UpgradeType
@@ -80,14 +82,24 @@ def _rewrite_transmission_csv(path: Path, column_mapping: dict[str, str | None])
             logger.debug("Transmission file {} already has the current columns", path.name)
             return
 
-        required_fields = {source for source in column_mapping.values() if source is not None}
+        resolved_sources = {}
+        for target, source in column_mapping.items():
+            if source is None:
+                resolved_sources[target] = None
+                continue
+            candidates = (source, f"*{source}", target, f"*{target}")
+            resolved_sources[target] = next(
+                (candidate for candidate in candidates if candidate in source_fields),
+                source,
+            )
+        required_fields = {source for source in resolved_sources.values() if source is not None}
         missing_fields = required_fields.difference(source_fields)
         if missing_fields:
             missing = ", ".join(sorted(missing_fields))
             raise ValueError(f"Cannot upgrade transmission file {path}: missing legacy column(s): {missing}")
 
         rows = [
-            {target: row[source] if source is not None else "" for target, source in column_mapping.items()}
+            {target: row[source] if source is not None else "" for target, source in resolved_sources.items()}
             for row in reader
         ]
 
@@ -138,6 +150,63 @@ def upgrade_transmission_cost_format(folder: Path, upgrader_context: dict[str, A
         inputs_case / "transmission_distance.csv",
         {"r": "r", "rr": "rr", "miles": "length_miles"},
     )
+    return folder
+
+
+def upgrade_unitspec_upgrades_hdf5(
+    folder: Path,
+    upgrader_context: dict[str, Any] | None = None,
+) -> Path:
+    """Move the legacy unit-specific upgrade set into the current HDF5 bundle."""
+    inputs_case = folder / "inputs_case"
+    csv_path = inputs_case / "unitspec_upgrades.csv"
+    h5_path = inputs_case / "inputs.h5"
+    group_name = "unitspec_upgrades"
+
+    if h5_path.exists():
+        with h5py.File(h5_path, mode="r") as bundle:
+            if group_name in bundle:
+                group = bundle[group_name]
+                if "columns" in group and "i" in group:
+                    logger.debug("{} already exists in {}, skipping conversion", group_name, h5_path.name)
+                    return folder
+                raise ValueError(f"Existing {group_name} group in {h5_path} is missing required datasets")
+
+    if not csv_path.exists():
+        logger.debug("Legacy {} not found; skipping conversion", csv_path.name)
+        return folder
+
+    with csv_path.open(newline="", encoding="utf-8-sig") as source:
+        reader = csv.reader(source)
+        header = next(reader, None)
+        if (
+            header is None
+            or len(header) != 1
+            or header[0].strip().lstrip("*").lower() not in {"i", "technology"}
+        ):
+            raise ValueError(f"Cannot upgrade {csv_path}: expected a single '*i' technology column")
+        technologies = []
+        for row in reader:
+            if len(row) != 1:
+                raise ValueError(f"Cannot upgrade {csv_path}: expected one value per row")
+            technology = row[0].strip()
+            if technology:
+                technologies.append(technology)
+
+    string_dtype = h5py.string_dtype(encoding="utf-8")
+    with h5py.File(h5_path, mode="a") as bundle:
+        if group_name in bundle:
+            group = bundle[group_name]
+            if "columns" in group and "i" in group:
+                logger.debug("{} already exists in {}, skipping conversion", group_name, h5_path.name)
+                return folder
+            raise ValueError(f"Existing {group_name} group in {h5_path} is missing required datasets")
+
+        group = bundle.create_group(group_name)
+        group.create_dataset("columns", data=np.asarray(["i"], dtype=string_dtype))
+        group.create_dataset("i", data=np.asarray(technologies, dtype=string_dtype))
+
+    logger.info("Converted {} to {}/{}", csv_path.name, h5_path.name, group_name)
     return folder
 
 
@@ -194,6 +263,13 @@ UPGRADE_STEPS = [
         target_version="2026.10.04",
         upgrade_type=UpgradeType.FILE,
         priority=31,
+    ),
+    UpgradeStep(
+        name="upgrade_unitspec_upgrades_hdf5",
+        func=upgrade_unitspec_upgrades_hdf5,
+        target_version="2026.10.04",
+        upgrade_type=UpgradeType.FILE,
+        priority=32,
     ),
     UpgradeStep(
         name="move_hmap_myr_file",

@@ -1142,7 +1142,18 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
     def _normalize_resource_frame(self, df: pl.DataFrame, *, source_name: str) -> pl.DataFrame:
         """Normalize resource dataset column names."""
-
+        aliases = {
+            "cf": "capacity_factor",
+            "cost_per_mw": "supply_curve_cost",
+            "supply_curve_cost_per_mw": "supply_curve_cost",
+        }
+        renames = {
+            alias: target
+            for alias, target in aliases.items()
+            if alias in df.columns and target not in df.columns
+        }
+        if renames:
+            df = df.rename(renames)
         if "technology" not in df.columns:
             return df.with_columns(pl.lit(source_name).alias("technology"))
         return df
