@@ -167,6 +167,24 @@ cannot attach budgets to import generators that were never parsed.
 confirm daily resolution and reconcile summed GWh with annual MWh divided by 1000. Supply matching series-selection features when querying them. Verify the
 season map covers the intended year; a successful no-op is not an import schedule.
 
+`add-exports` adds hourly Canadian exports in MW to each matching region's
+existing `ReEDSDemand.max_active_power` profile. It expands the
+representative-hour fractions through the hour map, normalizes them for the
+selected weather year, then scales them by the region's annual exports for the
+selected solve year. The added hourly energy therefore reconciles to the annual
+MWh input. A regional demand component with an existing hourly profile is
+required; Canadian export generators are not used by this modifier. The
+`can-exports` parser exclusion does not affect this demand-side addition.
+
+```yaml
+excluded_techs:
+  # - can-imports
+  # - can-exports
+  - electrolyzer
+  - smr
+  - smr_ccs
+```
+
 ## 4. Choose modern purchaser demand
 
 `add-purchaser-load` requires `hour_map_myr_fpath` to do useful work.

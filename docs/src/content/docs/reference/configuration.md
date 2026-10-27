@@ -57,6 +57,7 @@ Notable default behavior:
 
 - `electrolyzer` is excluded from general generator parsing (`excluded_techs`) to keep purchaser-load modeling explicit.
 - `can-imports` is excluded by default. To include it for a run, provide an `excluded_techs` list that omits `can-imports`.
+- `can-exports` is excluded by default from generator parsing. This does not affect `add-exports`, which adds export energy to existing regional demand profiles.
 
 ## file_mapping.json
 
