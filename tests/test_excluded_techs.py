@@ -48,6 +48,7 @@ def test_excluded_techs_empty_list_default(reeds_config, reeds_run_path):
     config_dicts = reeds_config.load_config()
     assert config_dicts["defaults"].get("excluded_techs") == [
         "can-imports",
+        "can-exports",
         "electrolyzer",
         "smr",
         "smr_ccs",
