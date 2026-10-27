@@ -5,11 +5,15 @@ These tests verify that the parser can build a example_system using real data fi
 
 import csv
 import shutil
+from pathlib import Path
 
+import h5py
 import numpy as np
 import pytest
 from infrasys import Component
 
+from r2x_core import DataStore
+from r2x_reeds import ReEDSConfig
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator
 from r2x_reeds.parser_utils import get_technology_category
 
@@ -117,6 +121,56 @@ def test_load_profiles_exposes_one_solve_year_column(example_data_store, example
     ).collect()
 
     assert load_profiles.columns.count("solve_year") == 1
+
+
+def test_load_profiles_reads_named_year_index(reeds_run_path: Path, tmp_path: Path) -> None:
+    """Older load HDF5 files store the solve-year index as index_year."""
+    run_path = tmp_path / "reeds_run"
+    shutil.copytree(reeds_run_path, run_path)
+    inputs_case = run_path / "inputs_case"
+    string_dtype = h5py.string_dtype(encoding="utf-8")
+    with h5py.File(inputs_case / "load.h5", mode="w") as h5_file:
+        h5_file.create_dataset("columns", data=np.asarray(["p1"], dtype=string_dtype))
+        h5_file.create_dataset("data", data=np.asarray([[10.0], [20.0]], dtype=np.float32))
+        h5_file.create_dataset("index_names", data=np.asarray(["year", "datetime"], dtype=string_dtype))
+        h5_file.create_dataset("index_year", data=np.asarray([2035, 2035], dtype=np.int64))
+        h5_file.create_dataset(
+            "index_datetime",
+            data=np.asarray(["2012-01-01T00:00:00", "2012-01-01T01:00:00"], dtype=string_dtype),
+        )
+
+    config = ReEDSConfig(solve_year=2035, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=run_path)
+    load_profiles = store.read_data(
+        "load_profiles",
+        placeholders={"solve_year": 2035, "weather_year": 2012},
+    ).collect()
+
+    assert load_profiles["p1"].to_list() == [10.0, 20.0]
+    assert load_profiles.columns.count("solve_year") == 1
+
+
+def test_offshore_resource_output_accepts_missing_optional_columns(
+    reeds_run_path: Path,
+    tmp_path: Path,
+) -> None:
+    """Offshore candidate output may omit cf and use the newer cost column name."""
+    run_path = tmp_path / "reeds_run"
+    shutil.copytree(reeds_run_path, run_path)
+    output_path = run_path / "outputs/df_sc_in_wind-ofs.csv"
+    output_path.write_text(
+        "sc_gid,sc_point_gid,latitude,longitude,region,class,bin,cap_avail,"
+        "existing_capacity,online_year,retire_year,supply_curve_cost_per_mw\n"
+        "50,7422,46.01,-124.05,p5,2,1,45.65,0,0,0,3303878.99\n"
+    )
+
+    config = ReEDSConfig(solve_year=2035, weather_year=2012)
+    store = DataStore.from_plugin_config(config, path=run_path)
+    offshore_sites = store.read_data("df_sc_in_wind-ofs").collect()
+
+    assert offshore_sites["resource_class"].to_list() == [2]
+    assert offshore_sites["available_capacity"].to_list() == [45.65]
+    assert offshore_sites["supply_curve_cost"].to_list() == [3303878.99]
 
 
 @pytest.fixture(scope="session")

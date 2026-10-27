@@ -3,15 +3,17 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import h5py
 import pytest
 
-from r2x_reeds.upgrader.data_upgrader import ReEDSVersionDetector
+from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader, ReEDSVersionDetector
 from r2x_reeds.upgrader.helpers import LEGACY_VERSION
 from r2x_reeds.upgrader.upgrade_steps import (
     move_hmap_file,
     move_hmap_myr_file,
     move_transmission_cost,
     upgrade_transmission_cost_format,
+    upgrade_unitspec_upgrades_hdf5,
 )
 
 pytestmark = [pytest.mark.integration]
@@ -215,6 +217,54 @@ def test_upgrade_transmission_cost_format_converts_and_is_idempotent(tmp_path: P
     upgrade_transmission_cost_format(tmp_path)
     assert ac_path.read_text() == converted_ac
     assert distance_path.read_text() == converted_distance
+
+
+def test_upgrade_transmission_distance_accepts_starred_region_column(tmp_path: Path) -> None:
+    """Normalize the ReEDS keyed-distance schema and drop its extra type column."""
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+    distance_path = inputs_case / "transmission_distance.csv"
+    distance_path.write_text("*r,rr,trtype,miles\np1,p2,AC,132.46\n")
+
+    upgrade_transmission_cost_format(tmp_path)
+
+    with distance_path.open(newline="") as source:
+        reader = csv.DictReader(source)
+        assert reader.fieldnames == ["r", "rr", "miles"]
+        assert list(reader) == [{"r": "p1", "rr": "p2", "miles": "132.46"}]
+
+    upgraded_contents = distance_path.read_text()
+    upgrade_transmission_cost_format(tmp_path)
+    assert distance_path.read_text() == upgraded_contents
+
+
+def test_upgrade_unitspec_upgrades_csv_preserves_existing_hdf5_groups(tmp_path: Path) -> None:
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+    csv_path = inputs_case / "unitspec_upgrades.csv"
+    csv_path.write_text("*i\nGas-CC_Gas-CC-CCS_Mod\nCoal-new_Coal-CCS_mod\n")
+    h5_path = inputs_case / "inputs.h5"
+    with h5py.File(h5_path, mode="w") as bundle:
+        bundle.create_dataset("existing/value", data=[1, 2, 3])
+
+    result = ReEDSUpgrader(tmp_path).upgrade(current_version=LEGACY_VERSION)
+
+    assert result.is_ok()
+    assert csv_path.exists()
+    with h5py.File(h5_path, mode="r") as bundle:
+        assert bundle["existing/value"][()].tolist() == [1, 2, 3]
+        assert bundle["unitspec_upgrades/columns"].asstr()[()].tolist() == ["i"]
+        assert bundle["unitspec_upgrades/i"].asstr()[()].tolist() == [
+            "Gas-CC_Gas-CC-CCS_Mod",
+            "Coal-new_Coal-CCS_mod",
+        ]
+
+    upgrade_unitspec_upgrades_hdf5(tmp_path)
+    with h5py.File(h5_path, mode="r") as bundle:
+        assert bundle["unitspec_upgrades/i"].asstr()[()].tolist() == [
+            "Gas-CC_Gas-CC-CCS_Mod",
+            "Coal-new_Coal-CCS_mod",
+        ]
 
 
 def test_move_hmap_myr_file_moves_legacy_file(tmp_path: Path) -> None:
