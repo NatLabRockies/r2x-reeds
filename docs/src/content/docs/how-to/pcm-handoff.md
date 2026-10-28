@@ -158,10 +158,13 @@ retain the other current exclusions but allow imports:
 
 ```yaml
 excluded_techs: [electrolyzer, smr, smr_ccs]
+excluded_techs: [can-exports, electrolyzer, smr, smr_ccs]
 ```
 
-This replaces the exclusion list; it is not an append operation. The modifier
-cannot attach budgets to import generators that were never parsed.
+This replaces the exclusion list; it is not an append operation. Keeping
+`can-exports` in the list prevents parsing export generators while enabling
+imports. The modifier cannot attach budgets to import generators that were
+never parsed.
 
 **Check:** inspect matched import generators, list their `hydro_budget` series,
 confirm daily resolution and reconcile summed GWh with annual MWh divided by 1000. Supply matching series-selection features when querying them. Verify the
@@ -174,7 +177,9 @@ selected weather year, then scales them by the region's annual exports for the
 selected solve year. The added hourly energy therefore reconciles to the annual
 MWh input. A regional demand component with an existing hourly profile is
 required; Canadian export generators are not used by this modifier. The
-`can-exports` parser exclusion does not affect this demand-side addition.
+`can-exports` parser exclusion should remain enabled: removing it enables
+generator supply, not export demand. Apply demand through the explicit
+`add-exports` transform, for example:
 
 ```yaml
 excluded_techs:
@@ -200,13 +205,6 @@ years. Supply only the applicable optional data:
 The reader supports these CSV inputs and named groups in ReEDS output HDF5 files;
 see [the dedicated purchaser-load guide](/r2x-reeds/how-to/purchaser-load/).
 It creates `ReEDSElectrolyzerDemand`, `ReEDSSteamMethaneReformingDemand` and/or
-`ReEDSDataCenterDemand` and attaches `max_active_power` profiles. Existing demand
-components can suppress capacity-based duplicate creation; that does not make
-all repeated profile application safe.
-
-**Check:** compare component names, counts, hourly MW and annual profile sums with
-the selected source technology, region and year. Verify scaling against annual
-targets where supplied. The `pcm-hydrogen` profile below omits `loadsite_op_fpath`
 so a separate siting profile cannot add the same data-center demand twice.
 
 ## 5. Or choose the legacy electrolyzer representation
