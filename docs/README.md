@@ -44,7 +44,8 @@ The workflow keeps its existing provider, triggers, publication branch and permi
 
 ## Execute Python examples
 
-From the repository root with locked development dependencies installed:
+From the repository root with the development dependencies and a compatible
+`r2x-core` providing table assembly installed:
 
 ```bash
 uv run pytest tests/test_docs_examples.py tests/test_docs_api.py --no-cov
@@ -53,9 +54,9 @@ uv run pytest tests/test_docs_examples.py tests/test_docs_api.py --no-cov
 The console runner collects `python doctest` fences, keeps sequential blocks in
 one page namespace, checks expected output and assertions, and rejects empty
 collection or skipped examples. It runs the Pacific tutorial once in a temporary
-workspace with the same seven supplemental operating-cost inputs and derives the technology CSV
-from the archive's HDF5 dataset documented for
-users. Other pages reload the checked tutorial snapshot. The PCM inspection
+workspace with the same seven supplemental operating-cost inputs and reads the
+technology-upgrade set from the archive's HDF5 dataset. Other pages reload the
+checked tutorial snapshot. The PCM inspection
 script uses the guide's explicit 50 $/MW baseline policy. External production-only
 policy profiles still require the user's reviewed data.
 

@@ -205,7 +205,11 @@ def _add_hydrogen_fuel_price(
         The modified system.
     """
     if isinstance(h2_prices, pl.LazyFrame):
-        h2_prices = h2_prices.collect()
+        collected = h2_prices.collect()
+        if not isinstance(collected, pl.DataFrame):
+            msg = "Collecting hydrogen fuel price data did not produce a Polars DataFrame"
+            raise TypeError(msg)
+        h2_prices = collected
 
     if h2_prices is None or h2_prices.is_empty():
         logger.warning("Hydrogen fuel price data is empty. Skipping hydrogen fuel price.")

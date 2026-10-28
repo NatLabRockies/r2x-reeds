@@ -1,0 +1,5307 @@
+[
+  {"name":"empty_reserve_cost_rows","operations":[{"operation":"rows","schema":[{"name":"technology","dtype":"string"},{"name":"reg_cost","dtype":"float64"},{"name":"flex_cost","dtype":"float64"},{"name":"spin_cost","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_fuel_technology_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"f","dtype":"string"}],"values":[]}]},
+  {"name":"empty_generator_vintage_region_year_value_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"v","dtype":"string"},{"name":"r","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_generator_region_year_value_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"r","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_generator_value_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_technology_ramp_rate_rows","operations":[{"operation":"rows","schema":[{"name":"technology","dtype":"string"},{"name":"ramp_rate","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_technology_min_load_rows","operations":[{"operation":"rows","schema":[{"name":"technology","dtype":"string"},{"name":"min_load_frac","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_start_cost_rows","operations":[{"operation":"rows","schema":[{"name":"*i","dtype":"string"},{"name":"$2004/mw","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_generator_year_value_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_generator_year_capital_cost_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"Value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_generator_vintage_year_value_rows","operations":[{"operation":"rows","schema":[{"name":"i","dtype":"string"},{"name":"v","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_region_year_value_rows","operations":[{"operation":"rows","schema":[{"name":"r","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_fom_water_upgrade_rows","operations":[{"operation":"rows","schema":[{"name":"technology","dtype":"string"},{"name":"source_technology","dtype":"string"},{"name":"target_technology","dtype":"string"}],"values":[]}]},
+  {"name":"empty_fom_characteristic_rows","operations":[{"operation":"rows","schema":[{"name":"technology","dtype":"string"},{"name":"year","dtype":"string"},{"name":"variable","dtype":"string"},{"name":"fom_cost","dtype":"string"}],"values":[]}]},
+  {"name":"empty_emission_rate_rows","operations":[{"operation":"rows","schema":[{"name":"eall","dtype":"string"},{"name":"etype","dtype":"string"},{"name":"i","dtype":"string"},{"name":"r","dtype":"string"},{"name":"t","dtype":"int64"},{"name":"v","dtype":"string"},{"name":"value","dtype":"float64"}],"values":[]}]},
+  {"name":"empty_hydro_capacity_adjustment_rows","operations":[{"operation":"rows","schema":[{"name":"technology","dtype":"string"},{"name":"region","dtype":"string"},{"name":"month","dtype":"string"},{"name":"capacity_adjustment","dtype":"float64"}],"values":[]}]},
+  {"name":"hydro_capacity_adjustment_selected","operations":[{"operation":"first_nonempty","sources":["hydro_capacity_adjustment_input"],"fallback":"empty_hydro_capacity_adjustment_rows"}]},
+  {
+    "name": "reserve_product_rows",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "reserve_type", "dtype": "string"},
+          {"name": "duration_seconds", "dtype": "int64"},
+          {"name": "time_frame_seconds", "dtype": "int64"},
+          {"name": "vors", "dtype": "float64"},
+          {"name": "direction", "dtype": "string"},
+          {"name": "load_fraction", "dtype": "float64"},
+          {"name": "wind_fraction", "dtype": "float64"},
+          {"name": "solar_fraction", "dtype": "float64"},
+          {"name": "default_load_percentage", "dtype": "float64"},
+          {"name": "default_wind_percentage", "dtype": "float64"},
+          {"name": "default_solar_percentage", "dtype": "float64"}
+        ],
+        "values": "{reserve_product_rows}"
+      },
+      {"operation": "casefold", "column": "reserve_type", "output": "reserve_type_key"}
+    ]
+  },
+  {
+    "name": "reserve_provider_exclusions",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "reserve_type", "dtype": "string"},
+          {"name": "technology_category", "dtype": "string"}
+        ],
+        "values": "{reserve_provider_exclusion_rows}"
+      }
+    ]
+  },
+  {
+    "name": "reserve_provider_exclusion_categories",
+    "source": "reserve_provider_exclusions",
+    "operations": [],
+    "columns": {"category": "technology_category", "reserve_type": "reserve_type"}
+  },
+  {
+    "name": "reserve_percentages_default",
+    "source": "reserve_product_rows",
+    "operations": [],
+    "columns": {
+      "reserve_type": "reserve_type",
+      "or_load_percentage": "default_load_percentage",
+      "or_wind_percentage": "default_wind_percentage",
+      "or_pv_percentage": "default_solar_percentage"
+    }
+  },
+  {
+    "name": "reserve_percentages_selected_rows",
+    "operations": [
+      {"operation": "first_present", "sources": ["reserve_percentages", "reserve_percentages_default"]},
+      {"operation": "casefold", "column": "reserve_type", "output": "reserve_type_key"}
+    ],
+    "columns": {
+      "reserve_type_key": "reserve_type_key",
+      "or_load_percentage": "or_load_percentage",
+      "or_wind_percentage": "or_wind_percentage",
+      "or_pv_percentage": "or_pv_percentage"
+    }
+  },
+  {
+    "name": "reserve_cost_summary",
+    "operations": [
+      {"operation": "first_present", "sources": ["reserve_costs_default", "reserve_costs_market", "empty_reserve_cost_rows"]},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [
+          {"operation": "mean", "column": "reg_cost", "output": "reg_cost"},
+          {"operation": "mean", "column": "flex_cost", "output": "flex_cost"},
+          {"operation": "mean", "column": "spin_cost", "output": "spin_cost"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "reserve_hierarchy_regions",
+    "source": "hierarchy",
+    "operations": [
+      {"operation": "filter", "column": "transmission_region", "comparison": "is_not_null"},
+      {"operation": "unique", "columns": ["region_id"], "keep": "first"}
+    ],
+    "columns": {"region": "region_id", "transmission_region": "transmission_region"}
+  },
+  {
+    "name": "reserve_region_rows",
+    "source": "reserve_hierarchy_regions",
+    "operations": [
+      {"operation": "unique", "columns": ["transmission_region"], "keep": "first"}
+    ],
+    "columns": {"name": "transmission_region", "transmission_region": "transmission_region"}
+  },
+  {
+    "name": "reserve_component_rows",
+    "source": "reserve_region_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "reserve_product_rows",
+        "how": "cross",
+        "columns": [
+          "reserve_type", "reserve_type_key", "duration_seconds", "time_frame_seconds",
+          "vors", "direction"
+        ]
+      },
+      {
+        "operation": "join",
+        "source": "reserve_percentages_selected_rows",
+        "how": "left",
+        "on": ["reserve_type_key"],
+        "columns": ["or_load_percentage", "or_wind_percentage", "or_pv_percentage"]
+      },
+      {
+        "operation": "join",
+        "source": "reserve_cost_summary",
+        "how": "cross",
+        "columns": ["reg_cost", "flex_cost", "spin_cost"]
+      },
+      {"operation": "concat_strings", "columns": ["transmission_region", "reserve_type"], "separator": "_", "output": "component_name"},
+      {
+        "operation": "choose",
+        "column": "reserve_type",
+        "comparison": "equals",
+        "value": "SPINNING",
+        "then": "spin_cost",
+        "otherwise": {"value": null},
+        "output": "component_spin_cost"
+      },
+      {
+        "operation": "choose",
+        "column": "reserve_type",
+        "comparison": "equals",
+        "value": "REGULATION",
+        "then": "reg_cost",
+        "otherwise": {"value": null},
+        "output": "component_reg_cost"
+      },
+      {
+        "operation": "choose",
+        "column": "reserve_type",
+        "comparison": "equals",
+        "value": "FLEXIBILITY",
+        "then": "flex_cost",
+        "otherwise": {"value": null},
+        "output": "component_flex_cost"
+      }
+    ],
+    "columns": {
+      "name": "component_name",
+      "region_name": "transmission_region",
+      "reserve_type": "reserve_type",
+      "duration": "duration_seconds",
+      "time_frame": "time_frame_seconds",
+      "vors": "vors",
+      "direction": "direction",
+      "or_load_percentage": "or_load_percentage",
+      "or_wind_percentage": "or_wind_percentage",
+      "or_pv_percentage": "or_pv_percentage",
+      "spin_cost": "component_spin_cost",
+      "reg_cost": "component_reg_cost",
+      "flex_cost": "component_flex_cost"
+    }
+  },
+  {
+    "name": "generator_variable_categories",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {
+            "name": "category",
+            "dtype": "string"
+          }
+        ],
+        "values": [
+          {
+            "category": "solar"
+          },
+          {
+            "category": "wind"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_variable_null_vintage",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {
+            "name": "vintage",
+            "dtype": "string"
+          }
+        ],
+        "values": [
+          {
+            "vintage": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_excluded_technology_keys",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "technology_key", "dtype": "string"},
+          {"name": "excluded", "dtype": "bool"}
+        ],
+        "values": "{excluded_technology_rows}"
+      }
+    ]
+  },
+  {
+    "name": "requested_solve_year_keys",
+    "source": "requested_solve_year_rows",
+    "operations": [],
+    "columns": {
+      "year": "solve_year",
+      "t": "solve_year"
+    }
+  },
+  {
+    "name": "generator_capacity_for_solve_year",
+    "source": "generator_capacity_selected",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      }
+    ]
+  },
+  {
+    "name": "hydrogen_production_capacity",
+    "source": "hydrogen_production_capacity_input",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "year": "year",
+      "capacity": "capacity"
+    }
+  },
+  {
+    "name": "hydrogen_production_annual_load",
+    "source": "hydrogen_production_annual_load_input",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "year": "year",
+      "value": "value"
+    }
+  },
+  {
+    "name": "hydrogen_production_load",
+    "source": "hydrogen_production_load_input",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "hour_period": "hour_period",
+      "year": "year",
+      "value": "value"
+    }
+  },
+  {
+    "name": "generator_capacity_included",
+    "source": "generator_capacity_for_solve_year",
+    "operations": [
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {
+        "operation": "join",
+        "source": "generator_excluded_technology_keys",
+        "how": "left",
+        "on": ["technology_key"],
+        "columns": ["excluded"]
+      },
+      {"operation": "filter", "column": "excluded", "comparison": "is_null"}
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "region": "region",
+      "vintage": "vintage",
+      "year": "year",
+      "capacity": "capacity",
+      "fuel_type": "fuel_type"
+    }
+  },
+  {
+    "name": "generator_capacity_row_count",
+    "source": "generator_capacity_included",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "count", "column": "technology", "output": "technology_count"}]
+      }
+    ]
+  },
+  {
+    "name": "generator_technologies",
+    "source": "generator_capacity_included",
+    "operations": [
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "technology_key": "technology_key"}
+  },
+  {
+    "name": "generator_classification_overrides",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "technology", "dtype": "string"},
+          {"name": "category", "dtype": "string"},
+          {"name": "is_dispatchable", "dtype": "bool"},
+          {"name": "parser_supported", "dtype": "bool"}
+        ],
+        "values": "{generator_classification_override_rows}"
+      },
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "fill_null", "columns": ["parser_supported"], "value": true}
+    ],
+    "columns": {
+      "technology_key": "technology_key",
+      "category_override": "category",
+      "is_dispatchable_override": "is_dispatchable",
+      "parser_supported_override": "parser_supported"
+    }
+  },
+  {
+    "name": "generator_category_membership_alias_map",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "category", "dtype": "string"},
+          {"name": "membership", "dtype": "string"}
+        ],
+        "values": [
+          {"category": "re", "membership": "renewable"},
+          {"category": "vre", "membership": "variable_renewable"},
+          {"category": "hydro_d", "membership": "hydro_dispatchable"},
+          {"category": "hydro_nd", "membership": "hydro_nondispatchable"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_category_flag_rows",
+    "source": "generator_technologies",
+    "operations": [
+      {
+        "operation": "match_source_patterns",
+        "column": "technology",
+        "source": "fom_technology_subsets",
+        "pattern_column": "technology",
+        "range_separator": "*",
+        "prefix_separator": "_",
+        "precedence": ["exact", "range", "prefix"],
+        "prefix_policy": "longest",
+        "duplicate_policy": "first",
+        "unmatched": "keep",
+        "case_sensitive": false
+      },
+      {
+        "operation": "unpivot",
+        "index": ["technology", "technology_key"],
+        "variable_name": "membership_flag",
+        "value_name": "membership_value",
+        "value_type_name": "membership_type"
+      },
+      {"operation": "casefold", "column": "membership_flag", "output": "membership_flag_key"},
+      {"operation": "cast", "column": "membership_value", "dtype": "string"},
+      {"operation": "casefold", "column": "membership_value", "output": "membership_value_key"},
+      {
+        "operation": "choose",
+        "column": "membership_type",
+        "comparison": "equals",
+        "value": "bool",
+        "then": {"value": "true"},
+        "otherwise": {"value": "yes"},
+        "output": "expected_membership_value"
+      },
+      {
+        "operation": "filter",
+        "column": "membership_value_key",
+        "comparison": "equals",
+        "other_column": "expected_membership_value"
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "membership_flag": "membership_flag_key"
+    }
+  },
+  {
+    "name": "generator_category_policy_rows",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "membership_flag", "dtype": "string"},
+          {"name": "category", "dtype": "string"},
+          {"name": "priority", "dtype": "int64"},
+          {"name": "parser_supported", "dtype": "bool"}
+        ],
+        "values": [
+          {"membership_flag": "consume", "category": null, "priority": 0, "parser_supported": false},
+          {"membership_flag": "canada", "category": "imports", "priority": 10, "parser_supported": true},
+          {"membership_flag": "hydro", "category": "hydro", "priority": 20, "parser_supported": true},
+          {"membership_flag": "geo", "category": "geothermal", "priority": 30, "parser_supported": true},
+          {"membership_flag": "wind", "category": "wind", "priority": 40, "parser_supported": true},
+          {"membership_flag": "upv", "category": "solar", "priority": 50, "parser_supported": true},
+          {"membership_flag": "distpv", "category": "solar", "priority": 50, "parser_supported": true},
+          {"membership_flag": "pv", "category": "solar", "priority": 50, "parser_supported": true},
+          {"membership_flag": "pvb", "category": "solar", "priority": 50, "parser_supported": true},
+          {"membership_flag": "csp", "category": "solar", "priority": 50, "parser_supported": true},
+          {"membership_flag": "psh", "category": "pumped_storage", "priority": 60, "parser_supported": true},
+          {"membership_flag": "storage_standalone", "category": "storage", "priority": 70, "parser_supported": true},
+          {"membership_flag": "battery", "category": "storage", "priority": 70, "parser_supported": true},
+          {"membership_flag": "fossil", "category": "thermal", "priority": 80, "parser_supported": true},
+          {"membership_flag": "nuclear", "category": "thermal", "priority": 80, "parser_supported": true},
+          {"membership_flag": "bio", "category": "thermal", "priority": 80, "parser_supported": true},
+          {"membership_flag": "ogs", "category": "thermal", "priority": 80, "parser_supported": true},
+          {"membership_flag": "lfill", "category": "thermal", "priority": 80, "parser_supported": true},
+          {"membership_flag": "h2_combustion", "category": "thermal", "priority": 80, "parser_supported": true}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_category_flag_candidates",
+    "source": "generator_category_flag_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_category_policy_rows",
+        "how": "inner",
+        "on": ["membership_flag"]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "category": "category",
+      "priority": "priority",
+      "parser_supported": "parser_supported"
+    }
+  },
+  {
+    "name": "generator_category_special_candidates",
+    "source": "generator_technologies",
+    "operations": [
+      {
+        "operation": "match_patterns",
+        "column": "technology",
+        "label_column": "category",
+        "defaults": {"priority": 90, "parser_supported": true},
+        "case_sensitive": false,
+        "groups": [
+          {"label": "storage", "exact": ["caes"]},
+          {"label": "storage", "prefixes": ["battery_"]},
+          {"label": "solar", "exact": ["dupv"]},
+          {"label": "geothermal", "prefixes": ["rtes"]}
+        ]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "category": "category",
+      "priority": "priority",
+      "parser_supported": "parser_supported"
+    }
+  },
+  {
+    "name": "generator_category_candidates",
+    "operations": [
+      {
+        "operation": "concat",
+        "sources": ["generator_category_flag_candidates", "generator_category_special_candidates"]
+      },
+      {"operation": "sort", "columns": ["priority"]},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ]
+  },
+  {
+    "name": "generator_category_hydro_flags",
+    "source": "generator_category_flag_rows",
+    "operations": [
+      {
+        "operation": "choose",
+        "column": "membership_flag",
+        "comparison": "equals",
+        "value": "hydro_d",
+        "then": {"value": 1},
+        "otherwise": {"value": 0},
+        "output": "is_dispatchable_value"
+      },
+      {
+        "operation": "choose",
+        "column": "membership_flag",
+        "comparison": "equals",
+        "value": "hydro_nd",
+        "then": {"value": 1},
+        "otherwise": {"value": 0},
+        "output": "has_hydro_nd_value"
+      },
+      {
+        "operation": "group_by",
+        "columns": ["technology", "technology_key"],
+        "aggregate": [
+          {"operation": "max", "column": "is_dispatchable_value", "output": "is_dispatchable_value"},
+          {"operation": "max", "column": "has_hydro_nd_value", "output": "has_hydro_nd_value"}
+        ]
+      },
+      {
+        "operation": "choose",
+        "column": "is_dispatchable_value",
+        "comparison": "equals",
+        "value": 1,
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "is_dispatchable"
+      },
+      {
+        "operation": "choose",
+        "column": "has_hydro_nd_value",
+        "comparison": "equals",
+        "value": 1,
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "has_hydro_nd"
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "is_dispatchable": "is_dispatchable",
+      "has_hydro_nd": "has_hydro_nd"
+    }
+  },
+  {
+    "name": "generator_category_family_policy_rows",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "category", "dtype": "string"},
+          {"name": "component_family", "dtype": "string"}
+        ],
+        "values": [
+          {"category": "thermal", "component_family": "thermal"},
+          {"category": "solar", "component_family": "variable"},
+          {"category": "wind", "component_family": "variable"},
+          {"category": "geothermal", "component_family": "variable"},
+          {"category": "hydro", "component_family": "hydro"},
+          {"category": "storage", "component_family": "storage"},
+          {"category": "pumped_storage", "component_family": "storage"},
+          {"category": "imports", "component_family": "generator"}
+        ]
+      }
+    ],
+    "columns": {
+      "resolved_category": "category",
+      "component_family": "component_family"
+    }
+  },
+  {
+    "name": "generator_category_by_technology",
+    "source": "generator_technologies",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_category_candidates",
+        "how": "left",
+        "on": ["technology"],
+        "columns": ["category", "parser_supported"]
+      },
+      {
+        "operation": "join",
+        "source": "generator_category_hydro_flags",
+        "how": "left",
+        "on": ["technology"],
+        "columns": ["is_dispatchable"]
+      },
+      {
+        "operation": "fill_null",
+        "columns": ["parser_supported", "is_dispatchable"],
+        "value": false
+      },
+      {
+        "operation": "join",
+        "source": "generator_classification_overrides",
+        "how": "left",
+        "on": ["technology_key"],
+        "columns": ["category_override", "is_dispatchable_override", "parser_supported_override"]
+      },
+      {"operation": "fill_null", "columns": ["parser_supported_override"], "value": true},
+      {
+        "operation": "choose",
+        "column": "category_override",
+        "comparison": "is_not_null",
+        "then": "category_override",
+        "otherwise": "category",
+        "output": "resolved_category"
+      },
+      {
+        "operation": "choose",
+        "column": "is_dispatchable_override",
+        "comparison": "is_not_null",
+        "then": "is_dispatchable_override",
+        "otherwise": "is_dispatchable",
+        "output": "resolved_is_dispatchable"
+      },
+      {
+        "operation": "choose",
+        "column": "category_override",
+        "comparison": "is_not_null",
+        "then": "parser_supported_override",
+        "otherwise": "parser_supported",
+        "output": "resolved_parser_supported"
+      },
+      {
+        "operation": "join",
+        "source": "generator_category_family_policy_rows",
+        "how": "left",
+        "on": ["resolved_category"],
+        "columns": ["component_family"]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "component_family": "component_family",
+      "category": "resolved_category",
+      "is_dispatchable": "resolved_is_dispatchable",
+      "parser_supported": "resolved_parser_supported"
+    }
+  },
+  {
+    "name": "generator_category_flag_memberships",
+    "source": "generator_category_flag_rows",
+    "operations": [],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "category": "membership_flag"
+    }
+  },
+  {
+    "name": "generator_category_alias_memberships",
+    "source": "generator_category_flag_memberships",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_category_membership_alias_map",
+        "how": "inner",
+        "on": ["category"],
+        "columns": ["membership"]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "category": "membership"
+    }
+  },
+  {
+    "name": "generator_category_class_memberships",
+    "source": "generator_category_by_technology",
+    "operations": [
+      {"operation": "filter", "column": "category", "comparison": "is_not_null"}
+    ],
+    "columns": {
+      "technology": "technology",
+      "technology_key": "technology_key",
+      "category": "category"
+    }
+  },
+  {
+    "name": "generator_category_memberships",
+    "operations": [
+      {
+        "operation": "concat",
+        "sources": [
+          "generator_category_flag_memberships",
+          "generator_category_alias_memberships",
+          "generator_category_class_memberships"
+        ]
+      },
+      {"operation": "unique", "columns": ["technology", "category"], "keep": "first"},
+      {"operation": "sort", "columns": ["technology", "category"]}
+    ],
+    "columns": {"technology": "technology", "category": "category"}
+  },
+  {
+    "name": "generator_capacity_classified",
+    "source": "generator_capacity_included",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_category_by_technology",
+        "how": "left",
+        "on": ["technology_key"],
+        "columns": ["component_family", "category", "is_dispatchable", "parser_supported"]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "year": "year",
+      "vintage": "vintage",
+      "capacity": "capacity",
+      "direct_fuel_type": "fuel_type",
+      "component_family": "component_family",
+      "category": "category",
+      "is_dispatchable": "is_dispatchable",
+      "parser_supported": "parser_supported"
+    }
+  },
+  {
+    "name": "generator_thermal_missing_fuel",
+    "source": "generator_capacity_classified",
+    "operations": [
+      {"operation": "filter", "column": "component_family", "comparison": "equals", "value": "thermal"},
+      {"operation": "filter", "column": "direct_fuel_type", "comparison": "is_null"}
+    ],
+    "columns": {"technology": "technology"}
+  },
+  {
+    "name": "generator_excluded_reserve_pairs",
+    "source": "generator_category_memberships",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "reserve_provider_exclusion_categories",
+        "how": "inner",
+        "on": [
+          "category"
+        ],
+        "columns": [
+          "reserve_type"
+        ]
+      },
+      {
+        "operation": "unique",
+        "columns": ["technology", "reserve_type"],
+        "keep": "first"
+      }
+    ],
+    "columns": {
+      "excluded": {
+        "value": "yes"
+      },
+      "reserve_type": "reserve_type",
+      "technology": "technology"
+    }
+  },
+  {
+    "name": "generator_reserve_membership",
+    "source": "generator_capacity_classified",
+    "operations": [
+      {
+        "operation": "unique",
+        "columns": [
+          "technology",
+          "region"
+        ],
+        "keep": "first"
+      },
+      {
+        "operation": "join",
+        "source": "reserve_hierarchy_regions",
+        "how": "inner",
+        "on": [
+          "region"
+        ],
+        "columns": [
+          "transmission_region"
+        ]
+      },
+      {
+        "operation": "join",
+        "source": "reserve_product_rows",
+        "how": "cross",
+        "columns": [
+          "reserve_type"
+        ]
+      },
+      {
+        "operation": "concat_strings",
+        "columns": [
+          "transmission_region",
+          "reserve_type"
+        ],
+        "separator": "_",
+        "output": "reserve_name"
+      },
+      {
+        "operation": "join",
+        "source": "generator_excluded_reserve_pairs",
+        "how": "left",
+        "on": [
+          "technology",
+          "reserve_type"
+        ],
+        "columns": [
+          "excluded"
+        ]
+      },
+      {
+        "operation": "filter",
+        "column": "excluded",
+        "comparison": "is_null"
+      },
+      {
+        "operation": "sort",
+        "columns": [
+          "technology",
+          "region",
+          "reserve_name"
+        ]
+      },
+      {
+        "operation": "group_by",
+        "columns": [
+          "technology",
+          "region"
+        ],
+        "aggregate": [
+          {
+            "operation": "list",
+            "column": "reserve_name",
+            "output": "reserves"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_selected_solve_years",
+    "source": "requested_solve_year_rows",
+    "operations": [],
+    "columns": {"t": "solve_year"}
+  },
+  {
+    "name": "generator_heat_rate",
+    "operations": [
+      {"operation": "first_present", "sources": ["heat_rate", "empty_generator_vintage_region_year_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "casefold", "column": "v", "output": "vintage"},
+      {"operation": "casefold", "column": "r", "output": "region"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "vintage", "region", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "vintage": "vintage", "region": "region", "year": "t", "heat_rate": "value"}
+  },
+  {
+    "name": "generator_heat_rate_mean",
+    "source": "generator_heat_rate",
+    "operations": [
+      {"operation": "group_by", "columns": ["technology", "vintage"], "aggregate": [{"operation": "mean", "column": "heat_rate", "output": "heat_rate_mean"}]}
+    ]
+  },
+  {
+    "name": "generator_fuel_price",
+    "operations": [
+      {"operation": "first_present", "sources": ["fuel_price", "empty_generator_region_year_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "casefold", "column": "r", "output": "region"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "region", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "region": "region", "year": "t", "fuel_price": "value"}
+  },
+  {
+    "name": "generator_biofuel_lookup",
+    "operations": [
+      {"operation": "first_present", "sources": ["biofuel_price", "empty_region_year_value_rows"]},
+      {"operation": "casefold", "column": "r", "output": "region"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["region", "t"], "keep": "first"}
+    ],
+    "columns": {"region": "region", "year": "t", "biofuel_price": "value", "fuel_type": {"value": "biomass"}}
+  },
+  {
+    "name": "generator_forced_outages",
+    "operations": [
+      {"operation": "first_present", "sources": ["forced_outages", "empty_generator_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "forced_outage_rate": "value"}
+  },
+  {
+    "name": "generator_planned_outages",
+    "operations": [
+      {"operation": "first_present", "sources": ["planned_outages", "empty_generator_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "planned_outage_rate": "value"}
+  },
+  {
+    "name": "generator_maxage",
+    "source": "maxage",
+    "operations": [
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "cast", "column": "maxage_years", "dtype": "int64"},
+      {"operation": "unique", "columns": ["technology_key"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology_key", "maxage_years": "maxage_years"}
+  },
+  {
+    "name": "generator_cost_vom",
+    "operations": [
+      {"operation": "first_present", "sources": ["cost_vom", "empty_generator_vintage_region_year_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "casefold", "column": "v", "output": "vintage"},
+      {"operation": "casefold", "column": "r", "output": "region"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "vintage", "region", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "vintage": "vintage", "region": "region", "year": "t", "vom_cost": "value"}
+  },
+  {
+    "name": "generator_ramprate",
+    "operations": [
+      {"operation": "first_present", "sources": ["ramprate", "empty_technology_ramp_rate_rows"]},
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "cast", "column": "ramp_rate", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology_key"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology_key", "ramp_rate": "ramp_rate"}
+  },
+  {
+    "name": "generator_minloadfrac",
+    "operations": [
+      {"operation": "first_present", "sources": ["minloadfrac", "empty_technology_min_load_rows"]},
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "cast", "column": "min_load_frac", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology_key"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology_key", "min_load_frac": "min_load_frac"}
+  },
+  {
+    "name": "generator_startcost",
+    "operations": [
+      {"operation": "first_present", "sources": ["startcost", "empty_start_cost_rows"]},
+      {"operation": "casefold", "column": "*i", "output": "technology"},
+      {"operation": "cast", "column": "$2004/mw", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "startup_cost": "$2004/mw"}
+  },
+  {
+    "name": "generator_storage_duration",
+    "operations": [
+      {"operation": "first_present", "sources": ["storage_duration", "empty_generator_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "storage_duration": "value"}
+  },
+  {
+    "name": "generator_storage_efficiency",
+    "operations": [
+      {"operation": "first_present", "sources": ["storage_efficiency", "empty_generator_year_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "year": "t", "round_trip_efficiency": "value"}
+  },
+  {
+    "name": "generator_cost_capital",
+    "operations": [
+      {"operation": "first_present", "sources": ["cost_capital", "empty_generator_year_capital_cost_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "Value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "year": "t", "capital_cost": "Value"}
+  },
+  {
+    "name": "generator_cost_capital_energy",
+    "operations": [
+      {"operation": "first_present", "sources": ["cost_capital_energy", "empty_generator_year_capital_cost_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "Value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "year": "t", "capital_cost_energy": "Value"}
+  },
+  {
+    "name": "generator_cf_adjustment",
+    "operations": [
+      {"operation": "first_present", "sources": ["renewable_cf_adjustment", "empty_generator_vintage_year_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "casefold", "column": "v", "output": "vintage"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "join", "source": "generator_selected_solve_years", "how": "inner", "on": ["t"], "columns": []},
+      {"operation": "unique", "columns": ["technology", "vintage", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "vintage": "vintage", "year": "t", "capacity_factor_adjustment": "value"}
+  },
+  {
+    "name": "generator_ilr",
+    "operations": [
+      {"operation": "first_present", "sources": ["ilr", "empty_generator_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "inverter_loading_ratio": "value"}
+  },
+  {
+    "name": "generator_storage_duration_out",
+    "operations": [
+      {"operation": "first_present", "sources": ["storage_duration_out", "empty_generator_vintage_region_year_value_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology"},
+      {"operation": "casefold", "column": "v", "output": "vintage"},
+      {"operation": "casefold", "column": "r", "output": "region"},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology", "vintage", "region", "t"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "vintage": "vintage", "region": "region", "year": "t", "duration_out_value": "value"}
+  },
+  {
+    "name": "generator_fuel_map_selected",
+    "operations": [
+      {"operation": "first_present", "sources": ["fuel_tech_map", "empty_fuel_technology_rows"]},
+      {"operation": "casefold", "column": "i", "output": "technology_full"},
+      {"operation": "split", "column": "technology_full", "separator": "_", "index": 0, "output": "technology_base"},
+      {"operation": "casefold", "column": "f", "output": "fuel_type"}
+    ],
+    "columns": {"technology_full": "technology_full", "technology_base": "technology_base", "fuel_type": "fuel_type"}
+  },
+  {
+    "name": "generator_fuel_full_lookup",
+    "source": "generator_fuel_map_selected",
+    "operations": [
+      {"operation": "unique", "columns": ["technology_full"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology_full", "fuel_type_full": "fuel_type"}
+  },
+  {
+    "name": "generator_fuel_base_lookup",
+    "source": "generator_fuel_map_selected",
+    "operations": [
+      {"operation": "sort", "columns": ["technology_full"], "descending": true},
+      {"operation": "unique", "columns": ["technology_base"], "keep": "first"}
+    ],
+    "columns": {"technology_base": "technology_base", "fuel_type_base": "fuel_type"}
+  },
+  {
+    "name": "generator_capacity_rows",
+    "source": "generator_capacity_classified",
+    "operations": [
+      {"operation": "join", "source": "generator_heat_rate", "how": "left", "on": ["technology", "vintage", "region", "year"], "columns": ["heat_rate"]},
+      {"operation": "join", "source": "generator_heat_rate_mean", "how": "left", "on": ["technology", "vintage"], "columns": ["heat_rate_mean"]},
+      {"operation": "join", "source": "generator_fuel_price", "how": "left", "on": ["technology", "region", "year"], "columns": ["fuel_price"]},
+      {"operation": "join", "source": "generator_biofuel_lookup", "how": "left", "on": ["region", "year"], "columns": ["biofuel_price"]},
+      {"operation": "join", "source": "generator_forced_outages", "how": "left", "on": ["technology"], "columns": ["forced_outage_rate"]},
+      {"operation": "join", "source": "generator_planned_outages", "how": "left", "on": ["technology"], "columns": ["planned_outage_rate"]},
+      {"operation": "join", "source": "generator_maxage", "how": "left", "on": ["technology"], "columns": ["maxage_years"]},
+      {"operation": "join", "source": "generator_cost_vom", "how": "left", "on": ["technology", "vintage", "region", "year"], "columns": ["vom_cost"]},
+      {"operation": "join", "source": "generator_ramprate", "how": "left", "on": ["technology"], "columns": ["ramp_rate"]},
+      {"operation": "join", "source": "generator_minloadfrac", "how": "left", "on": ["technology"], "columns": ["min_load_frac"]},
+      {"operation": "join", "source": "generator_startcost", "how": "left", "on": ["technology"], "columns": ["startup_cost"]},
+      {"operation": "join", "source": "generator_storage_duration", "how": "left", "on": ["technology"], "columns": ["storage_duration"]},
+      {"operation": "join", "source": "generator_storage_duration_out", "how": "left", "on": ["technology", "vintage", "region", "year"], "columns": ["duration_out_value"]},
+      {"operation": "join", "source": "generator_storage_efficiency", "how": "left", "on": ["technology", "year"], "columns": ["round_trip_efficiency"]},
+      {"operation": "join", "source": "generator_cost_capital", "how": "left", "on": ["technology", "year"], "columns": ["capital_cost"]},
+      {"operation": "join", "source": "generator_cost_capital_energy", "how": "left", "on": ["technology", "year"], "columns": ["capital_cost_energy"]},
+      {"operation": "join", "source": "generator_cf_adjustment", "how": "left", "on": ["technology", "vintage", "year"], "columns": ["capacity_factor_adjustment"]},
+      {"operation": "join", "source": "generator_ilr", "how": "left", "on": ["technology"], "columns": ["inverter_loading_ratio"]},
+      {"operation": "cast", "column": "capacity", "dtype": "float64"}
+    ]
+  },
+  {
+    "name": "fom_policy_constants",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "unit_spec_upgrade", "dtype": "bool"},
+          {"name": "target_is_ccs", "dtype": "bool"},
+          {"name": "retrofit_eligible", "dtype": "bool"},
+          {"name": "retrofit_fom_factor", "dtype": "float64"}
+        ],
+        "values": [
+          {
+            "unit_spec_upgrade": true,
+            "target_is_ccs": true,
+            "retrofit_eligible": true,
+            "retrofit_fom_factor": 1000.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "fom_characteristic_source",
+    "operations": [
+      {"operation": "first_present", "sources": ["fom_upgrade_characteristics", "empty_fom_characteristic_rows"]},
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "casefold", "column": "variable", "output": "variable_key"},
+      {"operation": "filter", "column": "variable_key", "comparison": "equals", "value": "fom"},
+      {"operation": "cast", "column": "year", "dtype": "int64"},
+      {"operation": "cast", "column": "fom_cost", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology_key", "year"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology_key",
+      "year": "year",
+      "fom_cost": "fom_cost"
+    }
+  },
+  {
+    "name": "fom_switches_by_name",
+    "source": "fom_switches",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["parameter"],
+        "aggregate": [
+          {"operation": "last", "column": "value", "output": "value"},
+          {"operation": "count", "column": "parameter", "output": "switch_count"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "fom_water_switch",
+    "source": "fom_switches_by_name",
+    "operations": [
+      {"operation": "filter", "column": "parameter", "comparison": "equals", "value": "gsw_watermain"},
+      {
+        "operation": "choose",
+        "column": "value",
+        "comparison": "equals",
+        "value": "1",
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "water_enabled"
+      }
+    ],
+    "columns": {"water_enabled": "water_enabled"}
+  },
+  {
+    "name": "fom_upgrades_switch",
+    "source": "fom_switches_by_name",
+    "operations": [
+      {"operation": "filter", "column": "parameter", "comparison": "equals", "value": "gsw_upgrades"},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "last", "column": "value", "output": "value"}]
+      },
+      {
+        "operation": "choose",
+        "column": "value",
+        "comparison": "equals",
+        "value": "1",
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "upgrades_enabled"
+      }
+    ],
+    "columns": {"upgrades_enabled": "upgrades_enabled"}
+  },
+  {
+    "name": "fom_retrofit_switch",
+    "source": "fom_switches_by_name",
+    "operations": [
+      {"operation": "filter", "column": "parameter", "comparison": "equals", "value": "gsw_upgradefom_nems"},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "last", "column": "value", "output": "value"}]
+      },
+      {
+        "operation": "choose",
+        "column": "value",
+        "comparison": "equals",
+        "value": "1",
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "retrofit_enabled"
+      }
+    ],
+    "columns": {"retrofit_enabled": "retrofit_enabled"}
+  },
+  {
+    "name": "fom_upgrade_year",
+    "source": "fom_switches_by_name",
+    "operations": [
+      {"operation": "filter", "column": "parameter", "comparison": "equals", "value": "gsw_upgradeyear"},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "last", "column": "value", "output": "value"}]
+      },
+      {"operation": "cast", "column": "value", "dtype": "int64"}
+    ],
+    "columns": {"upgrade_year": "value"}
+  },
+  {
+    "name": "fom_characteristic_year",
+    "source": "fom_switches_by_name",
+    "operations": [
+      {"operation": "filter", "column": "parameter", "comparison": "equals", "value": "gsw_upgradechar_year"},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "last", "column": "value", "output": "value"}]
+      },
+      {"operation": "cast", "column": "value", "dtype": "int64"}
+    ],
+    "columns": {"characteristic_year": "value"}
+  },
+  {
+    "name": "fom_switch_policy",
+    "source": "fom_upgrades_switch",
+    "operations": [
+      {"operation": "join", "source": "fom_retrofit_switch", "how": "cross"},
+      {"operation": "join", "source": "fom_upgrade_year", "how": "cross"},
+      {"operation": "join", "source": "fom_characteristic_year", "how": "cross"}
+    ]
+  },
+  {
+    "name": "cost_fom_selected",
+    "source": "cost_fom",
+    "operations": [
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "casefold", "column": "variable", "output": "variable_key"},
+      {"operation": "cast", "column": "year", "dtype": "int64"},
+      {"operation": "cast", "column": "fom_cost", "dtype": "float64"},
+      {"operation": "filter", "column": "variable_key", "comparison": "equals", "value": "fom"},
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      }
+    ],
+    "columns": {
+      "fom_cost": "fom_cost",
+      "technology": "technology_key",
+      "year": "year"
+    }
+  },
+  {
+    "name": "fom_solve_year_count",
+    "source": "cost_fom_selected",
+    "operations": [
+      {"operation": "unique", "columns": ["year"], "keep": "first"},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "count", "column": "year", "output": "year_count"}]
+      }
+    ]
+  },
+  {
+    "name": "fom_cost_lookup",
+    "source": "cost_fom_selected",
+    "operations": [
+      {"operation": "unique", "columns": ["technology", "year"], "keep": "first"}
+    ]
+  },
+  {
+    "name": "fom_base_cost_lookup",
+    "source": "fom_cost_lookup",
+    "operations": [],
+    "columns": {
+      "technology": "technology",
+      "year": "year",
+      "base_fom": "fom_cost"
+    }
+  },
+  {
+    "name": "fom_target_cost_lookup",
+    "source": "fom_cost_lookup",
+    "operations": [],
+    "columns": {
+      "target_technology": "technology",
+      "year": "year",
+      "target_fom": "fom_cost"
+    }
+  },
+  {
+    "name": "fom_hydro_lookup",
+    "source": "fom_hydro",
+    "operations": [
+      {
+        "operation": "unpivot",
+        "index": ["technology"],
+        "variable_name": "region",
+        "value_name": "hydro_fom_cost"
+      },
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "casefold", "column": "region", "output": "region_key"},
+      {"operation": "cast", "column": "hydro_fom_cost", "dtype": "float64"},
+      {"operation": "unique", "columns": ["technology_key", "region_key"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology_key",
+      "region": "region_key",
+      "hydro_fom_cost": "hydro_fom_cost"
+    }
+  },
+  {
+    "name": "fom_target_hydro_lookup",
+    "source": "fom_hydro_lookup",
+    "operations": [],
+    "columns": {
+      "target_technology": "technology",
+      "region": "region",
+      "target_hydro_fom": "hydro_fom_cost"
+    }
+  },
+  {
+    "name": "fom_hintage_lookup",
+    "source": "fom_hintage",
+    "operations": [
+      {"operation": "casefold", "column": "technology", "output": "technology_key"},
+      {"operation": "casefold", "column": "vintage", "output": "vintage_key"},
+      {"operation": "casefold", "column": "region", "output": "region_key"},
+      {"operation": "join", "source": "fom_policy_constants", "how": "cross"},
+      {"operation": "multiply", "columns": ["ccs_retrofit_fom", "retrofit_fom_factor"], "output": "scaled_ccs_retrofit_fom"},
+      {"operation": "unique", "columns": ["technology_key", "vintage_key", "region_key", "year"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology_key",
+      "vintage": "vintage_key",
+      "region": "region_key",
+      "year": "year",
+      "hintage_capacity": "hintage_capacity",
+      "hintage_fom_cost": "hintage_fom_cost",
+      "ccs_retrofit_fom": "scaled_ccs_retrofit_fom"
+    }
+  },
+  {
+    "name": "fom_subset_lookup",
+    "source": "fom_technology_subsets",
+    "operations": [
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ]
+  },
+  {
+    "name": "fom_standard_upgrade_lookup",
+    "source": "fom_upgrade_links",
+    "operations": [
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology",
+      "standard_source_technology": "source_technology",
+      "standard_target_technology": "target_technology"
+    }
+  },
+  {
+    "name": "fom_water_upgrade_lookup",
+    "operations": [
+      {"operation": "first_present", "sources": ["fom_water_upgrade_links", "empty_fom_water_upgrade_rows"]},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology",
+      "water_source_technology": "source_technology",
+      "water_target_technology": "target_technology"
+    }
+  },
+  {
+    "name": "fom_characteristic_cost_lookup",
+    "source": "fom_characteristic_source",
+    "operations": [
+      {"operation": "join", "source": "fom_switch_policy", "how": "cross"},
+      {"operation": "filter", "column": "year", "comparison": "equals", "other_column": "characteristic_year"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {
+      "target_technology": "technology",
+      "initial_target_fom": "fom_cost"
+    }
+  },
+  {
+    "name": "fom_unitspec_lookup",
+    "source": "fom_unitspec_upgrades",
+    "operations": [
+      {"operation": "join", "source": "fom_policy_constants", "how": "cross"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology",
+      "unit_spec_upgrade": "unit_spec_upgrade"
+    }
+  },
+  {
+    "name": "fom_ccs_target_lookup",
+    "source": "fom_subset_lookup",
+    "operations": [
+      {"operation": "filter", "column": "ccs", "comparison": "equals", "value": "yes"},
+      {"operation": "join", "source": "fom_policy_constants", "how": "cross"},
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {
+      "target_technology": "technology",
+      "target_is_ccs": "target_is_ccs"
+    }
+  },
+  {
+    "name": "fom_hintage_source_current",
+    "source": "fom_hintage_lookup",
+    "operations": [],
+    "columns": {
+      "source_technology": "technology",
+      "vintage": "vintage",
+      "region": "region",
+      "year": "year",
+      "source_current_retrofit": "ccs_retrofit_fom"
+    }
+  },
+  {
+    "name": "fom_hintage_retrofit_history",
+    "source": "fom_hintage_lookup",
+    "operations": [],
+    "columns": {
+      "source_technology": "technology",
+      "vintage": "vintage",
+      "region": "region",
+      "history_year": "year",
+      "history_capacity": "hintage_capacity",
+      "historical_retrofit_fom": "ccs_retrofit_fom"
+    }
+  },
+  {
+    "name": "fom_retrofit_eligible",
+    "source": "fom_hintage_retrofit_history",
+    "operations": [
+      {"operation": "join", "source": "fom_switch_policy", "how": "cross"},
+      {"operation": "filter", "column": "history_year", "comparison": "equals", "other_column": "upgrade_year"},
+      {"operation": "filter", "column": "history_capacity", "comparison": "greater_than", "value": 0},
+      {"operation": "join", "source": "fom_policy_constants", "how": "cross"},
+      {"operation": "unique", "columns": ["source_technology", "vintage", "region"], "keep": "first"}
+    ],
+    "columns": {
+      "source_technology": "source_technology",
+      "vintage": "vintage",
+      "region": "region",
+      "retrofit_eligible": "retrofit_eligible"
+    }
+  },
+  {
+    "name": "fom_psh_scalar_cardinality",
+    "source": "fom_scalars",
+    "operations": [
+      {"operation": "filter", "column": "parameter", "comparison": "equals", "value": "cost_fom_psh"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [
+          {"operation": "first", "column": "value", "output": "psh_fom_cost"},
+          {"operation": "count", "column": "parameter", "output": "scalar_count"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_fom_policy_rows",
+    "source": "generator_capacity_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "fom_standard_upgrade_lookup",
+        "how": "left",
+        "on": ["technology"],
+        "columns": ["standard_source_technology", "standard_target_technology"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_water_upgrade_lookup",
+        "how": "left",
+        "on": ["technology"],
+        "columns": ["water_source_technology", "water_target_technology"]
+      },
+      {
+        "operation": "choose",
+        "column": "standard_source_technology",
+        "comparison": "is_not_null",
+        "then": "standard_source_technology",
+        "otherwise": "water_source_technology",
+        "output": "source_technology"
+      },
+      {
+        "operation": "choose",
+        "column": "standard_target_technology",
+        "comparison": "is_not_null",
+        "then": "standard_target_technology",
+        "otherwise": "water_target_technology",
+        "output": "target_technology"
+      },
+      {
+        "operation": "join",
+        "source": "fom_switch_policy",
+        "how": "cross",
+        "columns": ["upgrades_enabled", "retrofit_enabled", "upgrade_year", "characteristic_year"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_base_cost_lookup",
+        "how": "left",
+        "on": ["technology", "year"],
+        "columns": ["base_fom"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_target_cost_lookup",
+        "how": "left",
+        "on": ["target_technology", "year"],
+        "columns": ["target_fom"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_characteristic_cost_lookup",
+        "how": "left",
+        "on": ["target_technology"],
+        "columns": ["initial_target_fom"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_hydro_lookup",
+        "how": "left",
+        "on": ["technology", "region"],
+        "columns": ["hydro_fom_cost"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_target_hydro_lookup",
+        "how": "left",
+        "on": ["target_technology", "region"],
+        "columns": ["target_hydro_fom"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_hintage_lookup",
+        "how": "left",
+        "on": ["technology", "vintage", "region", "year"],
+        "columns": ["hintage_capacity", "hintage_fom_cost", "ccs_retrofit_fom"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_subset_lookup",
+        "how": "left",
+        "on": ["technology"],
+        "columns": ["psh", "distpv", "ccs"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_unitspec_lookup",
+        "how": "left",
+        "on": ["technology"],
+        "columns": ["unit_spec_upgrade"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_ccs_target_lookup",
+        "how": "left",
+        "on": ["target_technology"],
+        "columns": ["target_is_ccs"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_hintage_source_current",
+        "how": "left",
+        "on": ["source_technology", "vintage", "region", "year"],
+        "columns": ["source_current_retrofit"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_retrofit_eligible",
+        "how": "left",
+        "on": ["source_technology", "vintage", "region"],
+        "columns": ["retrofit_eligible"]
+      },
+      {
+        "operation": "join",
+        "source": "fom_psh_scalar_cardinality",
+        "how": "cross",
+        "columns": ["psh_fom_cost"]
+      }
+    ]
+  },
+  {
+    "name": "generator_fom_prior_retrofit",
+    "source": "generator_fom_policy_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "fom_hintage_retrofit_history",
+        "how": "left",
+        "on": ["source_technology", "vintage", "region"],
+        "columns": ["history_year", "historical_retrofit_fom"]
+      },
+      {
+        "operation": "filter",
+        "column": "year",
+        "comparison": "greater_than",
+        "other_column": "history_year"
+      },
+      {
+        "operation": "filter",
+        "column": "historical_retrofit_fom",
+        "comparison": "not_equal",
+        "value": 0
+      },
+      {
+        "operation": "sort",
+        "columns": ["history_year"]
+      },
+      {
+        "operation": "group_by",
+        "columns": ["technology", "vintage", "region", "year"],
+        "aggregate": [
+          {
+            "operation": "last",
+            "column": "historical_retrofit_fom",
+            "output": "prior_retrofit_fom"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_fom_costed",
+    "source": "generator_fom_policy_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_fom_prior_retrofit",
+        "how": "left",
+        "on": ["technology", "vintage", "region", "year"],
+        "columns": ["prior_retrofit_fom"]
+      },
+      {
+        "operation": "choose",
+        "column": "vintage",
+        "comparison": "starts_with",
+        "value": "init",
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "is_initial_vintage"
+      },
+      {
+        "operation": "choose",
+        "column": "target_technology",
+        "comparison": "is_not_null",
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "has_upgrade_target"
+      },
+      {
+        "operation": "fill_null",
+        "columns": ["target_hydro_fom"],
+        "value": 0.0
+      },
+      {
+        "operation": "add",
+        "columns": ["initial_target_fom", "target_hydro_fom"],
+        "output": "initial_upgrade_fom"
+      },
+      {
+        "operation": "choose",
+        "column": "is_initial_vintage",
+        "comparison": "equals",
+        "value": true,
+        "then": "initial_upgrade_fom",
+        "otherwise": "target_fom",
+        "output": "upgrade_fom_cost"
+      },
+      {
+        "operation": "choose",
+        "column": "distpv",
+        "comparison": "equals",
+        "value": "yes",
+        "then": "hintage_fom_cost",
+        "otherwise": "base_fom",
+        "output": "base_fom_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "hydro_fom_cost",
+        "comparison": "not_equal",
+        "value": 0,
+        "then": "hydro_fom_cost",
+        "otherwise": "base_fom_candidate",
+        "output": "hydro_fom_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "has_upgrade_target",
+        "comparison": "equals",
+        "value": true,
+        "then": "upgrade_fom_cost",
+        "otherwise": "hydro_fom_candidate",
+        "output": "upgrade_fom_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "retrofit_eligible",
+        "comparison": "equals",
+        "value": true,
+        "then": "prior_retrofit_fom",
+        "otherwise": {"value": null},
+        "output": "eligible_prior_retrofit_fom"
+      },
+      {
+        "operation": "choose",
+        "column": "source_current_retrofit",
+        "comparison": "not_equal",
+        "value": 0,
+        "then": "source_current_retrofit",
+        "otherwise": "eligible_prior_retrofit_fom",
+        "output": "resolved_retrofit_fom"
+      },
+      {
+        "operation": "choose",
+        "column": "resolved_retrofit_fom",
+        "comparison": "not_equal",
+        "value": 0,
+        "then": {"value": true},
+        "otherwise": {"value": false},
+        "output": "has_nonzero_retrofit_fom"
+      },
+      {
+        "operation": "choose",
+        "column": "is_initial_vintage",
+        "comparison": "equals",
+        "value": true,
+        "then": "has_upgrade_target",
+        "otherwise": {"value": false},
+        "output": "retrofit_candidate_1"
+      },
+      {
+        "operation": "choose",
+        "column": "retrofit_candidate_1",
+        "comparison": "equals",
+        "value": true,
+        "then": "unit_spec_upgrade",
+        "otherwise": {"value": false},
+        "output": "retrofit_candidate_2"
+      },
+      {
+        "operation": "choose",
+        "column": "retrofit_candidate_2",
+        "comparison": "equals",
+        "value": true,
+        "then": "target_is_ccs",
+        "otherwise": {"value": false},
+        "output": "retrofit_candidate_3"
+      },
+      {
+        "operation": "choose",
+        "column": "retrofit_candidate_3",
+        "comparison": "equals",
+        "value": true,
+        "then": "retrofit_enabled",
+        "otherwise": {"value": false},
+        "output": "retrofit_candidate_4"
+      },
+      {
+        "operation": "choose",
+        "column": "retrofit_candidate_4",
+        "comparison": "equals",
+        "value": true,
+        "then": "has_nonzero_retrofit_fom",
+        "otherwise": {"value": false},
+        "output": "retrofit_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "retrofit_candidate",
+        "comparison": "equals",
+        "value": true,
+        "then": "resolved_retrofit_fom",
+        "otherwise": "upgrade_fom_candidate",
+        "output": "retrofit_fom_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "psh",
+        "comparison": "equals",
+        "value": "yes",
+        "then": "psh_fom_cost",
+        "otherwise": "retrofit_fom_candidate",
+        "output": "fom_cost"
+      }
+    ]
+  },
+  {
+    "name": "generator_rows",
+    "materialize": true,
+    "source": "generator_fom_costed",
+    "operations": [
+      {
+        "operation": "split",
+        "column": "technology",
+        "separator": "_",
+        "index": 0,
+        "output": "technology_base"
+      },
+      {
+        "operation": "join",
+        "source": "generator_fuel_full_lookup",
+        "how": "left",
+        "on": [
+          "technology"
+        ],
+        "columns": [
+          "fuel_type_full"
+        ]
+      },
+      {
+        "operation": "join",
+        "source": "generator_fuel_base_lookup",
+        "how": "left",
+        "on": [
+          "technology_base"
+        ],
+        "columns": [
+          "fuel_type_base"
+        ]
+      },
+      {
+        "operation": "cast",
+        "column": "direct_fuel_type",
+        "dtype": "string"
+      },
+      {
+        "operation": "fill_null",
+        "columns": [
+          "direct_fuel_type"
+        ],
+        "from_columns": [
+          "fuel_type_full",
+          "fuel_type_base"
+        ]
+      },
+      {
+        "operation": "choose",
+        "column": "direct_fuel_type",
+        "comparison": "is_null",
+        "then": {
+          "value": "OTHER"
+        },
+        "otherwise": "direct_fuel_type",
+        "output": "thermal_fuel_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "thermal",
+        "then": "thermal_fuel_candidate",
+        "otherwise": "direct_fuel_type",
+        "output": "prepared_fuel_type"
+      },
+      {
+        "operation": "choose",
+        "column": "heat_rate",
+        "comparison": "is_null",
+        "then": "heat_rate_mean",
+        "otherwise": "heat_rate",
+        "output": "heat_rate_candidate"
+      },
+      {
+        "operation": "fill_null",
+        "columns": [
+          "heat_rate_candidate"
+        ],
+        "value": "{default_heat_rate}"
+      },
+      {
+        "operation": "choose",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "thermal",
+        "then": "heat_rate_candidate",
+        "otherwise": "heat_rate",
+        "output": "prepared_heat_rate"
+      },
+      {
+        "operation": "fill_null",
+        "columns": [
+          "biofuel_price"
+        ],
+        "from_columns": [
+          "fuel_price"
+        ]
+      },
+      {
+        "operation": "choose",
+        "column": "prepared_fuel_type",
+        "comparison": "equals",
+        "value": "biomass",
+        "then": "biofuel_price",
+        "otherwise": "fuel_price",
+        "output": "prepared_fuel_price"
+      },
+      {
+        "operation": "fill_null",
+        "columns": [
+          "storage_duration"
+        ],
+        "from_columns": [
+          "duration_out_value"
+        ]
+      },
+      {
+        "operation": "fill_null",
+        "columns": [
+          "round_trip_efficiency"
+        ],
+        "value": 1.0
+      },
+      {
+        "operation": "choose",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "thermal",
+        "then": "technology",
+        "otherwise": "category",
+        "output": "prepared_category"
+      },
+      {
+        "operation": "concat_strings",
+        "columns": [
+          "technology",
+          "region",
+          "year"
+        ],
+        "separator": "_",
+        "output": "name_without_vintage"
+      },
+      {
+        "operation": "concat_strings",
+        "columns": [
+          "technology",
+          "vintage",
+          "region",
+          "year"
+        ],
+        "separator": "_",
+        "output": "name_with_vintage"
+      },
+      {
+        "operation": "choose",
+        "column": "vintage",
+        "comparison": "is_null",
+        "then": "name_without_vintage",
+        "otherwise": "name_with_vintage",
+        "output": "name"
+      },
+      {
+        "operation": "choose",
+        "column": "capacity",
+        "comparison": "less_than_or_equal",
+        "value": 1e-08,
+        "then": {
+          "value": 0.0
+        },
+        "otherwise": "capacity",
+        "output": "normalized_capacity"
+      },
+      {
+        "operation": "join",
+        "source": "generator_reserve_membership",
+        "how": "left",
+        "on": [
+          "technology",
+          "region"
+        ],
+        "columns": [
+          "reserves"
+        ]
+      },
+      {
+        "operation": "fill_null",
+        "columns": [
+          "reserves"
+        ],
+        "value": []
+      },
+      {
+        "operation": "object",
+        "columns": {
+          "reserves": "reserves"
+        },
+        "output": "ext"
+      }
+    ],
+    "columns": {
+      "capacity": "normalized_capacity",
+      "capacity_factor_adjustment": "capacity_factor_adjustment",
+      "capital_cost": "capital_cost",
+      "capital_cost_energy": "capital_cost_energy",
+      "category": "prepared_category",
+      "component_family": "component_family",
+      "ext": "ext",
+      "forced_outage_rate": "forced_outage_rate",
+      "fuel_price": "prepared_fuel_price",
+      "fuel_type": "prepared_fuel_type",
+      "fom_cost": "fom_cost",
+      "heat_rate": "prepared_heat_rate",
+      "inverter_loading_ratio": "inverter_loading_ratio",
+      "is_dispatchable": "is_dispatchable",
+      "max_age": "maxage_years",
+      "min_stable_level": "min_load_frac",
+      "name": "name",
+      "planned_outage_rate": "planned_outage_rate",
+      "ramp_rate": "ramp_rate",
+      "region": "region",
+      "round_trip_efficiency": "round_trip_efficiency",
+      "startup_cost": "startup_cost",
+      "storage_duration": "storage_duration",
+      "technology": "technology",
+      "vom_cost": "vom_cost",
+      "vintage": "vintage",
+      "year": "year"
+    }
+  },
+  {
+    "name": "generator_thermal_rows",
+    "source": "generator_rows",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "thermal"
+      }
+    ],
+    "columns": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "solve_year": "year",
+      "min_stable_level": "min_stable_level",
+      "ramp_rate": "ramp_rate",
+      "startup_cost": "startup_cost",
+      "ext": "ext",
+      "region": "region"
+    }
+  },
+  {
+    "name": "generator_variable_rows",
+    "source": "generator_rows",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "category",
+        "comparison": "equals",
+        "value": "geothermal"
+      }
+    ],
+    "columns": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "solve_year": "year",
+      "inverter_loading_ratio": "inverter_loading_ratio",
+      "capacity_factor_adjustment": "capacity_factor_adjustment",
+      "ext": "ext",
+      "region": "region"
+    }
+  },
+  {
+    "name": "generator_hydro_rows",
+    "source": "generator_rows",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "hydro"
+      }
+    ],
+    "columns": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "solve_year": "year",
+      "is_dispatchable": "is_dispatchable",
+      "ramp_rate": "ramp_rate",
+      "ext": "ext",
+      "region": "region"
+    }
+  },
+  {
+    "name": "generator_storage_rows",
+    "source": "generator_rows",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "storage"
+      },
+      {
+        "operation": "filter",
+        "column": "storage_duration",
+        "comparison": "is_not_null"
+      }
+    ],
+    "columns": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "solve_year": "year",
+      "storage_duration": "storage_duration",
+      "round_trip_efficiency": "round_trip_efficiency",
+      "capital_cost_energy": "capital_cost_energy",
+      "ext": "ext",
+      "region": "region"
+    }
+  },
+  {
+    "name": "generator_import_rows",
+    "source": "generator_rows",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "component_family",
+        "comparison": "equals",
+        "value": "generator"
+      }
+    ],
+    "columns": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "solve_year": "year",
+      "ext": "ext",
+      "region": "region"
+    }
+  },
+  {
+    "name": "generator_variable_aggregate_candidates",
+    "source": "generator_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_variable_categories",
+        "how": "inner",
+        "on": [
+          "category"
+        ],
+        "columns": []
+      },
+      {
+        "operation": "multiply",
+        "columns": [
+          "fom_cost",
+          "capacity"
+        ],
+        "output": "weighted_fom"
+      },
+      {
+        "operation": "choose",
+        "column": "capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": "capacity",
+        "otherwise": {
+          "value": 0.0
+        },
+        "output": "positive_capacity"
+      },
+      {
+        "operation": "choose",
+        "column": "fom_cost",
+        "comparison": "is_null",
+        "then": "positive_capacity",
+        "otherwise": {
+          "value": 0.0
+        },
+        "output": "unknown_capacity"
+      }
+    ]
+  },
+  {
+    "name": "generator_variable_aggregate_groups",
+    "source": "generator_variable_aggregate_candidates",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": [
+          "technology",
+          "region",
+          "year"
+        ],
+        "aggregate": [
+          {
+            "operation": "sum",
+            "column": "capacity",
+            "output": "capacity"
+          },
+          {
+            "operation": "first",
+            "column": "component_family",
+            "output": "component_family"
+          },
+          {
+            "operation": "first",
+            "column": "category",
+            "output": "category"
+          },
+          {
+            "operation": "first",
+            "column": "is_dispatchable",
+            "output": "is_dispatchable"
+          },
+          {
+            "operation": "mean",
+            "column": "heat_rate",
+            "output": "heat_rate"
+          },
+          {
+            "operation": "first",
+            "column": "fuel_type",
+            "output": "fuel_type"
+          },
+          {
+            "operation": "mean",
+            "column": "fuel_price",
+            "output": "fuel_price"
+          },
+          {
+            "operation": "mean",
+            "column": "forced_outage_rate",
+            "output": "forced_outage_rate"
+          },
+          {
+            "operation": "mean",
+            "column": "planned_outage_rate",
+            "output": "planned_outage_rate"
+          },
+          {
+            "operation": "mean",
+            "column": "max_age",
+            "output": "max_age"
+          },
+          {
+            "operation": "mean",
+            "column": "vom_cost",
+            "output": "vom_cost"
+          },
+          {
+            "operation": "mean",
+            "column": "inverter_loading_ratio",
+            "output": "inverter_loading_ratio"
+          },
+          {
+            "operation": "mean",
+            "column": "capacity_factor_adjustment",
+            "output": "capacity_factor_adjustment"
+          },
+          {
+            "operation": "first",
+            "column": "ext",
+            "output": "ext"
+          },
+          {
+            "operation": "sum",
+            "column": "weighted_fom",
+            "output": "weighted_fom"
+          },
+          {
+            "operation": "sum",
+            "column": "unknown_capacity",
+            "output": "unknown_capacity"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "generator_variable_aggregate_rows",
+    "source": "generator_variable_aggregate_groups",
+    "operations": [
+      {
+        "operation": "choose",
+        "column": "unknown_capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": {
+          "value": null
+        },
+        "otherwise": "weighted_fom",
+        "output": "complete_weighted_fom"
+      },
+      {
+        "operation": "divide",
+        "columns": [
+          "complete_weighted_fom",
+          "capacity"
+        ],
+        "output": "rate_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": "rate_candidate",
+        "otherwise": {
+          "value": null
+        },
+        "output": "fom_cost"
+      },
+      {
+        "operation": "concat_strings",
+        "columns": [
+          "technology",
+          "region",
+          "year"
+        ],
+        "separator": "_",
+        "output": "name"
+      },
+      {
+        "operation": "join",
+        "source": "generator_variable_null_vintage",
+        "how": "cross",
+        "columns": [
+          "vintage"
+        ]
+      }
+    ],
+    "columns": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "year": "year",
+      "solve_year": "year",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "inverter_loading_ratio": "inverter_loading_ratio",
+      "capacity_factor_adjustment": "capacity_factor_adjustment",
+      "region": "region",
+      "ext": "ext"
+    }
+  },
+  {
+    "name": "hydro_hour_month_axis",
+    "source": "weather_hour_axis",
+    "operations": [],
+    "columns": {
+      "month_number": "month_number"
+    }
+  },
+  {
+    "name": "hydro_weather_calendar",
+    "source": "weather_hour_axis",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["month", "month_number"],
+        "aggregate": [
+          {"operation": "count", "column": "month_number", "output": "hours"}
+        ]
+      },
+      {"operation": "sort", "columns": ["month_number"]}
+    ],
+    "columns": {
+      "hours": "hours",
+      "month": "month",
+      "month_number": "month_number"
+    }
+  },
+  {
+    "name": "hydro_cf",
+    "source": "hydro_cf_input",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_rows",
+        "how": "inner",
+        "on": ["solve_year"],
+        "columns": []
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "solve_year": "solve_year",
+      "month": "month",
+      "hydro_cf": "hydro_cf"
+    }
+  },
+  {
+    "name": "hydro_monthly_values",
+    "source": "hydro_cf",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_weather_calendar",
+        "how": "inner",
+        "on": ["month"],
+        "columns": ["month_number", "hours"]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "solve_year": "solve_year",
+      "month_number": "month_number",
+      "hours": "hours",
+      "hydro_cf": "hydro_cf"
+    }
+  },
+  {
+    "name": "hydro_month_counts",
+    "source": "hydro_monthly_values",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["technology", "region", "solve_year"],
+        "aggregate": [
+          {"operation": "count", "column": "month_number", "output": "month_count"},
+          {"operation": "count", "column": "hydro_cf", "output": "value_count"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hydro_month_distinct_counts",
+    "source": "hydro_monthly_values",
+    "operations": [
+      {"operation": "unique", "columns": ["technology", "region", "solve_year", "month_number"], "keep": "first"},
+      {
+        "operation": "group_by",
+        "columns": ["technology", "region", "solve_year"],
+        "aggregate": [
+          {"operation": "count", "column": "month_number", "output": "distinct_month_count"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hydro_month_complete",
+    "source": "hydro_month_counts",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_month_distinct_counts",
+        "how": "inner",
+        "on": ["technology", "region", "solve_year"],
+        "columns": ["distinct_month_count"]
+      },
+      {"operation": "filter", "column": "month_count", "comparison": "equals", "value": 12},
+      {"operation": "filter", "column": "distinct_month_count", "comparison": "equals", "value": 12},
+      {"operation": "filter", "column": "value_count", "comparison": "equals", "value": 12}
+    ],
+    "columns": {"technology": "technology", "region": "region", "solve_year": "solve_year"}
+  },
+  {
+    "name": "hydro_complete_months",
+    "source": "hydro_monthly_values",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_month_complete",
+        "how": "inner",
+        "on": ["technology", "region", "solve_year"],
+        "columns": []
+      }
+    ]
+  },
+  {
+    "name": "hydro_adjustment_monthly_values",
+    "source": "hydro_capacity_adjustment_selected",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_weather_calendar",
+        "how": "inner",
+        "on": ["month"],
+        "columns": ["month_number", "hours"]
+      }
+    ],
+    "columns": {
+      "technology": "technology",
+      "region": "region",
+      "month_number": "month_number",
+      "hours": "hours",
+      "capacity_adjustment": "capacity_adjustment"
+    }
+  },
+  {
+    "name": "hydro_adjustment_counts",
+    "source": "hydro_adjustment_monthly_values",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["technology", "region"],
+        "aggregate": [
+          {"operation": "count", "column": "month_number", "output": "month_count"},
+          {"operation": "count", "column": "capacity_adjustment", "output": "value_count"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hydro_adjustment_distinct_counts",
+    "source": "hydro_adjustment_monthly_values",
+    "operations": [
+      {"operation": "unique", "columns": ["technology", "region", "month_number"], "keep": "first"},
+      {
+        "operation": "group_by",
+        "columns": ["technology", "region"],
+        "aggregate": [
+          {"operation": "count", "column": "month_number", "output": "distinct_month_count"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hydro_adjustment_complete",
+    "source": "hydro_adjustment_counts",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_adjustment_distinct_counts",
+        "how": "inner",
+        "on": ["technology", "region"],
+        "columns": ["distinct_month_count"]
+      },
+      {"operation": "filter", "column": "month_count", "comparison": "equals", "value": 12},
+      {"operation": "filter", "column": "distinct_month_count", "comparison": "equals", "value": 12},
+      {"operation": "filter", "column": "value_count", "comparison": "equals", "value": 12}
+    ],
+    "columns": {"technology": "technology", "region": "region"}
+  },
+  {
+    "name": "hydro_adjustment_complete_months",
+    "source": "hydro_adjustment_monthly_values",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_adjustment_complete",
+        "how": "inner",
+        "on": ["technology", "region"],
+        "columns": []
+      }
+    ]
+  },
+  {
+    "name": "hydro_profile_monthly",
+    "source": "hydro_complete_months",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "generator_hydro_rows",
+        "how": "inner",
+        "on": [
+          "technology",
+          "region",
+          "solve_year"
+        ],
+        "columns": [
+          "name",
+          "is_dispatchable",
+          "capacity"
+        ]
+      },
+      {
+        "operation": "sort",
+        "columns": [
+          "name",
+          "solve_year",
+          "month_number"
+        ]
+      },
+      {
+        "operation": "join",
+        "source": "hydro_hour_month_axis",
+        "how": "inner",
+        "on": [
+          "month_number"
+        ],
+        "columns": []
+      },
+      {
+        "operation": "multiply",
+        "columns": [
+          "hydro_cf",
+          "capacity"
+        ],
+        "output": "max_active_power"
+      }
+    ],
+    "columns": {
+      "owner_name": "name",
+      "solve_year": "solve_year",
+      "is_dispatchable": "is_dispatchable",
+      "hydro_cf": "hydro_cf",
+      "max_active_power": "max_active_power"
+    }
+  },
+  {
+    "name": "hydro_budget_rows",
+    "source": "hydro_profile_monthly",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "is_dispatchable",
+        "comparison": "equals",
+        "value": true
+      }
+    ],
+    "columns": {
+      "owner_name": "owner_name",
+      "solve_year": "solve_year",
+      "value": "hydro_cf"
+    }
+  },
+  {
+    "name": "hydro_nondispatchable_rows",
+    "source": "hydro_profile_monthly",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "is_dispatchable",
+        "comparison": "equals",
+        "value": false
+      }
+    ],
+    "columns": {
+      "owner_name": "owner_name",
+      "solve_year": "solve_year",
+      "value": "max_active_power"
+    }
+  },
+  {
+    "name": "hydro_adjustment_profile_monthly",
+    "source": "hydro_month_complete",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "hydro_adjustment_complete_months",
+        "how": "inner",
+        "on": [
+          "technology",
+          "region"
+        ],
+        "columns": [
+          "month_number",
+          "hours",
+          "capacity_adjustment"
+        ]
+      },
+      {
+        "operation": "join",
+        "source": "generator_hydro_rows",
+        "how": "inner",
+        "on": [
+          "technology",
+          "region",
+          "solve_year"
+        ],
+        "columns": [
+          "name",
+          "is_dispatchable",
+          "capacity"
+        ]
+      },
+      {
+        "operation": "filter",
+        "column": "is_dispatchable",
+        "comparison": "equals",
+        "value": true
+      },
+      {
+        "operation": "sort",
+        "columns": [
+          "name",
+          "solve_year",
+          "month_number"
+        ]
+      },
+      {
+        "operation": "multiply",
+        "columns": [
+          "capacity",
+          "capacity_adjustment"
+        ],
+        "output": "max_active_power"
+      },
+      {
+        "operation": "join",
+        "source": "hydro_hour_month_axis",
+        "how": "inner",
+        "on": [
+          "month_number"
+        ],
+        "columns": []
+      }
+    ],
+    "columns": {
+      "owner_name": "name",
+      "solve_year": "solve_year",
+      "max_active_power": "max_active_power"
+    }
+  },
+  {
+    "name": "generator_emission_thermal_rows",
+    "source": "generator_rows",
+    "operations": [
+      {"operation": "filter", "column": "component_family", "comparison": "equals", "value": "thermal"},
+      {"operation": "fill_null", "columns": ["vintage"], "value": "__missing_vintage__"}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "name",
+      "owner_type": {"value": "ReEDSThermalGenerator"},
+      "region": "region",
+      "solve_year": "year",
+      "technology": "technology",
+      "vintage_key": "vintage"
+    }
+  },
+  {
+    "name": "generator_emission_hydro_rows",
+    "source": "generator_rows",
+    "operations": [
+      {"operation": "filter", "column": "component_family", "comparison": "equals", "value": "hydro"},
+      {"operation": "fill_null", "columns": ["vintage"], "value": "__missing_vintage__"}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "name",
+      "owner_type": {"value": "ReEDSHydroGenerator"},
+      "region": "region",
+      "solve_year": "year",
+      "technology": "technology",
+      "vintage_key": "vintage"
+    }
+  },
+  {
+    "name": "generator_emission_geothermal_rows",
+    "source": "generator_rows",
+    "operations": [
+      {"operation": "filter", "column": "component_family", "comparison": "equals", "value": "variable"},
+      {"operation": "filter", "column": "category", "comparison": "equals", "value": "geothermal"},
+      {"operation": "fill_null", "columns": ["vintage"], "value": "__missing_vintage__"}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "name",
+      "owner_type": {"value": "ReEDSVariableGenerator"},
+      "region": "region",
+      "solve_year": "year",
+      "technology": "technology",
+      "vintage_key": "vintage"
+    }
+  },
+  {
+    "name": "generator_emission_import_rows",
+    "source": "generator_rows",
+    "operations": [
+      {"operation": "filter", "column": "component_family", "comparison": "equals", "value": "generator"},
+      {"operation": "fill_null", "columns": ["vintage"], "value": "__missing_vintage__"}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "name",
+      "owner_type": {"value": "ReEDSGenerator"},
+      "region": "region",
+      "solve_year": "year",
+      "technology": "technology",
+      "vintage_key": "vintage"
+    }
+  },
+  {
+    "name": "generator_emission_storage_rows",
+    "source": "generator_storage_rows",
+    "operations": [
+      {"operation": "fill_null", "columns": ["vintage"], "value": "__missing_vintage__"}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "name",
+      "owner_type": {"value": "ReEDSStorage"},
+      "region": "region",
+      "solve_year": "solve_year",
+      "technology": "technology",
+      "vintage_key": "vintage"
+    }
+  },
+  {
+    "name": "generator_emission_aggregate_rows",
+    "source": "generator_variable_aggregate_rows",
+    "operations": [],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "name",
+      "owner_type": {"value": "ReEDSVariableGenerator"},
+      "region": "region",
+      "solve_year": "solve_year",
+      "technology": "technology",
+      "vintage_key": {"value": "__missing_vintage__"}
+    }
+  },
+  {
+    "name": "generator_emission_owner_rows",
+    "operations": [
+      {"operation": "concat", "sources": [
+        "generator_emission_thermal_rows",
+        "generator_emission_hydro_rows",
+        "generator_emission_geothermal_rows",
+        "generator_emission_import_rows",
+        "generator_emission_storage_rows",
+        "generator_emission_aggregate_rows"
+      ]}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "category": "category",
+      "owner_name": "owner_name",
+      "owner_type": "owner_type",
+      "region": "region",
+      "solve_year": "solve_year",
+      "technology": "technology",
+      "vintage_key": "vintage_key"
+    }
+  },
+  {
+    "name": "renewable_profiles",
+    "source": "renewable_profiles_wide",
+    "operations": [
+      {
+        "operation": "datetime_part",
+        "column": "datetime",
+        "part": "year",
+        "output": "profile_weather_year"
+      },
+      {
+        "operation": "filter",
+        "column": "profile_weather_year",
+        "comparison": "equals",
+        "value": "{primary_weather_year}"
+      },
+      {"operation": "head", "n": 8760},
+      {"operation": "unpivot", "index": ["datetime", "profile_weather_year"], "variable_name": "technology_region", "value_name": "capacity_factor"},
+      {"operation": "split", "column": "technology_region", "separator": "|", "index": 0, "output": "technology"},
+      {"operation": "split", "column": "technology_region", "separator": "|", "index": 1, "output": "region"}
+    ],
+    "columns": {
+      "capacity_factor": "capacity_factor",
+      "datetime": "datetime",
+      "region": "region",
+      "technology": "technology"
+    }
+  },
+  {
+    "name": "renewable_profile_owner_rows",
+    "source": "renewable_profiles",
+    "operations": [
+      {"operation": "join", "source": "generator_emission_owner_rows", "how": "inner", "on": ["technology", "region"], "columns": ["capacity", "category", "owner_name", "owner_type", "solve_year"]},
+      {"operation": "multiply", "columns": ["capacity_factor", "capacity"], "output": "value"}
+    ],
+    "columns": {
+      "capacity": "capacity",
+      "capacity_factor": "capacity_factor",
+      "category": "category",
+      "datetime": "datetime",
+      "owner_name": "owner_name",
+      "owner_type": "owner_type",
+      "region": "region",
+      "solve_year": "solve_year",
+      "technology": "technology",
+      "value": "value"
+    }
+  },
+  {
+    "name": "renewable_profile_thermal_rows",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSThermalGenerator"}
+    ],
+    "columns": {"capacity": "capacity", "capacity_factor": "capacity_factor", "category": "category", "datetime": "datetime", "owner_name": "owner_name", "owner_type": "owner_type", "region": "region", "solve_year": "solve_year", "technology": "technology", "value": "value"}
+  },
+  {
+    "name": "renewable_profile_variable_rows",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSVariableGenerator"}
+    ],
+    "columns": {"capacity": "capacity", "capacity_factor": "capacity_factor", "category": "category", "datetime": "datetime", "owner_name": "owner_name", "owner_type": "owner_type", "region": "region", "solve_year": "solve_year", "technology": "technology", "value": "value"}
+  },
+  {
+    "name": "renewable_profile_hydro_rows",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSHydroGenerator"}
+    ],
+    "columns": {"capacity": "capacity", "capacity_factor": "capacity_factor", "category": "category", "datetime": "datetime", "owner_name": "owner_name", "owner_type": "owner_type", "region": "region", "solve_year": "solve_year", "technology": "technology", "value": "value"}
+  },
+  {
+    "name": "renewable_profile_storage_rows",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSStorage"}
+    ],
+    "columns": {"capacity": "capacity", "capacity_factor": "capacity_factor", "category": "category", "datetime": "datetime", "owner_name": "owner_name", "owner_type": "owner_type", "region": "region", "solve_year": "solve_year", "technology": "technology", "value": "value"}
+  },
+  {
+    "name": "renewable_profile_base_rows",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSGenerator"}
+    ],
+    "columns": {"capacity": "capacity", "capacity_factor": "capacity_factor", "category": "category", "datetime": "datetime", "owner_name": "owner_name", "owner_type": "owner_type", "region": "region", "solve_year": "solve_year", "technology": "technology", "value": "value"}
+  },
+  {
+    "name": "emission_type_policy_rows",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "eall", "dtype": "string"},
+          {"name": "canonical_type", "dtype": "string"}
+        ],
+        "values": [
+          {"eall": "co2e", "canonical_type": "CO2E"},
+          {"eall": "co2", "canonical_type": "CO2"},
+          {"eall": "nox", "canonical_type": "NOx"},
+          {"eall": "so2", "canonical_type": "SO2"},
+          {"eall": "pm2.5", "canonical_type": "PM2.5"},
+          {"eall": "pm10", "canonical_type": "PM10"},
+          {"eall": "voc", "canonical_type": "VOC"},
+          {"eall": "nh3", "canonical_type": "NH3"},
+          {"eall": "ch4", "canonical_type": "CH4"},
+          {"eall": "n2o", "canonical_type": "N2O"},
+          {"eall": "h2", "canonical_type": "H2"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "emission_source_policy_rows",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "etype", "dtype": "string"},
+          {"name": "canonical_source", "dtype": "string"}
+        ],
+        "values": [
+          {"etype": "combustion", "canonical_source": "COMBUSTION"},
+          {"etype": "precombustion", "canonical_source": "PRECOMBUSTION"},
+          {"etype": "process", "canonical_source": "PRECOMBUSTION"},
+          {"etype": "upstream", "canonical_source": "PRECOMBUSTION"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "emission_rate_rows",
+    "operations": [
+      {"operation": "first_present", "sources": ["emission_rates", "empty_emission_rate_rows"]},
+      {"operation": "cast", "column": "t", "dtype": "int64"},
+      {"operation": "cast", "column": "value", "dtype": "float64"},
+      {"operation": "fill_null", "columns": ["v"], "value": "__missing_vintage__"},
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["t"],
+        "columns": []
+      },
+      {
+        "operation": "join",
+        "source": "emission_type_policy_rows",
+        "how": "left",
+        "on": ["eall"],
+        "columns": ["canonical_type"]
+      },
+      {"operation": "fill_null", "columns": ["canonical_type"], "from_columns": ["eall"]},
+      {
+        "operation": "join",
+        "source": "emission_source_policy_rows",
+        "how": "left",
+        "on": ["etype"],
+        "columns": ["canonical_source"]
+      },
+      {"operation": "fill_null", "columns": ["canonical_source"], "from_columns": ["etype"]},
+      {"operation": "fill_null", "columns": ["canonical_source"], "value": "COMBUSTION"}
+    ],
+    "columns": {
+      "emission_source": "canonical_source",
+      "emission_type": "canonical_type",
+      "technology": "i",
+      "region": "r",
+      "solve_year": "t",
+      "vintage_key": "v",
+      "rate": "value"
+    }
+  },
+  {
+    "name": "emission_matches",
+    "source": "emission_rate_rows",
+    "operations": [
+      {"operation": "join", "source": "generator_emission_owner_rows", "how": "inner", "on": ["technology", "region", "vintage_key", "solve_year"], "columns": ["capacity", "category", "owner_name", "owner_type"]}
+    ],
+    "columns": {
+      "emission_source": "emission_source",
+      "emission_type": "emission_type",
+      "owner_name": "owner_name",
+      "owner_type": "owner_type",
+      "rate": "rate",
+      "solve_year": "solve_year"
+    }
+  },
+  {
+    "name": "emission_matches_thermal_rows",
+    "source": "emission_matches",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSThermalGenerator"}
+    ],
+    "columns": {"emission_source": "emission_source", "emission_type": "emission_type", "owner_name": "owner_name", "rate": "rate", "solve_year": "solve_year"}
+  },
+  {
+    "name": "emission_matches_variable_rows",
+    "source": "emission_matches",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSVariableGenerator"}
+    ],
+    "columns": {"emission_source": "emission_source", "emission_type": "emission_type", "owner_name": "owner_name", "rate": "rate", "solve_year": "solve_year"}
+  },
+  {
+    "name": "emission_matches_hydro_rows",
+    "source": "emission_matches",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSHydroGenerator"}
+    ],
+    "columns": {"emission_source": "emission_source", "emission_type": "emission_type", "owner_name": "owner_name", "rate": "rate", "solve_year": "solve_year"}
+  },
+  {
+    "name": "emission_matches_storage_rows",
+    "source": "emission_matches",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSStorage"}
+    ],
+    "columns": {"emission_source": "emission_source", "emission_type": "emission_type", "owner_name": "owner_name", "rate": "rate", "solve_year": "solve_year"}
+  },
+  {
+    "name": "emission_matches_import_rows",
+    "source": "emission_matches",
+    "operations": [
+      {"operation": "filter", "column": "owner_type", "comparison": "equals", "value": "ReEDSGenerator"}
+    ],
+    "columns": {"emission_source": "emission_source", "emission_type": "emission_type", "owner_name": "owner_name", "rate": "rate", "solve_year": "solve_year"}
+  },
+  {
+    "name": "hierarchy_nonempty_count",
+    "source": "hierarchy",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": [],
+        "aggregate": [{"operation": "count", "column": "region_id", "output": "region_count"}]
+      }
+    ]
+  },
+  {
+    "name": "load_profile_solve_year_counts",
+    "source": "load_profiles",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["solve_year", "weather_year"],
+        "aggregate": [{"operation": "count", "column": "datetime", "output": "row_count"}]
+      }
+    ]
+  },
+  {
+    "name": "load_profile_requirement_check",
+    "source": "requested_solve_weather_year_rows",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "load_profile_solve_year_counts",
+        "how": "left",
+        "on": ["solve_year", "weather_year"],
+        "columns": ["row_count"]
+      },
+      {"operation": "fill_null", "columns": ["row_count"], "value": 0}
+    ]
+  },
+  {
+    "name": "load_profile_peak_values",
+    "source": "load_profiles",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_weather_year_rows",
+        "how": "inner",
+        "on": ["solve_year", "weather_year"],
+        "columns": []
+      },
+      {
+        "operation": "unpivot",
+        "index": ["datetime", "solve_year", "weather_year"],
+        "variable_name": "region",
+        "value_name": "value"
+      },
+      {
+        "operation": "group_by",
+        "columns": ["region", "solve_year"],
+        "aggregate": [{"operation": "max", "column": "value", "output": "max_active_power"}]
+      }
+    ]
+  },
+  {
+    "name": "load_owner_names",
+    "source": "hierarchy",
+    "operations": [
+      {"operation": "join", "source": "requested_solve_year_rows", "how": "cross", "columns": ["solve_year"]},
+      {"operation": "concat_strings", "columns": ["region_id", "solve_year"], "separator": "_load_", "output": "owner_name"},
+      {"operation": "unique", "columns": ["region_id", "solve_year"], "keep": "first"}
+    ],
+    "columns": {"owner_name": "owner_name", "region": "region_id", "solve_year": "solve_year"}
+  },
+  {
+    "name": "load_profile_values",
+    "source": "load_profiles",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_weather_year_rows",
+        "how": "inner",
+        "on": ["solve_year", "weather_year"],
+        "columns": []
+      },
+      {
+        "operation": "unpivot",
+        "index": ["datetime", "solve_year", "weather_year"],
+        "variable_name": "region",
+        "value_name": "value"
+      },
+      {
+        "operation": "join",
+        "source": "load_owner_names",
+        "how": "left",
+        "on": ["region", "solve_year"],
+        "columns": ["owner_name"]
+      }
+    ]
+  },
+  {
+    "name": "load_peaks",
+    "source": "load_profile_values",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["region", "solve_year", "owner_name"],
+        "aggregate": [{"operation": "max", "column": "value", "output": "max_active_power"}]
+      }
+    ],
+    "columns": {
+      "owner_name": "owner_name",
+      "region": "region",
+      "solve_year": "solve_year",
+      "max_active_power": "max_active_power"
+    }
+  },
+  {
+    "name": "load_profile_rows",
+    "source": "load_profile_values",
+    "operations": [
+      {
+        "operation": "sort",
+        "columns": ["region", "solve_year", "weather_year", "datetime"]
+      }
+    ],
+    "columns": {
+      "owner_name": "owner_name",
+      "region": "region",
+      "solve_year": "solve_year",
+      "weather_year": "weather_year",
+      "datetime": "datetime",
+      "value": "value"
+    }
+  },
+  {
+    "name": "reserve_load_hourly",
+    "source": "load_profile_rows",
+    "operations": [
+      {
+        "operation": "filter",
+        "column": "weather_year",
+        "comparison": "equals",
+        "value": "{primary_weather_year}"
+      },
+      {
+        "operation": "join",
+        "source": "reserve_hierarchy_regions",
+        "how": "inner",
+        "on": ["region"],
+        "columns": ["transmission_region"]
+      },
+      {
+        "operation": "group_by",
+        "columns": ["transmission_region", "solve_year", "datetime"],
+        "aggregate": [{"operation": "sum", "column": "value", "output": "load_mw"}]
+      }
+    ]
+  },
+  {
+    "name": "reserve_load_contributions",
+    "source": "reserve_load_hourly",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "reserve_product_rows",
+        "how": "cross",
+        "columns": ["reserve_type", "load_fraction"]
+      },
+      {"operation": "multiply", "columns": ["load_mw", "load_fraction"], "output": "contribution"}
+    ],
+    "columns": {
+      "contribution": "contribution",
+      "datetime": "datetime",
+      "reserve_type": "reserve_type",
+      "solve_year": "solve_year",
+      "transmission_region": "transmission_region"
+    }
+  },
+  {
+    "name": "reserve_wind_hourly",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "category", "comparison": "equals", "value": "wind"},
+      {
+        "operation": "join",
+        "source": "reserve_hierarchy_regions",
+        "how": "inner",
+        "on": ["region"],
+        "columns": ["transmission_region"]
+      },
+      {"operation": "multiply", "columns": ["capacity_factor", "capacity"], "output": "wind_mw"},
+      {
+        "operation": "group_by",
+        "columns": ["transmission_region", "solve_year", "datetime"],
+        "aggregate": [{"operation": "sum", "column": "wind_mw", "output": "wind_mw"}]
+      }
+    ]
+  },
+  {
+    "name": "reserve_solar_capacity",
+    "source": "generator_emission_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "category", "comparison": "equals", "value": "solar"},
+      {
+        "operation": "join",
+        "source": "reserve_hierarchy_regions",
+        "how": "inner",
+        "on": ["region"],
+        "columns": ["transmission_region"]
+      },
+      {
+        "operation": "group_by",
+        "columns": ["transmission_region", "solve_year"],
+        "aggregate": [{"operation": "sum", "column": "capacity", "output": "solar_capacity"}]
+      }
+    ]
+  },
+  {
+    "name": "reserve_wind_contributions",
+    "source": "reserve_wind_hourly",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "reserve_product_rows",
+        "how": "cross",
+        "columns": ["reserve_type", "wind_fraction"]
+      },
+      {"operation": "multiply", "columns": ["wind_mw", "wind_fraction"], "output": "contribution"}
+    ],
+    "columns": {
+      "contribution": "contribution",
+      "datetime": "datetime",
+      "reserve_type": "reserve_type",
+      "solve_year": "solve_year",
+      "transmission_region": "transmission_region"
+    }
+  },
+  {
+    "name": "reserve_solar_activity",
+    "source": "renewable_profile_owner_rows",
+    "operations": [
+      {"operation": "filter", "column": "category", "comparison": "equals", "value": "solar"},
+      {
+        "operation": "join",
+        "source": "reserve_hierarchy_regions",
+        "how": "inner",
+        "on": ["region"],
+        "columns": ["transmission_region"]
+      },
+      {
+        "operation": "group_by",
+        "columns": ["transmission_region", "solve_year", "datetime"],
+        "aggregate": [
+          {"operation": "max", "column": "capacity_factor", "output": "max_capacity_factor"}
+        ]
+      },
+      {
+        "operation": "filter",
+        "column": "max_capacity_factor",
+        "comparison": "greater_than",
+        "value": 0
+      },
+      {
+        "operation": "join",
+        "source": "reserve_solar_capacity",
+        "how": "inner",
+        "on": ["transmission_region", "solve_year"],
+        "columns": ["solar_capacity"]
+      }
+    ]
+  },
+  {
+    "name": "reserve_solar_contributions",
+    "source": "reserve_solar_activity",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "reserve_product_rows",
+        "how": "cross",
+        "columns": ["reserve_type", "solar_fraction"]
+      },
+      {
+        "operation": "multiply",
+        "columns": ["solar_capacity", "solar_fraction"],
+        "output": "contribution"
+      }
+    ],
+    "columns": {
+      "contribution": "contribution",
+      "datetime": "datetime",
+      "reserve_type": "reserve_type",
+      "solve_year": "solve_year",
+      "transmission_region": "transmission_region"
+    }
+  },
+  {
+    "name": "reserve_contribution_rows",
+    "operations": [
+      {
+        "operation": "concat",
+        "sources": [
+          "reserve_load_contributions",
+          "reserve_wind_contributions",
+          "reserve_solar_contributions"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "reserve_contributions_by_hour",
+    "source": "reserve_contribution_rows",
+    "operations": [
+      {
+        "operation": "group_by",
+        "columns": ["transmission_region", "reserve_type", "solve_year", "datetime"],
+        "aggregate": [{"operation": "sum", "column": "contribution", "output": "contribution"}]
+      }
+    ]
+  },
+  {
+    "name": "reserve_components_for_requirement",
+    "source": "reserve_component_rows",
+    "operations": [],
+    "columns": {
+      "name": "name",
+      "reserve_type": "reserve_type",
+      "transmission_region": "region_name"
+    }
+  },
+  {
+    "name": "reserve_requirement_rows",
+    "source": "reserve_components_for_requirement",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_rows",
+        "how": "cross",
+        "columns": ["solve_year"]
+      },
+      {
+        "operation": "join",
+        "source": "weather_hour_axis",
+        "how": "cross",
+        "columns": ["datetime"]
+      },
+      {
+        "operation": "join",
+        "source": "reserve_contributions_by_hour",
+        "how": "left",
+        "on": ["transmission_region", "reserve_type", "solve_year", "datetime"],
+        "columns": ["contribution"]
+      },
+      {"operation": "fill_null", "columns": ["contribution"], "value": 0.0},
+      {"operation": "sort", "columns": ["name", "solve_year", "datetime"]}
+    ],
+    "columns": {
+      "datetime": "datetime",
+      "name": "name",
+      "requirement": "contribution",
+      "solve_year": "solve_year"
+    }
+  },
+  {
+    "name": "transmission_capacity_empty",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "from_region", "dtype": "string"},
+          {"name": "to_region", "dtype": "string"},
+          {"name": "trtype", "dtype": "string"},
+          {"name": "year", "dtype": "int64"},
+          {"name": "capacity", "dtype": "float64"}
+        ],
+        "values": []
+      }
+    ]
+  },
+  {
+    "name": "transmission_capacity_selected",
+    "operations": [
+      {
+        "operation": "first_present",
+        "sources": ["transmission_capacity", "transmission_capacity_empty"]
+      },
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      },
+      {
+        "operation": "choose",
+        "column": "from_region",
+        "comparison": "less_than_or_equal",
+        "other_column": "to_region",
+        "then": "from_region",
+        "otherwise": "to_region",
+        "output": "region_a"
+      },
+      {
+        "operation": "choose",
+        "column": "from_region",
+        "comparison": "less_than_or_equal",
+        "other_column": "to_region",
+        "then": "to_region",
+        "otherwise": "from_region",
+        "output": "region_b"
+      },
+      {"operation": "concat_strings", "columns": ["region_a", "region_b"], "separator": "||", "output": "interface_name"},
+      {"operation": "concat_strings", "columns": ["region_a", "region_b", "trtype", "year"], "separator": "_", "output": "line_name"}
+    ]
+  },
+  {
+    "name": "transmission_losses_empty",
+    "operations": [
+      {
+        "operation": "rows",
+        "schema": [
+          {"name": "from_region", "dtype": "string"},
+          {"name": "to_region", "dtype": "string"},
+          {"name": "trtype", "dtype": "string"},
+          {"name": "losses", "dtype": "float64"}
+        ],
+        "values": []
+      }
+    ]
+  },
+  {
+    "name": "transmission_losses_selected",
+    "operations": [
+      {
+        "operation": "first_present",
+        "sources": ["transmission_losses", "transmission_losses_empty"]
+      }
+    ]
+  },
+  {
+    "name": "cost_hurdle_rate_selected",
+    "source": "cost_hurdle_rate",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "requested_solve_year_keys",
+        "how": "inner",
+        "on": ["year"],
+        "columns": []
+      }
+    ]
+  },
+  {
+    "name": "transmission_distance_cost_ac_rows",
+    "source": "transmission_distance_cost_ac",
+    "operations": [
+      {"operation": "sort", "columns": ["cost_bin"]},
+      {"operation": "unique", "columns": ["from_region", "to_region"], "keep": "first"}
+    ],
+    "columns": {
+      "from_region": "from_region",
+      "to_region": "to_region",
+      "cost_usd_per_mw_forward": "cost_usd_per_mw_forward"
+    }
+  },
+  {
+    "name": "transmission_distance_cost_dc_rows",
+    "source": "transmission_distance_cost_dc",
+    "operations": [
+      {"operation": "unique", "columns": ["from_region", "to_region"], "keep": "first"}
+    ],
+    "columns": {
+      "from_region": "from_region",
+      "to_region": "to_region",
+      "distance_miles": "distance_miles"
+    }
+  },
+  {
+    "name": "transmission_capacity_reverse_rows",
+    "source": "transmission_capacity_selected",
+    "operations": [],
+    "columns": {
+      "from_region": "to_region",
+      "to_region": "from_region",
+      "trtype": "trtype",
+      "year": "year",
+      "reverse_capacity": "capacity"
+    }
+  },
+  {
+    "name": "transmission_joined_rows",
+    "source": "transmission_capacity_selected",
+    "operations": [
+      {
+        "operation": "join",
+        "source": "transmission_capacity_reverse_rows",
+        "how": "left",
+        "on": ["from_region", "to_region", "trtype", "year"],
+        "columns": ["reverse_capacity"]
+      },
+      {
+        "operation": "join",
+        "source": "transmission_losses_selected",
+        "how": "left",
+        "on": ["from_region", "to_region", "trtype"],
+        "columns": ["losses"]
+      },
+      {
+        "operation": "join",
+        "source": "cost_hurdle_rate_selected",
+        "how": "left",
+        "on": ["from_region", "to_region", "year"],
+        "columns": ["cost_hurdle_rate"]
+      },
+      {
+        "operation": "join",
+        "source": "transmission_distance_cost_dc_rows",
+        "how": "left",
+        "on": ["from_region", "to_region"],
+        "columns": ["distance_miles"]
+      },
+      {
+        "operation": "join",
+        "source": "transmission_distance_cost_ac_rows",
+        "how": "left",
+        "on": ["from_region", "to_region"],
+        "columns": ["cost_usd_per_mw_forward"]
+      },
+      {"operation": "fill_null", "columns": ["reverse_capacity"], "from_columns": ["capacity"]},
+      {"operation": "absolute", "column": "reverse_capacity", "output": "from_to"},
+      {"operation": "absolute", "column": "capacity", "output": "to_from"},
+      {
+        "operation": "object",
+        "columns": {"from_to": "from_to", "to_from": "to_from"},
+        "output": "max_active_power"
+      },
+      {
+        "operation": "divide",
+        "columns": ["cost_usd_per_mw_forward", "distance_miles"],
+        "output": "line_cost_per_mw_mile"
+      }
+    ]
+  },
+  {
+    "name": "transmission_interface_rows",
+    "source": "transmission_joined_rows",
+    "operations": [
+      {"operation": "unique", "columns": ["region_a", "region_b"], "keep": "first"}
+    ],
+    "columns": {
+      "name": "interface_name",
+      "category": "trtype",
+      "from_region": "region_a",
+      "to_region": "region_b"
+    }
+  },
+  {
+    "name": "transmission_line_rows",
+    "source": "transmission_joined_rows",
+    "operations": [{"operation": "unique", "columns": ["line_name"], "keep": "first"}],
+    "columns": {
+      "name": "line_name",
+      "category": "trtype",
+      "line_type": "trtype",
+      "interface_name": "interface_name",
+      "solve_year": "year",
+      "max_active_power": "max_active_power",
+      "distance_miles": "distance_miles",
+      "line_cost_per_mw_mile": "line_cost_per_mw_mile",
+      "losses": "losses",
+      "hurdle_rate": "cost_hurdle_rate"
+    }
+  },
+  {
+    "name": "resource_supply_rows_csp",
+    "source": "csp_supply_curve",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "csp",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_candidate_rows_csp",
+    "source": "df_sc_in_csp",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "csp",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_output_rows_csp",
+    "source": "df_sc_out_csp_reduced",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "csp",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_supply_rows_egs",
+    "source": "egs_supply_curve",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "egs",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_candidate_rows_egs",
+    "source": "df_sc_in_egs",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "egs",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_output_rows_egs",
+    "source": "df_sc_out_egs_reduced",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "egs",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_supply_rows_geohydro",
+    "source": "geohydro_supply_curve",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "geohydro",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_candidate_rows_geohydro",
+    "source": "df_sc_in_geohydro",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "geohydro",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_output_rows_geohydro",
+    "source": "df_sc_out_geohydro_reduced",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "geohydro",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_supply_rows_upv",
+    "source": "upv_supply_curve",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "upv",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_candidate_rows_upv",
+    "source": "df_sc_in_upv",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "upv",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_output_rows_upv",
+    "source": "df_sc_out_upv_reduced",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "upv",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_supply_rows_wind-ons",
+    "source": "wind-ons_supply_curve",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "wind-ons",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_candidate_rows_wind-ons",
+    "source": "df_sc_in_wind-ons",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "wind-ons",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_output_rows_wind-ons",
+    "source": "df_sc_out_wind-ons_reduced",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "wind-ons",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_supply_rows_wind-ofs",
+    "source": "wind-ofs_supply_curve",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "wind-ofs",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_candidate_rows_wind-ofs",
+    "source": "df_sc_in_wind-ofs",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "wind-ofs",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_output_rows_wind-ofs",
+    "source": "df_sc_out_wind-ofs_reduced",
+    "operations": [],
+    "columns": {
+        "sc_point_gid": "sc_point_gid",
+        "resource_class": "resource_class",
+        "technology": {
+          "value": "wind-ofs",
+          "dtype": "string"
+        },
+        "region": {
+          "optional_column": "region",
+          "dtype": "string"
+        },
+        "sc_gid": {
+          "optional_column": "sc_gid",
+          "dtype": "int64"
+        },
+        "available_capacity": {
+          "optional_column": "available_capacity",
+          "dtype": "float64"
+        },
+        "capacity_factor": {
+          "optional_column": "capacity_factor",
+          "dtype": "float64"
+        },
+        "latitude": {
+          "optional_column": "latitude",
+          "dtype": "float64"
+        },
+        "longitude": {
+          "optional_column": "longitude",
+          "dtype": "float64"
+        },
+        "existing_capacity": {
+          "optional_column": "existing_capacity",
+          "dtype": "float64"
+        },
+        "online_year": {
+          "optional_column": "online_year",
+          "dtype": "int64"
+        },
+        "retire_year": {
+          "optional_column": "retire_year",
+          "dtype": "int64"
+        },
+        "bin": {
+          "optional_column": "bin",
+          "dtype": "int64"
+        },
+        "capacity": {
+          "optional_column": "capacity",
+          "dtype": "float64"
+        },
+        "supply_curve_cost": "supply_curve_cost",
+        "year": {
+          "optional_column": "year",
+          "dtype": "int64"
+        },
+        "built_capacity": {
+          "optional_column": "built_capacity",
+          "dtype": "float64"
+        },
+        "investment_bool": {
+          "optional_column": "investment_bool",
+          "dtype": "bool"
+        }
+      }
+  },
+  {
+    "name": "resource_supply_rows",
+    "operations": [
+      {"operation": "concat", "sources": ["resource_supply_rows_csp", "resource_supply_rows_egs", "resource_supply_rows_geohydro", "resource_supply_rows_upv", "resource_supply_rows_wind-ons", "resource_supply_rows_wind-ofs"]}
+    ]
+  },
+  {
+    "name": "resource_candidate_rows",
+    "operations": [
+      {"operation": "concat", "sources": ["resource_candidate_rows_csp", "resource_candidate_rows_egs", "resource_candidate_rows_geohydro", "resource_candidate_rows_upv", "resource_candidate_rows_wind-ons", "resource_candidate_rows_wind-ofs"]}
+    ]
+  },
+  {
+    "name": "resource_output_rows",
+    "operations": [
+      {"operation": "concat", "sources": ["resource_output_rows_csp", "resource_output_rows_egs", "resource_output_rows_geohydro", "resource_output_rows_upv", "resource_output_rows_wind-ons", "resource_output_rows_wind-ofs"]}
+    ]
+  },
+  {
+    "name": "resource_supported_technologies",
+    "operations": [
+      {"operation": "rows", "schema": [{"name": "technology", "dtype": "string"}], "values": "{resource_supply_curve_dataset_rows}"}
+    ]
+  },
+  {
+    "name": "resource_region_names",
+    "source": "hierarchy",
+    "operations": [
+      {"operation": "unique", "columns": ["region_id"], "keep": "first"}
+    ],
+    "columns": {"region": "region_id"}
+  },
+  {
+    "name": "resource_candidate_lookup",
+    "source": "resource_candidate_rows",
+    "operations": [
+      {"operation": "unique", "columns": ["technology", "sc_point_gid", "resource_class"], "keep": "first"}
+    ],
+    "columns": {
+      "technology": "technology",
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "candidate_sc_gid": "sc_gid",
+      "candidate_available_capacity": "available_capacity",
+      "candidate_capacity_factor": "capacity_factor",
+      "candidate_latitude": "latitude",
+      "candidate_longitude": "longitude",
+      "candidate_existing_capacity": "existing_capacity",
+      "candidate_online_year": "online_year",
+      "candidate_retire_year": "retire_year",
+      "candidate_bin": "bin",
+      "candidate_capacity": "capacity",
+      "candidate_supply_curve_cost": "supply_curve_cost"
+    }
+  },
+  {
+    "name": "resource_supply_by_technology",
+    "source": "resource_supply_rows",
+    "operations": [
+      {"operation": "unique", "columns": ["technology"], "keep": "first"}
+    ],
+    "columns": {"technology": "technology", "supply_marker": {"value": "present"}}
+  },
+  {
+    "name": "resource_enriched_supply",
+    "source": "resource_supply_rows",
+    "operations": [
+      {"operation": "join", "source": "resource_candidate_lookup", "how": "left", "on": ["technology", "sc_point_gid", "resource_class"], "columns": ["candidate_sc_gid", "candidate_available_capacity", "candidate_capacity_factor", "candidate_latitude", "candidate_longitude", "candidate_existing_capacity", "candidate_online_year", "candidate_retire_year", "candidate_bin", "candidate_capacity", "candidate_supply_curve_cost"]},
+      {"operation": "fill_null", "columns": ["sc_gid"], "from_columns": ["candidate_sc_gid"]},
+      {"operation": "fill_null", "columns": ["available_capacity"], "from_columns": ["candidate_available_capacity"]},
+      {"operation": "fill_null", "columns": ["capacity_factor"], "from_columns": ["candidate_capacity_factor"]},
+      {"operation": "fill_null", "columns": ["latitude"], "from_columns": ["candidate_latitude"]},
+      {"operation": "fill_null", "columns": ["longitude"], "from_columns": ["candidate_longitude"]},
+      {"operation": "fill_null", "columns": ["existing_capacity"], "from_columns": ["candidate_existing_capacity"]},
+      {"operation": "fill_null", "columns": ["online_year"], "from_columns": ["candidate_online_year"]},
+      {"operation": "fill_null", "columns": ["retire_year"], "from_columns": ["candidate_retire_year"]},
+      {"operation": "fill_null", "columns": ["bin"], "from_columns": ["candidate_bin"]},
+      {"operation": "fill_null", "columns": ["capacity"], "from_columns": ["candidate_capacity"]},
+      {"operation": "fill_null", "columns": ["supply_curve_cost"], "from_columns": ["candidate_supply_curve_cost"]}
+    ],
+    "columns": {
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "technology": "technology",
+      "region": "region",
+      "sc_gid": "sc_gid",
+      "available_capacity": "available_capacity",
+      "capacity_factor": "capacity_factor",
+      "latitude": "latitude",
+      "longitude": "longitude",
+      "existing_capacity": "existing_capacity",
+      "online_year": "online_year",
+      "retire_year": "retire_year",
+      "bin": "bin",
+      "capacity": "capacity",
+      "supply_curve_cost": "supply_curve_cost",
+      "year": "year",
+      "built_capacity": "built_capacity",
+      "investment_bool": "investment_bool"
+    }
+  },
+  {
+    "name": "resource_candidate_fallback",
+    "source": "resource_candidate_rows",
+    "operations": [
+      {"operation": "join", "source": "resource_supply_by_technology", "how": "left", "on": ["technology"], "columns": ["supply_marker"]},
+      {"operation": "filter", "column": "supply_marker", "comparison": "is_null"}
+    ],
+    "columns": {
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "technology": "technology",
+      "region": "region",
+      "sc_gid": "sc_gid",
+      "available_capacity": "available_capacity",
+      "capacity_factor": "capacity_factor",
+      "latitude": "latitude",
+      "longitude": "longitude",
+      "existing_capacity": "existing_capacity",
+      "online_year": "online_year",
+      "retire_year": "retire_year",
+      "bin": "bin",
+      "capacity": "capacity",
+      "supply_curve_cost": "supply_curve_cost",
+      "year": "year",
+      "built_capacity": "built_capacity",
+      "investment_bool": "investment_bool"
+    }
+  },
+  {
+    "name": "resource_reference_rows",
+    "operations": [
+      {"operation": "concat", "sources": ["resource_enriched_supply", "resource_candidate_fallback"]}
+    ]
+  },
+  {
+    "name": "resource_site_rows",
+    "source": "resource_reference_rows",
+    "operations": [
+      {"operation": "join", "source": "resource_region_names", "how": "inner", "on": ["region"], "columns": []},
+      {"operation": "join", "source": "resource_supported_technologies", "how": "inner", "on": ["technology"], "columns": []},
+      {"operation": "fill_null", "columns": ["capacity"], "from_columns": ["available_capacity"]},
+      {"operation": "concat_strings", "columns": ["technology", "resource_class", "sc_point_gid"], "separator": "_", "output": "name"},
+      {"operation": "filter", "column": "sc_point_gid", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "resource_class", "comparison": "is_not_null"}
+    ],
+    "columns": {
+      "name": "name",
+      "technology": "technology",
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "capacity": "capacity",
+      "available_capacity": "available_capacity",
+      "capacity_factor": "capacity_factor",
+      "sc_gid": "sc_gid",
+      "bin": "bin",
+      "supply_curve_cost": "supply_curve_cost",
+      "existing_capacity": "existing_capacity",
+      "online_year": "online_year",
+      "retire_year": "retire_year",
+      "latitude": "latitude",
+      "longitude": "longitude",
+      "region": "region"
+    }
+  },
+  {
+    "name": "resource_site_geo",
+    "source": "resource_site_rows",
+    "operations": [
+      {"operation": "filter", "column": "latitude", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "longitude", "comparison": "is_not_null"},
+      {"operation": "list", "columns": ["longitude", "latitude"], "output": "coordinates"},
+      {"operation": "object", "columns": {"type": {"value": "Point"}, "coordinates": "coordinates"}, "output": "geometry"},
+      {"operation": "object", "columns": {"name": "name", "technology": "technology", "sc_point_gid": "sc_point_gid", "resource_class": "resource_class"}, "output": "properties"},
+      {"operation": "object", "columns": {"type": {"value": "Feature"}, "geometry": "geometry", "properties": "properties"}, "output": "geo_json"}
+    ],
+    "columns": {"name": "name", "technology": "technology", "geo_json": "geo_json"}
+  },
+  {
+    "name": "resource_build_reference",
+    "source": "resource_reference_rows",
+    "operations": [],
+    "columns": {
+      "technology": "technology",
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "reference_sc_gid": "sc_gid",
+      "reference_available_capacity": "available_capacity",
+      "reference_capacity_factor": "capacity_factor",
+      "reference_latitude": "latitude",
+      "reference_longitude": "longitude",
+      "reference_existing_capacity": "existing_capacity",
+      "reference_online_year": "online_year",
+      "reference_retire_year": "retire_year",
+      "reference_bin": "bin",
+      "reference_capacity": "capacity",
+      "reference_supply_curve_cost": "supply_curve_cost"
+    }
+  },
+  {
+    "name": "resource_build_rows",
+    "source": "resource_output_rows",
+    "operations": [
+      {"operation": "join", "source": "resource_build_reference", "how": "left", "on": ["technology", "sc_point_gid", "resource_class"], "columns": ["reference_sc_gid", "reference_available_capacity", "reference_capacity_factor", "reference_latitude", "reference_longitude", "reference_existing_capacity", "reference_online_year", "reference_retire_year", "reference_bin", "reference_capacity", "reference_supply_curve_cost"]},
+      {"operation": "join", "source": "resource_region_names", "how": "inner", "on": ["region"], "columns": []},
+      {"operation": "join", "source": "resource_supported_technologies", "how": "inner", "on": ["technology"], "columns": []},
+      {"operation": "fill_null", "columns": ["sc_gid"], "from_columns": ["reference_sc_gid"]},
+      {"operation": "fill_null", "columns": ["available_capacity"], "from_columns": ["reference_available_capacity"]},
+      {"operation": "fill_null", "columns": ["capacity_factor"], "from_columns": ["reference_capacity_factor"]},
+      {"operation": "fill_null", "columns": ["latitude"], "from_columns": ["reference_latitude"]},
+      {"operation": "fill_null", "columns": ["longitude"], "from_columns": ["reference_longitude"]},
+      {"operation": "fill_null", "columns": ["existing_capacity"], "from_columns": ["reference_existing_capacity"]},
+      {"operation": "fill_null", "columns": ["online_year"], "from_columns": ["reference_online_year"]},
+      {"operation": "fill_null", "columns": ["retire_year"], "from_columns": ["reference_retire_year"]},
+      {"operation": "fill_null", "columns": ["bin"], "from_columns": ["reference_bin"]},
+      {"operation": "fill_null", "columns": ["capacity"], "from_columns": ["reference_capacity"]},
+      {"operation": "fill_null", "columns": ["supply_curve_cost"], "from_columns": ["reference_supply_curve_cost"]},
+      {"operation": "fill_null", "columns": ["capacity"], "from_columns": ["available_capacity"]},
+      {"operation": "concat_strings", "columns": ["technology", "resource_class", "year", "sc_point_gid"], "separator": "_", "output": "name"},
+      {"operation": "filter", "column": "sc_point_gid", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "resource_class", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "year", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "built_capacity", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "investment_bool", "comparison": "is_not_null"}
+    ],
+    "columns": {
+      "name": "name",
+      "technology": "technology",
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "capacity": "capacity",
+      "available_capacity": "available_capacity",
+      "capacity_factor": "capacity_factor",
+      "sc_gid": "sc_gid",
+      "bin": "bin",
+      "supply_curve_cost": "supply_curve_cost",
+      "existing_capacity": "existing_capacity",
+      "online_year": "online_year",
+      "retire_year": "retire_year",
+      "latitude": "latitude",
+      "longitude": "longitude",
+      "year": "year",
+      "built_capacity": "built_capacity",
+      "investment_bool": "investment_bool",
+      "region": "region"
+    }
+  },
+  {
+    "name": "resource_build_geo",
+    "source": "resource_build_rows",
+    "operations": [
+      {"operation": "filter", "column": "latitude", "comparison": "is_not_null"},
+      {"operation": "filter", "column": "longitude", "comparison": "is_not_null"},
+      {"operation": "list", "columns": ["longitude", "latitude"], "output": "coordinates"},
+      {"operation": "object", "columns": {"type": {"value": "Point"}, "coordinates": "coordinates"}, "output": "geometry"},
+      {"operation": "object", "columns": {"name": "name", "technology": "technology", "sc_point_gid": "sc_point_gid", "resource_class": "resource_class", "year": "year"}, "output": "properties"},
+      {"operation": "object", "columns": {"type": {"value": "Feature"}, "geometry": "geometry", "properties": "properties"}, "output": "geo_json"}
+    ],
+    "columns": {"name": "name", "geo_json": "geo_json"}
+  }
+]

@@ -435,8 +435,10 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
                         initial_timestamp=datetime(year=config.weather_year, month=1, day=1),
                         resolution=timedelta(hours=1),
                     )
-                    features = {"solve_year": demand.solve_year} if demand.solve_year is not None else {}
-                    system.add_time_series(ts, demand, **features)
+                    if demand.solve_year is not None:
+                        system.add_time_series(ts, demand, solve_year=demand.solve_year)
+                    else:
+                        system.add_time_series(ts, demand)
                     attached += 1
             if attached > 0:
                 logger.info("Attached hydrogen-production profiles to {} demand components", attached)
@@ -463,8 +465,10 @@ def add_purchaser_load(system: System, config: PurchaserLoadConfig) -> Result[Sy
                     initial_timestamp=datetime(year=config.weather_year, month=1, day=1),
                     resolution=timedelta(hours=1),
                 )
-                features = {"solve_year": demand.solve_year} if demand.solve_year is not None else {}
-                system.add_time_series(ts, demand, **features)
+                if demand.solve_year is not None:
+                    system.add_time_series(ts, demand, solve_year=demand.solve_year)
+                else:
+                    system.add_time_series(ts, demand)
                 attached += 1
             if attached > 0:
                 logger.info("Attached data center load profiles to {} demand components", attached)

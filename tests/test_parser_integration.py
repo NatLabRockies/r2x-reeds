@@ -7,6 +7,7 @@ import csv
 import shutil
 
 import numpy as np
+import polars as pl
 import pytest
 from infrasys import Component
 
@@ -88,8 +89,11 @@ def test_load_time_series_values(region_name, data_store, example_system, reeds_
         placeholders={"solve_year": 2032, "weather_year": reeds_config.primary_weather_year},
     )
 
+    selected_profiles = load_profiles.filter(
+        (pl.col("solve_year") == 2032) & (pl.col("datetime").dt.year() == reeds_config.primary_weather_year)
+    )
     load_component = example_system.get_component(ReEDSDemand, f"{region_name}_load_2032")
-    actual_profile = load_profiles[region_name].to_numpy()
+    actual_profile = selected_profiles[region_name].to_numpy()
     expected_profile = example_system.get_time_series(load_component).data
 
     np.testing.assert_allclose(
@@ -185,11 +189,12 @@ def loadsite_system(loadsite_run_path):
 def loadsite_base_profiles(loadsite_run_path):
     """Raw load_profiles DataFrame from the loadsite run (before increment)."""
     store = current_data_store(loadsite_run_path)
-    return read_source_frame(
+    profiles = read_source_frame(
         store,
         "load_profiles",
         placeholders={"solve_year": 2032, "weather_year": 2012},
     )
+    return profiles.filter((pl.col("solve_year") == 2032) & (pl.col("datetime").dt.year() == 2012))
 
 
 def test_loadsite_not_applied_during_parse_p4(loadsite_system, loadsite_base_profiles) -> None:

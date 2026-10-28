@@ -38,7 +38,16 @@ def read_tabular_frame(
     if not isinstance(source, TabularSource):
         msg = f"Required input {name!r} did not decode as a tabular source"
         raise TypeError(msg)
-    return source.data.collect()
+    if isinstance(source.data, pl.LazyFrame):
+        collected = source.data.collect()
+        if not isinstance(collected, pl.DataFrame):
+            msg = f"Collecting required input {name!r} did not produce a Polars DataFrame"
+            raise TypeError(msg)
+        return collected
+    if isinstance(source.data, pl.DataFrame):
+        return source.data
+    msg = f"Required input {name!r} has an unsupported tabular representation"
+    raise TypeError(msg)
 
 
 def _deduplicate_records(records: Iterable[dict[str, Any]] | None, *, key: str) -> list[dict[str, Any]]:

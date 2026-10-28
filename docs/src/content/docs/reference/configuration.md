@@ -28,13 +28,17 @@ ReEDS run inputs, such as `meta.csv`, `inputs_case/` and `outputs/`. The parser
 loads its file mapping during preparation. See the
 [parsing tutorial](/r2x-reeds/tutorials/parse-run/) for context construction and
 the [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/main/src/r2x_reeds/plugin_config.py).
+Replace older `DataStore.from_plugin_config(...)` examples with this constructor.
+The parser loads its configured readers itself. The removed
+`register_modeled_years_reader` function is no longer needed.
 
 ## Configuration assets
 
 The package configuration is in `src/r2x_reeds/config/`. `defaults.json` holds
-policy data, `file_mapping.json` describes input sources and table processing,
-and `parser_rules.json` declares output construction. Translation, export and
-modifier assets are separate concerns.
+policy data, `file_mapping.json` declares native inputs and source availability,
+`table_mapping.json` assembles named tables, and `parser_rules.json` declares
+component and time-series construction. Translation, export and modifier assets
+are separate concerns.
 
 ### `defaults.json`
 
@@ -48,12 +52,12 @@ provides optional exact exceptions. An explicit `excluded_techs` list in
 ### `file_mapping.json`
 
 This asset is a JSON list of core `DataFile` declarations. A declaration can
-name a physical input, typed inline table, ordered source selection, or prepared
-table with an ordered `proc_spec`. Processing includes filtering, joins,
-aggregations, projections, weather-axis derivation and validation. Typed ReEDS
-functions handle domain policies such as generator preparation, FOM precedence,
-classification and resource-source enrichment. Core executes these through its
-existing mapping-step extension point.
+name a physical input, typed inline table, ordered source selection, or a
+prepared source. Physical declarations own native paths, column types, and
+input-boundary renaming or filtering. Prepared-source declarations include
+validation of assembled tables. `table_mapping.json` expresses generator
+classification, owner naming, and load and reserve assembly with generic
+operations and ReEDS policy data.
 
 Physical inputs retain their availability semantics. A missing optional file is
 absent; a present empty file is still present; malformed present data is an
@@ -64,11 +68,21 @@ previously declared policy table matches. See the core guides for [DataFile and
 reader configuration](https://natlabrockies.github.io/r2x-core/how-tos/configure-data-files/)
 and [ordered table processing](https://natlabrockies.github.io/r2x-core/references/processors/).
 
-The packaged load declarations derive peaks and profile rows from the same
-physical load source. Requested solve years are validated before construction.
+The load table mapping uses the same physical source for peak components and
+profile rows. It selects requested solve/weather pairs before unpivoting the
+runtime region headers. Peaks include all selected weather years, while profile
+rows retain their solve-year and weather-year partitions. The input mapping
+derives the weather-year label from native timestamps, and the table mapping
+constructs solve-year-qualified load owner names. The parser validates coverage
+for every requested pair and rejects all-null region/solve-year peaks.
+
 `generator_capacity_source` selects `online_capacity` (`"standard"`) or
-`online_capacity_degraded` (`"degraded"`). The chosen source never silently
-falls back when missing. The resource supply-curve declarations select a source
+`online_capacity_degraded` (`"degraded"`). Replace the removed
+`use_degraded_capacity=True` setting with `generator_capacity_source="degraded"`.
+Use `"standard"` for the former `False` setting. The `primary_solve_year` property
+was also removed. Use `solve_year` directly and select an element explicitly
+when it is a list. The chosen capacity source never silently falls back when
+missing. The resource supply-curve declarations select a source
 per technology before joining candidate enrichments, so candidate-only sites do
 not become new resource sites when a primary source is populated.
 
@@ -76,33 +90,108 @@ To customize a mapping, copy the complete package configuration directory and
 set `config_path_override`. The override is a directory, not a partial JSON
 fragment:
 
-```python
-from pathlib import Path
-from shutil import copytree
-
-from r2x_core import DataStore, PluginContext
-from r2x_reeds import ReEDSConfig, ReEDSParser
-
-run_path = Path("path/to/reeds-run")
-config_path = Path("reeds-config")
-copytree(ReEDSConfig.package_config_path(), config_path)
-config = ReEDSConfig(
-    solve_year=2030,
-    weather_year=2012,
-    config_path_override=config_path,
-)
-context = PluginContext(config=config, store=DataStore(path=run_path))
-system = ReEDSParser.from_context(context).run().system
-if system is None:
-    raise RuntimeError("Parser returned no system")
+```python doctest
+>>> from pathlib import Path
+>>> from shutil import copytree
+>>> from tempfile import TemporaryDirectory
+>>> from r2x_reeds import ReEDSConfig
+>>> with TemporaryDirectory() as folder:
+...     config_path = Path(folder) / "reeds-config"
+...     _ = copytree(ReEDSConfig.package_config_path(), config_path)
+...     config = ReEDSConfig(solve_year=2032, weather_year=2012, config_path_override=config_path)
+...     assert config.fmap_path.is_file()
+...
 ```
 
+For a persistent override, use a directory you control instead of the temporary
+one. Pass the configured `ReEDSConfig` to the parser as shown in the
+[parsing tutorial](/r2x-reeds/tutorials/parse-run/).
+
 Set `generator_capacity_source` on `ReEDSConfig` to choose standard or degraded
-capacity. Edit the copied `file_mapping.json` only when changing input layouts or
-source recipes, and edit `defaults.json` for packaged policy values. Keep all
-required assets in the directory. Core's
+capacity. The `generator_rows` table is explicitly materialized after projection
+for reuse by its consumers. This retains the table in memory and can surface data
+errors during assembly. Edit the copied `file_mapping.json` only when changing
+input layouts or source recipes, and edit `defaults.json` for packaged policy
+values. Keep all required assets in the directory. Core's
 [parser construction guide](https://natlabrockies.github.io/r2x-core/how-tos/build-parsers/)
 describes the shared typed output instructions.
+
+### Update a copied configuration
+
+> Warning: A configuration directory copied from an earlier ReEDS version is
+> not complete for the current parser. Adding `table_mapping.json` alone is not
+> enough. Keep the required validation records in `file_mapping.json`.
+
+1. Keep the existing override unchanged. Copy the current package configuration
+   to a new directory as shown above.
+2. Reapply input paths and native column declarations in `file_mapping.json`.
+   Reapply policy values in `defaults.json`, table transformations in
+   `table_mapping.json`, and output mappings in `parser_rules.json`.
+3. Replace ReEDS-specific processing handlers with table operations. There is no
+   automatic conversion of custom mappings.
+4. Run the parser with the new override on a representative case. Compare the
+   component counts and time-series values before switching to the new directory.
+
+Physical source names changed for these inputs. Some prior names still identify
+assembled tables, so update physical-input references rather than replacing
+names indiscriminately:
+
+| Previous physical source | Current physical source |
+| --- | --- |
+| `hydro_cf` | `hydro_cf_input` |
+| `hydro_capacity_adjustment` | `hydro_capacity_adjustment_input` |
+| `hydrogen_production_capacity` | `hydrogen_production_capacity_input` |
+| `hydrogen_production_annual_load` | `hydrogen_production_annual_load_input` |
+| `hydrogen_production_load` | `hydrogen_production_load_input` |
+
+Code that reads prepared rows directly must use
+`DataReader.read_and_assemble_sources` with the current file mapping, table
+mapping, backend, and required placeholders. `read_data_files` alone does not
+produce assembled outputs such as `generator_rows` or `load_peaks`.
+
+### `table_mapping.json`
+
+This JSON list declares ordered, named table operations after input decoding.
+Joins, reshaping, grouping, and sorting stay in the mapping; `parser_rules.json`
+only maps resulting columns to model fields.
+For the dynamic load headers, omitting `unpivot.columns` selects each source
+column outside `index` and uses its exact native header as the region label:
+
+```json
+{
+  "name": "load_profile_values",
+  "source": "load_profiles",
+  "operations": [
+    {
+      "operation": "join",
+      "source": "requested_solve_weather_year_rows",
+      "how": "inner",
+      "on": ["solve_year", "weather_year"],
+      "columns": []
+    },
+    {
+      "operation": "unpivot",
+      "index": ["datetime", "solve_year", "weather_year"],
+      "variable_name": "region",
+      "value_name": "value"
+    },
+    {
+      "operation": "join",
+      "source": "load_owner_names",
+      "how": "left",
+      "on": ["region", "solve_year"],
+      "columns": ["owner_name"]
+    }
+  ]
+}
+```
+
+The load mapping derives `load_peaks` with a max over each region and solve
+year, and retains one sorted `load_profile_rows` table for time-series
+construction. The `load_owner_names` table constructs `owner_name` from the
+region and solve year. Copy the complete package configuration
+before changing mappings so every referenced source and output instruction is
+present.
 
 ### `parser_rules.json`
 

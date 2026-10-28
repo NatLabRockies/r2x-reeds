@@ -64,9 +64,8 @@ def read_source_frame(
 ) -> pl.DataFrame:
     """Read one named tabular source through its public record-access methods."""
     from r2x_core import DataReader, TabularSource
-    from r2x_reeds.processing import reeds_step_handlers
 
-    sources = DataReader(step_handlers=reeds_step_handlers()).read_data_files(
+    sources = DataReader().read_data_files(
         [store[name]],
         folder_path=store.folder,
         placeholders=placeholders,
@@ -122,7 +121,6 @@ def reeds_run_path(
         "tech-subset-table",
     ):
         shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
-    write_unitspec_upgrades_h5(run_path / "inputs_case" / "inputs.h5", [])
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
 

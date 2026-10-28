@@ -63,7 +63,7 @@ schemas above.
 ...     purchaser_cfg = PurchaserLoadConfig(solve_year=2032, weather_year=2012, hour_map_myr_fpath=policy / "hours.csv", loadsite_op_fpath=policy / "sites.csv")
 ...     result = add_purchaser_load(system, purchaser_cfg)
 ...     assert result.is_ok(), result.unwrap_err()
-...     demand = system.get_component(ReEDSDataCenterDemand, "p1_data_center_demand")
+...     demand = system.get_component(ReEDSDataCenterDemand, "p1_data_center_demand_2032")
 ...     assert demand.capacity == 7.0
 ...     series = system.get_time_series(demand, name="max_active_power")
 ...     assert_allclose(series.data, [5.0, 6.0, 7.0])

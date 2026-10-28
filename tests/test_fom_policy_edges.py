@@ -66,6 +66,31 @@ def test_parser_validation_requires_cost_fom_for_the_solve_year(
         assert "cost_fom" in str(captured.value.__cause__)
 
 
+@pytest.mark.parametrize("missing", ["group", "column"])
+def test_missing_required_upgrade_data_reports_a_parser_error(fom_run_path: Path, missing: str) -> None:
+    """Missing HDF5 groups and columns are reported through the parser lifecycle."""
+    from r2x_core.exceptions import ConfiguredGroupNotFoundError
+
+    with h5py.File(fom_run_path / "inputs_case" / "inputs.h5", "w") as bundle:
+        if missing == "group":
+            bundle.create_group("unrelated")
+        else:
+            group = bundle.create_group("unitspec_upgrades")
+            group.create_dataset("columns", data=np.asarray([b"i"]))
+    config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    parser = ReEDSParser.from_context(PluginContext(config=config, store=current_data_store(fom_run_path)))
+
+    with pytest.raises(PluginError) as captured:
+        parser.run()
+
+    if missing == "group":
+        assert isinstance(captured.value.__cause__, ConfiguredGroupNotFoundError)
+        assert "unitspec_upgrades" in str(captured.value.__cause__)
+    else:
+        assert isinstance(captured.value.__cause__, KeyError)
+        assert "column dataset 'i'" in str(captured.value.__cause__)
+
+
 def test_cost_fom_must_cover_every_requested_solve_year(fom_run_path: Path) -> None:
     inputs = fom_run_path / "inputs_case"
     (inputs / "plantcharout.csv").write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
@@ -312,6 +337,30 @@ def test_retrofit_uses_current_or_eligible_strictly_prior_nonzero_rate(
 
     generator = get_initial_upgrade(system)
     assert generator.fom_cost == expected_rate
+
+
+def test_initial_upgrade_accepts_unseparated_vintage_prefix(
+    fom_run_path: Path, reeds_config: ReEDSConfig
+) -> None:
+    """An init-prefixed vintage uses the configured characteristic-year FOM."""
+    write_upgrade_inputs(fom_run_path, initial_rate=45000.0, hydro_rate=0.0, retrofit_enabled=False)
+    capacity_path = fom_run_path / "outputs" / "cap_ivrt.csv"
+    capacity = capacity_path.read_text(encoding="utf-8")
+    original = "CoalOldUns_Coal-CCS_mod,init-1,p1,2032,100\n"
+    assert original in capacity
+    capacity_path.write_text(
+        capacity.replace(original, "CoalOldUns_Coal-CCS_mod,init1,p1,2032,100\n"), encoding="utf-8"
+    )
+
+    system = build_fom_system(fom_run_path, config=reeds_config)
+
+    matches = [
+        generator
+        for generator in system.get_components(ReEDSGenerator)
+        if generator.name == "coalolduns_coal-ccs_mod_init1_p1_2032"
+    ]
+    assert len(matches) == 1
+    assert matches[0].fom_cost == 45000.0
 
 
 def test_active_upgrades_fail_when_the_global_upgrade_switch_is_disabled(

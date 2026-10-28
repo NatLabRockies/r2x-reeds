@@ -116,18 +116,18 @@ def test_tutorial_pins_the_current_fixture_archive() -> None:
     assert f"/{revision}/{archive}" in TUTORIAL.read_text()
 
 
-def test_tutorial_technology_formats_match(tutorial_console: tuple[Path, dict[str, Any]]) -> None:
-    """The published CSV mapping and current HDF5 mapping must see the same set."""
-    import csv
+def test_tutorial_technology_upgrades_use_the_hdf5_archive(reeds_run_path: Path) -> None:
+    """The actual tutorial archive supplies the required set without a CSV copy."""
+    from pydantic import TypeAdapter
 
-    import h5py
+    from r2x_core import DataFile, DataReader
+    from tests.fixtures.data_fixtures import package_file_mapping
 
-    workspace, _ = tutorial_console
-    inputs = workspace / "tutorial-inputs/test_Pacific/inputs_case"
-    with h5py.File(inputs / "inputs.h5") as bundle:
-        expected = set(bundle["unitspec_upgrades"]["i"].asstr()[:])
-    with (inputs / "unitspec_upgrades.csv").open(newline="") as stream:
-        rows = list(csv.reader(stream))
-    assert rows[0] == ["*i"]
-    assert {row[0] for row in rows[1:]} == expected
-    assert len(expected) == 7
+    configured = {item["name"]: item for item in package_file_mapping()}
+    data_file = TypeAdapter(DataFile).validate_python(configured["fom_unitspec_upgrades"])
+    sources = DataReader().read_data_files([data_file], folder_path=reeds_run_path)
+    technologies = [row["technology"] for row in sources["fom_unitspec_upgrades"].iter_rows()]
+
+    assert not (reeds_run_path / "inputs_case/unitspec_upgrades.csv").exists()
+    assert len(technologies) == 7
+    assert "gas-cc_gas-cc-ccs_mod" in technologies

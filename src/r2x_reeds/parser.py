@@ -12,15 +12,54 @@ from rust_ok import Err, Ok, Result, is_ok
 from r2x_core import DataReader, Plugin, PluginContext, System, build_system_from_sources
 from r2x_core.exceptions import ReaderError
 from r2x_core.models import ParserInstruction
+from r2x_core.polars_adapter import PolarsTabularBackend
 from r2x_core.processors import substitute_placeholders
 
 from .plugin_config import ReEDSConfig, ReEDSDefaults
-from .processing import reeds_step_handlers
 from .upgrader.data_upgrader import run_reeds_upgrades
+
+CONFIGURATION_GUIDANCE = (
+    "To update a configuration override, copy the current package configuration "
+    "to a new directory and reapply customizations. See the ReEDS configuration reference."
+)
+
+POST_ASSEMBLY_VALIDATION_RECORDS = frozenset(
+    {
+        "hierarchy_required",
+        "load_profiles_required",
+        "load_profile_peak_validation",
+        "generator_capacity_validation",
+        "generator_category_hydro_validation",
+        "generator_capacity_classification_validation",
+        "generator_capacity_count",
+        "fom_characteristic_year_validation",
+        "fom_switch_cardinality",
+        "fom_solve_year_coverage",
+        "fom_switch_policy_validation",
+        "fom_psh_scalar_validation",
+        "generator_fom_validation",
+        "hydro_cf_month_validation",
+        "hydro_capacity_adjustment_month_validation",
+    }
+)
 
 
 class ReEDSParser(Plugin[ReEDSConfig]):
-    """Read configured ReEDS sources and build their domain objects."""
+    """Read configured ReEDS sources and build their domain objects.
+
+    After preparing the Pacific fixture and its CSV mapping in the tutorial, run
+    from the tutorial workspace. Parsing can upgrade the working input copy.
+
+    >>> from pathlib import Path
+    >>> from r2x_core import DataStore, PluginContext
+    >>> from r2x_reeds import ReEDSConfig, ReEDSParser, ReEDSRegion
+    >>> config = ReEDSConfig(solve_year=2032, weather_year=2012, config_path_override=Path("pacific-config"))
+    >>> store = DataStore(path=Path("tutorial-inputs/test_Pacific"))
+    >>> context = PluginContext(config=config, store=store)
+    >>> system = ReEDSParser.from_context(context).run().system
+    >>> assert system is not None
+    >>> assert len(list(system.get_components(ReEDSRegion))) == 11
+    """
 
     def __init__(self) -> None:
         """Initialize parser-owned configuration state."""
@@ -109,11 +148,14 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "generator_classification_override_rows": [
                     override.model_dump(mode="json") for override in classification_overrides
                 ],
-                "excluded_techs": (
-                    self.config.excluded_techs
-                    if self.config.excluded_techs is not None
-                    else defaults.excluded_techs
-                ),
+                "excluded_technology_rows": [
+                    {"technology_key": technology.casefold(), "excluded": True}
+                    for technology in (
+                        self.config.excluded_techs
+                        if self.config.excluded_techs is not None
+                        else defaults.excluded_techs
+                    )
+                ],
                 "solve_year_count": len(solve_years),
                 "solve_year_rows": [{"solve_year": year} for year in solve_years],
                 "requested_solve_weather_year_rows": [
@@ -123,19 +165,42 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 ],
                 "generator_capacity_source_name": capacity_sources[self.config.generator_capacity_source],
                 "resource_supply_curve_datasets": defaults.resource_supply_curve_datasets,
+                "resource_supply_curve_dataset_rows": [
+                    {"technology": technology} for technology in defaults.resource_supply_curve_datasets
+                ],
                 "reserve_product_rows": [row.model_dump(mode="json") for row in defaults.reserve_products],
                 "reserve_provider_exclusion_rows": [
                     row.model_dump(mode="json") for row in defaults.reserve_provider_exclusions
                 ],
             }
         )
+        validation_names = {
+            data_file.name
+            for data_file in configured_files
+            if data_file.name in POST_ASSEMBLY_VALIDATION_RECORDS
+        }
+        if validation_names != POST_ASSEMBLY_VALIDATION_RECORDS:
+            missing = sorted(POST_ASSEMBLY_VALIDATION_RECORDS - validation_names)
+            msg = f"Missing post-assembly validation record(s): {missing}. {CONFIGURATION_GUIDANCE}"
+            return Err(ValueError(msg))
+        table_mapping_path = self.config.config_path / "table_mapping.json"
         try:
-            sources = DataReader(step_handlers=reeds_step_handlers()).read_data_files(
+            reader = DataReader()
+            sources = reader.read_and_assemble_sources(
                 configured_files,
                 folder_path=self.store.folder,
+                mapping_path=table_mapping_path,
+                backend=PolarsTabularBackend(),
                 placeholders=placeholders,
             )
-        except (OSError, ReaderError, ValueError, pl.exceptions.PolarsError) as error:
+        except FileNotFoundError as error:
+            if error.filename != str(table_mapping_path):
+                return Err(error)
+            msg = f"Table mapping is missing. {CONFIGURATION_GUIDANCE}"
+            guided_error = FileNotFoundError(error.errno, msg, error.filename)
+            guided_error.__cause__ = error
+            return Err(guided_error)
+        except (OSError, ReaderError, KeyError, TypeError, ValueError, pl.exceptions.PolarsError) as error:
             return Err(error)
 
         try:

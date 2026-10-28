@@ -108,7 +108,7 @@ current public reader API:
 >>> modeled_years_file = next(item for item in files if item.name == "modeled_years")
 >>> source = DataReader().read_data_files([modeled_years_file], folder_path=run_path)["modeled_years"]
 >>> assert list(source.iter_rows())
->>> assert config.primary_solve_year == 2032
+>>> assert config.solve_year == 2032
 >>> assert config.primary_weather_year == 2012
 ```
 
@@ -135,7 +135,7 @@ check the actual components rather than relying on the pipeline exit code:
 >>> from r2x_reeds import ReEDSGenerator, ReEDSDemand
 >>> technologies = {item.technology for item in system.get_components(ReEDSGenerator)}
 >>> assert "gas-cc" in technologies
->>> assert any(item.name == "p1_load" for item in system.get_components(ReEDSDemand))
+>>> assert any(item.name == "p1_load_2032" for item in system.get_components(ReEDSDemand))
 ```
 
 Default generator exclusions include `can-imports`, `electrolyzer`, `smr` and
@@ -153,7 +153,7 @@ If a modifier returns `Err`, inspect it immediately:
 >>> from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
 >>> result = break_generators(system, BreakGensConfig(reference_units="missing-reference.json"))
 >>> assert result.is_err()
->>> assert "Reference technologies file not found" in result.unwrap_err()
+>>> assert "Reference technologies file not found" in str(result.unwrap_err())
 ```
 
 Fix the named file/column/calendar against the [transform contract](/r2x-reeds/reference/transforms/),

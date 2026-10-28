@@ -17,9 +17,9 @@ Optional fields are `case_name`, `scenario`, `excluded_techs` and
 for year and asset semantics.
 
 Create a `DataStore` rooted at the ReEDS run directory and pass it to the plugin
-context. The parser loads its packaged `file_mapping.json`, validates
-`parser_rules.json`, reads declared sources, and asks core to construct the typed
-outputs. No Python getter or mapping registration is needed.
+context. The parser loads `file_mapping.json`, assembles tables using
+`table_mapping.json`, validates `parser_rules.json`, and asks core to construct
+the typed outputs. No Python getter or reader registration is needed.
 
 See the [parsing tutorial](/r2x-reeds/tutorials/parse-run/) for a complete,
 tested example. The lifecycle raises `PluginError` when a hook returns an error.

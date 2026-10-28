@@ -12,19 +12,21 @@ separate packages makes it possible to inspect where a value changed.
 ```mermaid
 flowchart TD
   A["ReEDS inputs and outputs"] --> P["r2x-reeds<br/>parse source semantics"]
-  C["defaults.json<br/>file_mapping.json<br/>parser_rules.json"] --> P
+  C["defaults.json<br/>file_mapping.json<br/>table_mapping.json<br/>parser_rules.json"] --> P
   P --> S["ReEDS component graph<br/>and attached time series"]
   S --> M["Optional sysmod functions<br/>scenario and unit choices"]
   M --> T["R2X translation plugin<br/>target component mappings"]
   T --> X["Target exporter<br/>native target files"]
 ```
 
-The parser's `file_mapping.json` declares physical sources, ordered table
-processing and required-input policy. Typed instructions in `parser_rules.json`
-map prepared rows to components, references, supplemental attributes and time
-series. `defaults.json` supplies domain policy such as exclusions and category
-patterns. Core executes the generic processing and output instructions; ReEDS
-keeps its domain choices in these assets. Read [configuration](/r2x-reeds/reference/configuration/)
+The parser's `file_mapping.json` declares physical sources, input availability,
+and validation of prepared tables. `table_mapping.json` assembles named tables
+with ordered generic operations and ReEDS policy data. Typed instructions in
+`parser_rules.json` map prepared rows to components, references, supplemental
+attributes and time series. `defaults.json` supplies
+domain policy such as exclusions and category patterns. Core executes generic
+table and output instructions; ReEDS keeps its domain choices in the app and
+configuration. Read [configuration](/r2x-reeds/reference/configuration/)
 before overriding an asset: a path change and a modeling change belong to
 different boundaries.
 

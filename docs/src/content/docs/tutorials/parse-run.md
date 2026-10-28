@@ -79,44 +79,39 @@ done)
 Expect seven successful downloads. These files supply FOM and technology inputs.
 Keep them with the extracted run before parsing.
 
-The archive holds its technology-upgrade set in `inputs.h5`. Some published
-parser mappings also require a CSV form. In the Python session below, derive
-that CSV from the same HDF5 values in the working copy. This keeps the two input
-representations consistent:
-
-```python doctest
->>> import csv
->>> import h5py
->>> from pathlib import Path
->>> run_path = Path("tutorial-inputs/test_Pacific")
->>> with h5py.File(run_path / "inputs_case/inputs.h5") as bundle:
-...     technologies = bundle["unitspec_upgrades"]["i"].asstr()[:].tolist()
-...
->>> assert len(technologies) == 7
->>> with (run_path / "inputs_case/unitspec_upgrades.csv").open("w", newline="") as output:
-...     writer = csv.writer(output)
-...     _ = writer.writerow(["*i"])
-...     writer.writerows([[name] for name in technologies])
-...
-```
-
-The generated CSV has the same seven technology names as the archive. Keep both
-forms beside the other input tables. Continue in this Python session when parsing.
+The archive contains the technology-upgrade set in `inputs_case/inputs.h5`.
+Its output reports are CSV files, while the packaged mapping expects an
+`outputs/outputs.h5` bundle. The following example copies the package configuration
+and maps those output reports to the CSV files in the fixture. It does not change
+the packaged mapping or the HDF5 input set.
 
 ## Parse the selected solve and weather years
 
-Continue in the same Python session used to prepare the technology CSV. Enter
-the following statements, then keep this session for the later Python sections:
+Start a Python session and keep it for the later sections:
 
 ```python doctest
+>>> import json
 >>> from pathlib import Path
+>>> from shutil import copytree
 >>> from r2x_core import DataStore, PluginContext
 >>> from r2x_reeds import ReEDSConfig, ReEDSParser, ReEDSRegion, ReEDSGenerator
 >>> run_path = Path("tutorial-inputs/test_Pacific")
+>>> config_path = Path("pacific-config")
+>>> _ = copytree(ReEDSConfig.package_config_path(), config_path)
+>>> mapping_path = config_path / "file_mapping.json"
+>>> mapping = json.loads(mapping_path.read_text())
+>>> for item in mapping:
+...     if item.get("relative_fpath") == "outputs/outputs.h5":
+...         group = item["reader"]["options"]["group_key"]
+...         item["relative_fpath"] = f"outputs/{group}.csv"
+...         item["reader"] = {"format": "csv"}
+...
+>>> _ = mapping_path.write_text(json.dumps(mapping, indent=2) + "\n")
 >>> config = ReEDSConfig(
 ...     solve_year=2032,
 ...     weather_year=2012,
 ...     case_name="Pacific-2032",
+...     config_path_override=config_path,
 ... )
 >>> store = DataStore(path=run_path)
 >>> context = PluginContext(config=config, store=store)
@@ -146,11 +141,11 @@ Continue in the same Python session:
 
 ```python doctest
 >>> from r2x_reeds import ReEDSDemand
->>> load = next(system.get_components(ReEDSDemand))
+>>> load = system.get_component(ReEDSDemand, "p1_load_2032")
 >>> profile = system.list_time_series(load)[0]
 >>> from datetime import datetime, timedelta
 >>> from numpy.testing import assert_allclose
->>> assert load.name == "p1_load"
+>>> assert load.name == "p1_load_2032"
 >>> assert profile.name == "max_active_power"
 >>> assert profile.initial_timestamp == datetime(2012, 1, 1)
 >>> assert profile.resolution == timedelta(hours=1)
@@ -158,7 +153,7 @@ Continue in the same Python session:
 >>> assert len(profile.data) == 8760
 ```
 
-Expect demand `p1_load`, series `max_active_power`,
+Expect demand `p1_load_2032`, series `max_active_power`,
 8,760 values, a start of `2012-01-01 00:00:00`, and one-hour resolution.
 The first three values are approximately `7662.1055`, `7358.9473`, `7142.1055`.
 A correct component count alone would not catch a wrong weather year or profile
@@ -227,6 +222,6 @@ Those workflows add a translator and target exporter after the parser; the
 serialized ReEDS JSON above is not either target's native format.
 
 The documentation tests execute these console assertions against the current
-source and its locked dependencies. The count/profile/reload checks apply to
+source and a compatible `r2x-core`. The count/profile/reload checks apply to
 this fixture revision and selected years. Published package versions can differ
 from current source, especially in optional input upgrades and operating-cost fields.

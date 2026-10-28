@@ -81,6 +81,6 @@ def test_enum_values_and_access_contracts(generated_api: ApiGenerator) -> None:
             assert fragments[f"{enum.__module__}.{enum.__name__}.{name}"] == "/r2x-reeds" + targets[name]
     config = (generated_api.PAGES / "reedsconfig.md").read_text()
     parser = (generated_api.PAGES / "reedsparser.md").read_text()
-    assert "@property\nprimary_solve_year(" in config
+    assert "### solve_year\n" in config
     assert "@property\nprimary_weather_year(" in config
     assert "@classmethod\nfrom_context(" in parser

@@ -213,8 +213,10 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, Excepti
                 resolution=timedelta(days=1),
             )
 
-            features = {"solve_year": config.solve_year} if config.solve_year is not None else {}
-            system.add_time_series(ts, generator, **features)
+            if config.solve_year is not None:
+                system.add_time_series(ts, generator, solve_year=config.solve_year)
+            else:
+                system.add_time_series(ts, generator)
             logger.debug("Added imports time series to generator: {}", generator.name)
 
         logger.info("Finished adding imports time series")

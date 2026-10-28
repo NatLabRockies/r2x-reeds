@@ -7,7 +7,7 @@ a minimal test data set.
 from __future__ import annotations
 
 import shutil
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -22,7 +22,7 @@ from tests.fixtures.data_fixtures import csv_file_mapping, package_file_mapping
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 if TYPE_CHECKING:
-    from r2x_core import DataStore
+    from r2x_core import DataFile, DataStore, TabularSource
 
 
 def build_parser(
@@ -77,6 +77,34 @@ def read_source(
     return source.data
 
 
+def read_table_output(
+    store: DataStore,
+    /,
+    *,
+    data_files: Sequence[DataFile],
+    output_name: str,
+    placeholders: Mapping[str, JSONValue] | None = None,
+) -> TabularSource:
+    """Decode native inputs and assemble one declared table-mapping output."""
+    from r2x_core import DataReader, TabularSource, assemble_tables
+    from r2x_core.polars_adapter import PolarsTabularBackend
+    from r2x_reeds import ReEDSConfig
+
+    sources = DataReader().read_data_files(data_files, folder_path=store.folder, placeholders=placeholders)
+    outputs = assemble_tables(
+        sources,
+        mapping_path=ReEDSConfig.package_config_path() / "table_mapping.json",
+        backend=PolarsTabularBackend(),
+        placeholders=placeholders,
+        table_names=[output_name],
+    )
+    output = outputs[output_name]
+    if not isinstance(output, TabularSource):
+        msg = f"Table output {output_name!r} is not tabular"
+        raise TypeError(msg)
+    return output
+
+
 def write_minimal_outputs_h5_from_fuel_price(csv_path: Path, h5_path: Path) -> None:
     """Create a minimal outputs.h5 containing a fuel_price group."""
     fuel_price = pl.read_csv(csv_path)
@@ -106,14 +134,25 @@ def write_fuel2tech_outputs_h5(h5_path: Path) -> None:
 
 
 def test_store_reads_explicit_csv_mapping(reeds_run_path: Path) -> None:
-    """Explicit CSV file mappings read the CSV outputs in the unpacked test archive."""
+    """CSV fuel prices remain native until the table mapping assembles parser fields."""
     parser = build_parser(reeds_run_path)
+    placeholders: Mapping[str, JSONValue] = {"solve_year_rows": [{"solve_year": 2032}]}
+    native = read_source(parser.store, "fuel_price", placeholders=placeholders)
+    native_frame = native.collect()
+    assert not native_frame.is_empty()
+    assert {"i", "r", "t", "value"}.issubset(set(native_frame.columns))
+    assert not {"technology", "region", "fuel_price"} & set(native_frame.columns)
 
-    result = read_source(parser.store, "fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
-
-    df = result.collect()
-    assert not df.is_empty()
-    assert {"technology", "region", "year", "fuel_price"}.issubset(set(df.columns))
+    output = read_table_output(
+        parser.store,
+        data_files=[parser.store["requested_solve_year_rows"], parser.store["fuel_price"]],
+        output_name="generator_fuel_price",
+        placeholders=placeholders,
+    )
+    frame = output.data.collect()
+    assert not frame.is_empty()
+    assert {"technology", "region", "year", "fuel_price"}.issubset(set(frame.columns))
+    assert frame.get_column("year").unique().to_list() == [2032]
 
 
 def test_datastore_reads_configured_h5_output_group(tmp_path: Path, reeds_run_path: Path) -> None:
@@ -129,14 +168,25 @@ def test_datastore_reads_configured_h5_output_group(tmp_path: Path, reeds_run_pa
     fuel_price_csv.unlink()
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = read_source(parser.store, "fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
-
-    frame = result.collect()
-    assert frame.select("technology", "region", "fuel_price").to_dict(as_series=False) == {
-        "technology": ["ngas"],
-        "region": ["p1"],
-        "fuel_price": [4.2],
+    placeholders: Mapping[str, JSONValue] = {"solve_year_rows": [{"solve_year": 2032}]}
+    native = read_source(parser.store, "fuel_price", placeholders=placeholders).collect()
+    assert native.select("i", "r", "t", "value").to_dict(as_series=False) == {
+        "i": ["ngas"],
+        "r": ["p1"],
+        "t": [2032],
+        "value": [4.2],
     }
+    assert not {"technology", "region", "fuel_price"} & set(native.columns)
+
+    output = read_table_output(
+        parser.store,
+        data_files=[parser.store["requested_solve_year_rows"], parser.store["fuel_price"]],
+        output_name="generator_fuel_price",
+        placeholders=placeholders,
+    )
+    assert output.data.collect().select("technology", "region", "year", "fuel_price").to_dict(
+        as_series=False
+    ) == {"technology": ["ngas"], "region": ["p1"], "year": [2032], "fuel_price": [4.2]}
 
 
 def test_store_reads_outputs_h5_instead_of_csv(tmp_path: Path, reeds_run_path: Path) -> None:
@@ -153,14 +203,28 @@ def test_store_reads_outputs_h5_instead_of_csv(tmp_path: Path, reeds_run_path: P
     fuel_price_csv.unlink()
 
     parser = build_parser(run_path, file_mapping=package_file_mapping())
-    result = read_source(parser.store, "fuel_price", placeholders={"solve_year": 2032, "weather_year": 2012})
+    placeholders: Mapping[str, JSONValue] = {"solve_year_rows": [{"solve_year": 2032}]}
+    native = read_source(parser.store, "fuel_price", placeholders=placeholders).collect()
+    assert native.select("i", "r", "t", "value").to_dict(as_series=False) == {
+        "i": ["ngas"],
+        "r": ["p1"],
+        "t": [2032],
+        "value": [4.2],
+    }
+    assert not {"technology", "region", "fuel_price"} & set(native.columns)
 
-    df = result.collect()
-    assert not df.is_empty()
-    assert {"technology", "region", "year", "fuel_price"}.issubset(set(df.columns))
-    assert df.select("technology", "region").to_dict(as_series=False) == {
+    output = read_table_output(
+        parser.store,
+        data_files=[parser.store["requested_solve_year_rows"], parser.store["fuel_price"]],
+        output_name="generator_fuel_price",
+        placeholders=placeholders,
+    )
+    frame = output.data.collect()
+    assert frame.select("technology", "region", "year", "fuel_price").to_dict(as_series=False) == {
         "technology": ["ngas"],
         "region": ["p1"],
+        "year": [2032],
+        "fuel_price": [4.2],
     }
 
 
@@ -201,9 +265,19 @@ def test_fuel_tech_map_preserves_base_and_full_technology_keys(tmp_path: Path, r
         folder_path=parser.store.folder,
         placeholders={"solve_year": 2032, "weather_year": 2012},
     )
-    result = sources["fuel_tech_map"]
-    assert isinstance(result, TabularSource)
-    assert result.data.collect().to_dict(as_series=False) == {
+    native = sources["fuel_tech_map"]
+    assert isinstance(native, TabularSource)
+    assert native.data.collect().to_dict(as_series=False) == {
+        "f": ["ngas", "coal"],
+        "i": ["gas-cc", "coal"],
+    }
+
+    output = read_table_output(
+        parser.store,
+        data_files=[fuel_map],
+        output_name="generator_fuel_map_selected",
+    )
+    assert output.data.collect().to_dict(as_series=False) == {
         "fuel_type": ["ngas", "coal"],
         "technology_base": ["gas-cc", "coal"],
         "technology_full": ["gas-cc", "coal"],
