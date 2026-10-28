@@ -282,6 +282,53 @@ def test_imports_scope_empty_join(tmp_path: Path) -> None:
     assert system.has_time_series(generator) is False
 
 
+@pytest.mark.parametrize(
+    ("hour_map", "fractions", "error_message"),
+    [
+        (
+            {
+                "time_index": ["2024-01-01T00:00:00", "2024-01-01T01:00:00"],
+                "season": ["winter", "spring"],
+            },
+            {"season": ["winter", "spring"], "value": [0.5, 0.5]},
+            "more than one representative season",
+        ),
+        (
+            {
+                "time_index": ["2024-01-01T00:00:00", "2024-01-02T00:00:00"],
+                "season": ["winter", "winter"],
+            },
+            {"season": ["winter", "spring"], "value": [0.5, 0.5]},
+            "does not include seasonal fractions for",
+        ),
+    ],
+)
+def test_imports_scope_invalid_daily_season_mapping(
+    tmp_path: Path,
+    hour_map: dict[str, list[str]],
+    fractions: dict[str, list],
+    error_message: str,
+) -> None:
+    system, generator = _build_generator()
+    hour_map_path = _write_csv(tmp_path / "hour_map.csv", hour_map)
+    szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", fractions)
+    imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "value": [1000.0]})
+
+    result = imports.add_imports(
+        system,
+        imports.ImportsConfig(
+            weather_year=2024,
+            canada_imports_fpath=imports_path,
+            canada_szn_frac_fpath=szn_frac_path,
+            hour_map_fpath=hour_map_path,
+        ),
+    )
+
+    assert result.is_err()
+    assert error_message in result.unwrap_err().lower()
+    assert system.has_time_series(generator) is False
+
+
 def test_imports_scope_exception_logs(tmp_path: Path, caplog) -> None:
     """Missing fraction values cause errors that are logged."""
     system, _ = _build_generator()
