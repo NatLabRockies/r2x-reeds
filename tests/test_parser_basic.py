@@ -22,7 +22,12 @@ if TYPE_CHECKING:
     pass
 
 
-def _build_parser(run_path: Path, *, use_degraded_capacity: bool = False):
+def _build_parser(
+    run_path: Path,
+    *,
+    use_degraded_capacity: bool = False,
+    drop_gen_capacity_threshold: float = 0.0,
+):
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
@@ -32,10 +37,34 @@ def _build_parser(run_path: Path, *, use_degraded_capacity: bool = False):
         case_name="test",
         scenario="base",
         use_degraded_capacity=use_degraded_capacity,
+        drop_gen_capacity_threshold=drop_gen_capacity_threshold,
     )
     store = DataStore.from_plugin_config(config, path=run_path)
     ctx = PluginContext(config=config, store=store)
     return ReEDSParser.from_context(ctx)
+
+
+def test_prepare_generator_datasets_drops_below_capacity_threshold(reeds_run_path: Path) -> None:
+    baseline_parser = _build_parser(reeds_run_path)
+    assert baseline_parser.on_prepare().is_ok()
+    baseline_capacities = [
+        *baseline_parser._variable_generator_df.get_column("capacity").to_list(),
+        *baseline_parser._non_variable_generator_df.get_column("capacity").to_list(),
+    ]
+    minimum_capacity = min(baseline_capacities)
+    maximum_capacity = max(baseline_capacities)
+    assert minimum_capacity < maximum_capacity
+    threshold = (minimum_capacity + maximum_capacity) / 2
+
+    parser = _build_parser(reeds_run_path, drop_gen_capacity_threshold=threshold)
+    assert parser.on_prepare().is_ok()
+    filtered_capacities = [
+        *parser._variable_generator_df.get_column("capacity").to_list(),
+        *parser._non_variable_generator_df.get_column("capacity").to_list(),
+    ]
+
+    assert len(filtered_capacities) < len(baseline_capacities)
+    assert min(filtered_capacities) >= threshold
 
 
 def _write_minimal_outputs_h5_from_fuel_price(csv_path: Path, h5_path: Path) -> None:

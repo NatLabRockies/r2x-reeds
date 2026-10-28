@@ -2452,6 +2452,18 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                     default_heat_rate,
                 )
 
+        capacity_threshold = self.config.drop_gen_capacity_threshold
+        if capacity_threshold > 0:
+            generator_count = variable_df.height + non_variable_df.height
+            variable_df = variable_df.filter(pl.col("capacity") >= capacity_threshold)
+            non_variable_df = non_variable_df.filter(pl.col("capacity") >= capacity_threshold)
+            dropped_count = generator_count - variable_df.height - non_variable_df.height
+            logger.info(
+                "Dropped {} generators below the {} MW capacity threshold",
+                dropped_count,
+                capacity_threshold,
+            )
+
         self._variable_generator_df = variable_df
         self._non_variable_generator_df = non_variable_df
 

@@ -4,14 +4,15 @@ title: Configuration Reference
 
 ## ReEDSConfig
 
-| Package field           | Type                  | Default  | Interpretation                                                 |
-| ----------------------- | --------------------- | -------- | -------------------------------------------------------------- |
-| `solve_year`            | `int` or `list[int]`  | required | Capacity/investment selection                                  |
-| `weather_year`          | `int` or `list[int]`  | required | Profile input selection                                        |
-| `case_name`             | `str` or `None`       | `None`   | Optional case label                                            |
-| `scenario`              | `str`                 | `"base"` | Scenario label                                                 |
-| `excluded_techs`        | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
-| `use_degraded_capacity` | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
+| Package field                  | Type                  | Default  | Interpretation                                                 |
+| ------------------------------ | --------------------- | -------- | -------------------------------------------------------------- |
+| `solve_year`                   | `int` or `list[int]`  | required | Capacity/investment selection                                  |
+| `weather_year`                  | `int` or `list[int]`  | required | Profile input selection                                        |
+| `case_name`                    | `str` or `None`       | `None`   | Optional case label                                            |
+| `scenario`                     | `str`                 | `"base"` | Scenario label                                                 |
+| `excluded_techs`               | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
+| `use_degraded_capacity`        | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
+| `drop_gen_capacity_threshold`  | `float`               | `0.0`    | Drop generators below this installed capacity in MW            |
 
 `primary_solve_year` and `primary_weather_year` return the first value when a list
 is supplied. The CLI tutorial uses scalar years so downstream plugins receive one
@@ -32,6 +33,7 @@ Key fields:
 - `case_name`: optional string
 - `scenario`: optional string, default `base`
 - `use_degraded_capacity`: bool, default `False`; choose degradation-adjusted `cap_deg_ivrt` instead of `cap_ivrt` for online capacity.
+- `drop_gen_capacity_threshold`: float, default `0.0`; omit generators with installed capacity strictly below this value in MW.
 - `excluded_techs`: optional list of technologies to exclude. When omitted, the list from `defaults.json` is used.
 
 Convenience properties:
