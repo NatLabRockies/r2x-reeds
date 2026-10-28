@@ -451,3 +451,8 @@ docs/node_modules/
 docs/.astro/
 docs/dist/
 docs/_build/
+
+# API pages and navigation are generated from public Python source.
+docs/src/content/docs/reference/api/
+docs/src/generated/
+docs/public/api-fragments.json

@@ -36,20 +36,20 @@ select an alternate source. A pipeline dry run cannot establish file or group
 availability. From the run root, inspect the mapped file and its configured
 reader keys:
 
-```python
-from pathlib import Path
-root = Path("tutorial-inputs/test_Pacific")  # replace for your run
-print(root.resolve())
-for name in ("meta.csv", "inputs_case", "outputs"):
-    print(name, (root / name).exists())
-print(sorted(path.name for path in (root / "outputs").glob("*")))
+```python doctest
+>>> from pathlib import Path
+>>> root = Path("tutorial-inputs/test_Pacific")  # replace for your run
+>>> assert root.is_dir()
+>>> assert all((root / name).exists() for name in ("meta.csv", "inputs_case", "outputs"))
+>>> assert list((root / "outputs").glob("*"))
 ```
 
-Pass the root containing `meta.csv`, `inputs_case/` and `outputs/` to
-`DataStore(path=run_path)` in the parser's `PluginContext`. Then compare the file mapping's path and HDF5
-`group_key`, `data_key` or `columns_key` with the run's actual report. Restore or
-regenerate the mapped report from that completed ReEDS run if it is absent or
-incomplete. Renaming an unrelated CSV or creating an empty placeholder does not
+A failed directory assertion often means the parser was pointed at `outputs/` or an extra enclosing
+folder. Pass the root containing `meta.csv`, `inputs_case/` and `outputs/` to
+`DataStore(path=run_path)` in the parser's `PluginContext`. Compare the file mapping's
+path and HDF5 `group_key`, `data_key` or `columns_key` with the run's actual report.
+Restore or regenerate the mapped report from that completed ReEDS run if it is absent
+or incomplete. Renaming an unrelated CSV or creating an empty placeholder does not
 supply the required schema.
 
 If the run provides CSV outputs, select them with a complete `file_mapping`
@@ -73,15 +73,15 @@ series. The two series need not have the same MW values.
 The mapped reader rejects an unreadable HDF5 binary, commonly an incomplete
 copy or mislabeled file. Check the actual mapped file, not only its extension:
 
-```python
-from pathlib import Path
-import h5py
-path = Path("tutorial-inputs/test_Pacific/outputs/outputs.h5")
-print(path.exists(), path.stat().st_size if path.exists() else None)
-print(h5py.is_hdf5(path))
+```python doctest
+>>> from pathlib import Path
+>>> import h5py
+>>> path = Path("tutorial-inputs/test_Pacific/inputs_case/load.h5")
+>>> assert path.is_file() and path.stat().st_size > 0
+>>> assert h5py.is_hdf5(path)
 ```
 
-`False` means the HDF5 signature is absent. Re-copy or regenerate the binary from
+This checks the fixture load binary. Replace the path with the reported failing file for your run. A false `h5py.is_hdf5` result means the HDF5 signature is absent. Re-copy or regenerate the binary from
 the source run, then require `h5py.is_hdf5(path)` to return `True` and rerun parsing.
 A valid signature alone does not prove the required groups exist. A permission
 error is a different failure: verify read access to the reported path rather than
@@ -97,21 +97,19 @@ association as well. The weather calendar still uses `config.primary_weather_yea
 the first configured weather year. To inspect the modeled years through the
 current public reader API:
 
-```python
-from pathlib import Path
-from pydantic import TypeAdapter
-from r2x_core import DataFile, DataReader
-from r2x_reeds import ReEDSConfig
-
-run_path = Path("tutorial-inputs/test_Pacific")
-config = ReEDSConfig(solve_year=2032, weather_year=2012)
-files = TypeAdapter(list[DataFile]).validate_json(config.fmap_path.read_bytes())
-modeled_years_file = next(item for item in files if item.name == "modeled_years")
-source = DataReader().read_data_files(
-    [modeled_years_file], folder_path=run_path
-)["modeled_years"]
-print(list(source.iter_rows()))
-print(config.solve_year, config.primary_weather_year)
+```python doctest
+>>> from pathlib import Path
+>>> from pydantic import TypeAdapter
+>>> from r2x_core import DataFile, DataReader
+>>> from r2x_reeds import ReEDSConfig
+>>> run_path = Path("tutorial-inputs/test_Pacific")
+>>> config = ReEDSConfig(solve_year=2032, weather_year=2012)
+>>> files = TypeAdapter(list[DataFile]).validate_json(config.fmap_path.read_bytes())
+>>> modeled_years_file = next(item for item in files if item.name == "modeled_years")
+>>> source = DataReader().read_data_files([modeled_years_file], folder_path=run_path)["modeled_years"]
+>>> assert list(source.iter_rows())
+>>> assert config.primary_solve_year == 2032
+>>> assert config.primary_weather_year == 2012
 ```
 
 Choose a solve year shown in that data. The configured `modeled_years` constraint
@@ -133,10 +131,11 @@ calendars merely to match that example.
 Success may be a supported no-op when optional files are omitted. After parsing,
 check the actual components rather than relying on the pipeline exit code:
 
-```python
-from r2x_reeds import ReEDSGenerator, ReEDSDemand
-print(sorted({item.technology for item in system.get_components(ReEDSGenerator)}))
-print([item.name for item in system.get_components(ReEDSDemand)])
+```python doctest
+>>> from r2x_reeds import ReEDSGenerator, ReEDSDemand
+>>> technologies = {item.technology for item in system.get_components(ReEDSGenerator)}
+>>> assert "gas-cc" in technologies
+>>> assert any(item.name == "p1_load" for item in system.get_components(ReEDSDemand))
 ```
 
 Default generator exclusions include `can-imports`, `electrolyzer`, `smr` and
@@ -150,9 +149,11 @@ need your real inputs; the public Pacific fixture does not demonstrate every bra
 
 If a modifier returns `Err`, inspect it immediately:
 
-```python
-if result.is_err():
-    raise RuntimeError(str(result.unwrap_err()))
+```python doctest
+>>> from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
+>>> result = break_generators(system, BreakGensConfig(reference_units="missing-reference.json"))
+>>> assert result.is_err()
+>>> assert "Reference technologies file not found" in result.unwrap_err()
 ```
 
 Fix the named file/column/calendar against the [transform contract](/r2x-reeds/reference/transforms/),
@@ -163,10 +164,12 @@ failed modifications and can double-apply later changes.
 
 Inspect a matched technology before and after your modifiers:
 
-```python
-from r2x_reeds import ReEDSGenerator
-print([(g.name, g.capacity, g.startup_cost, g.fom_cost)
-       for g in system.get_components(ReEDSGenerator) if g.technology == "gas-cc"][:5])
+```python doctest
+>>> from r2x_reeds import ReEDSGenerator
+>>> matched = [g for g in system.get_components(ReEDSGenerator) if g.technology == "gas-cc"]
+>>> assert matched
+>>> assert all(g.capacity > 0 for g in matched)
+>>> assert all(g.fom_cost is not None for g in matched)
 ```
 
 Startup cost stays a **$/MW coefficient** through defaults and splitting. If a
@@ -176,11 +179,11 @@ final unit capacity. Verify the coefficient and reconcile removed MW when splitt
 small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#1-add-operating-defaults-without-rescaling-startup-coefficients)
 explains the unit boundary and override behavior.
 
-A missing `fom_cost` is a separate known mapping gap tracked in
-[issue 118](https://github.com/NatLabRockies/r2x-reeds/issues/118), not evidence that
-startup defaults failed. The current mapping does not read `cost_fom`. Do not treat
-`None` as zero or assume a downstream placeholder is calibrated; document the target
-adapter's treatment and verify it before interpreting retirement rankings.
+Current source reads solve-year fixed O&M from `cost_fom` and the operating-cost
+input tables. Missing required data raises a dataset error. Published older
+versions can differ, so record the installed package and source revision.
+Do not treat a missing `fom_cost` as zero. Check mapped reports, selected year and
+[configuration](/r2x-reeds/reference/configuration/) before interpreting retirement rankings.
 
 ## Reload fails, or a loaded component has no expected profile
 

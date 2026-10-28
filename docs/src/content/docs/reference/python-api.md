@@ -2,6 +2,12 @@
 title: Python API
 ---
 
+This reference describes the public Python contracts. Expand Python API in the
+left navigation for each exported object, configuration model and modifier.
+Member links open exact fields and methods. On smaller screens, open the Menu
+button to access the same tree. Generated pages link to the source revision used
+for the build and distinguish declared fields from inherited contracts.
+
 ## Parser and configuration
 
 Import `ReEDSConfig` and `ReEDSParser` from `r2x_reeds`. The configuration
@@ -15,24 +21,11 @@ context. The parser loads its packaged `file_mapping.json`, validates
 `parser_rules.json`, reads declared sources, and asks core to construct the typed
 outputs. No Python getter or mapping registration is needed.
 
-```python
-from pathlib import Path
-
-from r2x_core import DataStore, PluginContext
-from r2x_reeds import ReEDSConfig, ReEDSParser
-
-run_path = Path("path/to/reeds-run")
-config = ReEDSConfig(solve_year=2030, weather_year=2012)
-context = PluginContext(config=config, store=DataStore(path=run_path))
-result = ReEDSParser.from_context(context).run()
-if result.system is None:
-    raise RuntimeError("Parser returned no system")
-system = result.system
-```
-
-The lifecycle raises `PluginError` when a hook returns an error. Its underlying
-exception is chained as the cause. Missing required inputs, malformed tables,
-invalid references, and unavailable requested years remain input failures.
+See the [parsing tutorial](/r2x-reeds/tutorials/parse-run/) for a complete,
+tested example. The lifecycle raises `PluginError` when a hook returns an error.
+Its underlying exception is chained as the cause. Missing required inputs,
+malformed tables, invalid references, and unavailable requested years remain
+input failures.
 
 The core guides describe [ordered data-file processing](https://natlabrockies.github.io/r2x-core/how-tos/configure-data-files/)
 and [typed parser construction](https://natlabrockies.github.io/r2x-core/how-tos/build-parsers/).
@@ -58,16 +51,6 @@ Modifiers intentionally operate on an already-built `System`. Their functions
 return `Result[System, Exception]`; expected failures retain their exception
 values.
 
-```python
-from rust_ok import Err
-from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
-
-result = break_generators(system, BreakGensConfig(drop_capacity_threshold=5))
-if isinstance(result, Err):
-    raise result.error
-system = result.value
-```
-
 See the [transform reference](/r2x-reeds/reference/transforms/) and
 [sysmod modules](https://github.com/NatLabRockies/r2x-reeds/tree/main/src/r2x_reeds/sysmod)
 for supported modifiers.
@@ -82,8 +65,31 @@ version detection and step behavior.
 
 ## Saving and inspection
 
-`System.to_json(path, overwrite=False, ...)` writes a component graph and its
-time-series storage. Keep the JSON and companion time-series directory
- together. `System.from_json(path)` reconstructs the graph when its model classes
-and companion storage are available. Use the [saved-system guide](/r2x-reeds/how-to/inspect-system/)
-for inspection examples.
+`System.to_json(fname, overwrite=False, indent=None, data=None)` writes an
+Infrasys component graph and companion time-series storage when a path is given.
+Existing files raise `FileExistsError` unless overwrite is enabled.
+`System.from_json(path)` reconstructs the graph; recorded model classes must be
+importable and companion storage must remain available.
+`system.get_components(ComponentType)` iterates components of that type;
+`system.get_time_series(component, name="...")` selects an attached series.
+An absent profile or incompatible serialization is a loading/query error, not a
+signal to fabricate replacement data.
+
+Use the [saved-system guide](/r2x-reeds/how-to/inspect-system/) for executed Python
+and CLI queries, and [Infrasys source/API](https://github.com/NatLabRockies/infrasys/blob/main/src/infrasys/system.py)
+for additional storage options.
+
+## Public member catalog
+
+Start with [ReEDSConfig](/r2x-reeds/reference/api/reedsconfig/) and
+[ReEDSParser](/r2x-reeds/reference/api/reedsparser/). Inspect
+[ReEDSGenerator](/r2x-reeds/reference/api/reedsgenerator/),
+[ReEDSDemand](/r2x-reeds/reference/api/reedsdemand/) and
+[ReEDSRegion](/r2x-reeds/reference/api/reedsregion/) for source-system fields.
+The navigation also includes all eight modifier functions and their config models,
+[ReEDSUpgrader](/r2x-reeds/reference/api/reedsupgrader/) and public enums/types.
+
+Use [Getting Started](/r2x-reeds/getting-started/system-modifiers/) to choose a
+modifier. The [transform reference](/r2x-reeds/reference/transforms/) defines its
+configuration contract, while [PCM handoff](/r2x-reeds/how-to/pcm-handoff/) explains
+how to apply and check it.

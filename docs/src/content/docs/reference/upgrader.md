@@ -15,8 +15,8 @@ strategy=None, upgrader_context=None, upgrade_type=UpgradeType.FILE)` returns
 upgrade type and version eligibility, and stops on failure. Check the result
 before parsing or reusing the directory.
 
-The parser's [implementation](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/parser.py)
-controls when upgrade hooks run. Inspect [the upgrader](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/upgrader/data_upgrader.py)
-and [registered steps](https://github.com/NatLabRockies/r2x-reeds/blob/ebb69534188c7b94933c36a534d84a651114e2f9/src/r2x_reeds/upgrader/upgrade_steps.py)
+The parser's [implementation](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/parser.py)
+controls when upgrade hooks run. Inspect [the upgrader](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/upgrader/data_upgrader.py)
+and [registered steps](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/upgrader/upgrade_steps.py)
 for the exact input changes. Successful upgrades do not replace validation of
 required datasets, solve years or weather years.

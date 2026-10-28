@@ -22,9 +22,12 @@ validates requested years against mapped data. Load profiles must cover every
 requested solve/weather-year pair. The weather calendar uses the first
 configured weather year and its first 8,760 hourly timestamps.
 
-The run directory is supplied separately to `DataStore(path=run_path)`. It must
-contain the ReEDS run inputs, such as `meta.csv`, `inputs_case/` and `outputs/`.
-The parser loads its file mapping during the prepare lifecycle phase.
+The CLI's `path` locates the data store. It is not a `ReEDSConfig` field in
+Python. Pass it to `DataStore(path=run_path)`. The directory must contain the
+ReEDS run inputs, such as `meta.csv`, `inputs_case/` and `outputs/`. The parser
+loads its file mapping during preparation. See the
+[parsing tutorial](/r2x-reeds/tutorials/parse-run/) for context construction and
+the [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/main/src/r2x_reeds/plugin_config.py).
 
 ## Configuration assets
 

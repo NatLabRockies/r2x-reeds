@@ -60,12 +60,12 @@ r2x read outputs/reeds-system.zip --zip
 
 The reader opens a Python session with the system bound to `sys`. For example:
 
-```python
-from r2x_reeds import ReEDSRegion
-print(len(list(sys.get_components(ReEDSRegion))))
+```python doctest
+>>> from r2x_reeds import ReEDSRegion
+>>> assert len(list(sys.get_components(ReEDSRegion))) == 11
 ```
 
-Compare the positive count with the input regions. Exit the session when finished.
+The assertion verifies the Pacific fixture region count. For your own run, compare it with the input regions. Exit the session when finished.
 
 ## Add modifiers or a translation target
 

@@ -6,10 +6,7 @@ Use Python **3.11–3.13** (`>=3.11,<3.14`). On macOS/Linux, create an empty wor
 and virtual environment with an available supported interpreter:
 
 ```bash
-mkdir reeds-example
-cd reeds-example
-python3.12 -m venv .venv
-source .venv/bin/activate
+mkdir -p reeds-example && cd reeds-example && python3.12 -m venv .venv && source .venv/bin/activate
 ```
 
 On Windows, activate the environment with `.venv\Scripts\Activate.ps1` in PowerShell.
