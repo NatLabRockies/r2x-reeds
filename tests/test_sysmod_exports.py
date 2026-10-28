@@ -273,6 +273,24 @@ def test_exports_reject_negative_annual_energy(tmp_path: Path) -> None:
     assert "cannot be negative" in result.unwrap_err()
 
 
+def test_exports_validation_error_does_not_partially_update_demands(tmp_path: Path) -> None:
+    system, west_demand, east_demand = _build_system()
+    west_before = system.get_time_series(west_demand, name="max_active_power").data.copy()
+    east_before = system.get_time_series(east_demand, name="max_active_power").data.copy()
+    inputs = _write_inputs(tmp_path)
+    inputs["canada_exports_fpath"] = _write_csv(
+        tmp_path / "can_exports_invalid_east.csv",
+        {"r": ["west", "east"], "2040": [2000.0, -1.0]},
+    )
+
+    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+
+    assert result.is_err()
+    assert "Export energy for region east cannot be negative" in result.unwrap_err()
+    assert system.get_time_series(west_demand, name="max_active_power").data.tolist() == west_before.tolist()
+    assert system.get_time_series(east_demand, name="max_active_power").data.tolist() == east_before.tolist()
+
+
 def test_exports_skip_when_required_files_are_missing(caplog) -> None:
     system, west_demand, _ = _build_system()
 

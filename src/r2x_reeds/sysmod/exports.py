@@ -174,6 +174,7 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
                 raise ValueError(f"Multiple demand components found for region {region_name}")
             demands_by_region[region_name] = demand
 
+        staged_updates: list[tuple[ReEDSDemand, SingleTimeSeries]] = []
         for export_row in annual_exports.iter_rows(named=True):
             region_name = export_row["r"]
             demand = demands_by_region.get(region_name)
@@ -205,9 +206,13 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
                 initial_timestamp=time_series.initial_timestamp,
                 resolution=time_series.resolution,
             )
-            system.remove_time_series(demand, name=time_series.name)
+            staged_updates.append((demand, updated_time_series))
+
+        for demand, updated_time_series in staged_updates:
+            time_series_name = updated_time_series.name
+            system.remove_time_series(demand, name=time_series_name)
             system.add_time_series(updated_time_series, demand)
-            logger.debug("Added Canadian export demand to region {}", region_name)
+            logger.debug("Added Canadian export demand to region {}", demand.region.name)
     except Exception as error:
         logger.error("Error in exports plugin: {}", error)
         return Err(str(error))
