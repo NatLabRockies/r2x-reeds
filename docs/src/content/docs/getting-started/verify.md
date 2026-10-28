@@ -17,7 +17,7 @@ These checks need no ReEDS data and do not change files:
 >>> assert version("r2x-reeds") == __version__
 >>> assert ReEDSParser.__name__ == "ReEDSParser"
 >>> config = ReEDSConfig(solve_year=2032, weather_year=2012)
->>> assert config.primary_solve_year == 2032
+>>> assert config.solve_year == 2032
 >>> assert config.primary_weather_year == 2012
 ```
 

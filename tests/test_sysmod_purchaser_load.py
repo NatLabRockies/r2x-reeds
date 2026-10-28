@@ -16,7 +16,7 @@ from r2x_reeds.models.components import (
 )
 from r2x_reeds.sysmod import purchaser_load
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system() -> tuple[System, ReEDSRegion, ReEDSRegion]:
@@ -166,23 +166,67 @@ def test_purchaser_load_scope_full_flow(tmp_path: Path) -> None:
         loadsite_op_fpath=loadsite_op_path,
     )
 
-    electrolyzer_demand = system.get_component(ReEDSElectrolyzerDemand, "p4_electrolyzer_demand")
+    electrolyzer_demand = system.get_component(ReEDSElectrolyzerDemand, "p4_electrolyzer_demand_2032")
     assert electrolyzer_demand.capacity == pytest.approx(120.0)
+    assert electrolyzer_demand.solve_year == 2032
     assert electrolyzer_demand.electricity_efficiency == pytest.approx(1.25)
 
-    data_center_p4 = system.get_component(ReEDSDataCenterDemand, "p4_data_center_demand")
-    data_center_p5 = system.get_component(ReEDSDataCenterDemand, "p5_data_center_demand")
+    data_center_p4 = system.get_component(ReEDSDataCenterDemand, "p4_data_center_demand_2032")
+    data_center_p5 = system.get_component(ReEDSDataCenterDemand, "p5_data_center_demand_2032")
     assert data_center_p4.capacity == pytest.approx(500.0)
     assert data_center_p5.capacity == pytest.approx(300.0)
 
-    electrolyzer_ts = system.get_time_series(electrolyzer_demand).data
+    electrolyzer_ts = system.get_time_series(electrolyzer_demand, solve_year=2032).data
     # Profile [50, 40, 30] scaled so annual total equals 360.
     np.testing.assert_allclose(electrolyzer_ts, np.array([150.0, 120.0, 90.0]), rtol=1e-5)
 
-    p4_ts = system.get_time_series(data_center_p4).data
-    p5_ts = system.get_time_series(data_center_p5).data
+    p4_ts = system.get_time_series(data_center_p4, solve_year=2032).data
+    p5_ts = system.get_time_series(data_center_p5, solve_year=2032).data
     np.testing.assert_allclose(p4_ts, np.array([500.0, 500.0, 500.0]), rtol=1e-5)
     np.testing.assert_allclose(p5_ts, np.array([300.0, 300.0, 300.0]), rtol=1e-5)
+    assert system.list_time_series_keys(electrolyzer_demand)[0].features == {"solve_year": 2032}
+    assert system.list_time_series_keys(data_center_p4)[0].features == {"solve_year": 2032}
+
+
+def test_purchaser_load_attaches_selected_year_profile_only_to_matching_owner(tmp_path: Path) -> None:
+    system, region, _ = _build_system()
+    demands = {
+        year: ReEDSElectrolyzerDemand(
+            name=f"p4_electrolyzer_demand_{year}",
+            region=region,
+            technology="electrolyzer",
+            capacity=100.0,
+            electricity_efficiency=1.0,
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    for demand in demands.values():
+        system.add_component(demand)
+
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1, 2], "h": ["h1", "h2"]})
+    profile_path = _write_csv(
+        tmp_path / "prod_load.csv",
+        {
+            "i": ["electrolyzer", "electrolyzer", "electrolyzer", "electrolyzer"],
+            "r": ["p4"] * 4,
+            "allh": ["h1", "h2", "h1", "h2"],
+            "t": [2032, 2032, 2035, 2035],
+            "Value": [10.0, 20.0, 100.0, 200.0],
+        },
+    )
+
+    _run_modifier(
+        system,
+        solve_year=2032,
+        weather_year=2012,
+        hour_map_myr_fpath=hour_map_path,
+        hydrogen_production_load_fpath=profile_path,
+    )
+
+    assert system.get_time_series(demands[2032], solve_year=2032).data.tolist() == [10.0, 20.0]
+    assert system.has_time_series(demands[2035]) is False
+    assert system.list_time_series_keys(demands[2032])[0].features == {"solve_year": 2032}
 
 
 def test_purchaser_load_creates_smr_purchasers_with_profiles(tmp_path: Path) -> None:
@@ -240,16 +284,20 @@ def test_purchaser_load_creates_smr_purchasers_with_profiles(tmp_path: Path) -> 
         hydrogen_production_annual_load_fpath=hydrogen_production_annual_load_path,
     )
 
-    smr = system.get_component(ReEDSSteamMethaneReformingDemand, "p4_smr_demand")
-    smr_ccs = system.get_component(ReEDSSteamMethaneReformingDemand, "p4_smr_ccs_demand")
+    smr = system.get_component(ReEDSSteamMethaneReformingDemand, "p4_smr_demand_2032")
+    smr_ccs = system.get_component(ReEDSSteamMethaneReformingDemand, "p4_smr_ccs_demand_2032")
     assert smr.technology == "smr"
     assert smr.capacity == pytest.approx(100.0)
     assert smr.electricity_efficiency == pytest.approx(0.88)
     assert smr_ccs.technology == "smr_ccs"
     assert smr_ccs.capacity == pytest.approx(25.0)
     assert smr_ccs.electricity_efficiency == pytest.approx(1.9)
-    np.testing.assert_allclose(system.get_time_series(smr).data, np.array([20.0, 40.0, 60.0]))
-    np.testing.assert_allclose(system.get_time_series(smr_ccs).data, np.array([10.0, 10.0, 20.0]))
+    np.testing.assert_allclose(
+        system.get_time_series(smr, solve_year=2032).data, np.array([20.0, 40.0, 60.0])
+    )
+    np.testing.assert_allclose(
+        system.get_time_series(smr_ccs, solve_year=2032).data, np.array([10.0, 10.0, 20.0])
+    )
 
 
 def test_purchaser_load_scope_missing_hour_map(tmp_path: Path, caplog) -> None:
@@ -275,11 +323,12 @@ def test_purchaser_load_skips_electrolyzer_creation_when_existing(tmp_path: Path
     system, p4, _ = _build_system()
 
     existing = ReEDSElectrolyzerDemand(
-        name="p4_electrolyzer_demand",
+        name="p4_electrolyzer_demand_2032",
         region=p4,
         technology="electrolyzer",
         capacity=200.0,
         electricity_efficiency=1.0,
+        solve_year=2032,
     )
     system.add_component(existing)
 
@@ -321,11 +370,11 @@ def test_purchaser_load_skips_electrolyzer_creation_when_existing(tmp_path: Path
 
     electrolyzers = list(system.get_components(ReEDSElectrolyzerDemand))
     assert len(electrolyzers) == 1
-    assert electrolyzers[0].name == "p4_electrolyzer_demand"
+    assert electrolyzers[0].name == "p4_electrolyzer_demand_2032"
     # Pre-existing capacity must be unchanged (cap.csv row was skipped).
     assert electrolyzers[0].capacity == pytest.approx(200.0)
 
-    ts = system.get_time_series(electrolyzers[0]).data
+    ts = system.get_time_series(electrolyzers[0], solve_year=2032).data
     np.testing.assert_allclose(ts, np.array([10.0, 20.0, 30.0]), rtol=1e-5)
 
 
@@ -339,11 +388,12 @@ def test_purchaser_load_creates_missing_region_when_other_exists(tmp_path: Path)
     system, p4, _ = _build_system()
 
     existing_p4 = ReEDSElectrolyzerDemand(
-        name="p4_electrolyzer_demand",
+        name="p4_electrolyzer_demand_2032",
         region=p4,
         technology="electrolyzer",
         capacity=200.0,
         electricity_efficiency=1.0,
+        solve_year=2032,
     )
     system.add_component(existing_p4)
 
@@ -377,8 +427,8 @@ def test_purchaser_load_creates_missing_region_when_other_exists(tmp_path: Path)
     assert len(electrolyzers) == 2, "Both p4 and p5 demand components should exist"
 
     # Pre-existing p4 component must be unchanged.
-    assert electrolyzers["p4_electrolyzer_demand"].capacity == pytest.approx(200.0)
+    assert electrolyzers["p4_electrolyzer_demand_2032"].capacity == pytest.approx(200.0)
 
     # New p5 component must have been created from cap.csv.
-    assert "p5_electrolyzer_demand" in electrolyzers
-    assert electrolyzers["p5_electrolyzer_demand"].capacity == pytest.approx(80.0)
+    assert "p5_electrolyzer_demand_2032" in electrolyzers
+    assert electrolyzers["p5_electrolyzer_demand_2032"].capacity == pytest.approx(80.0)

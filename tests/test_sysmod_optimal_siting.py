@@ -2,21 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import polars as pl
 import pytest
 from infrasys import SingleTimeSeries, System
-from rust_ok import Err, Ok
 
 from r2x_reeds.models.components import ReEDSDemand, ReEDSRegion
 from r2x_reeds.sysmod import optimal_siting
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
-def _build_system_with_loads() -> tuple[System, dict[str, ReEDSDemand], np.ndarray]:
+def _build_system_with_loads(solve_year: int = 2032) -> tuple[System, dict[str, ReEDSDemand], np.ndarray]:
     system = System(name="test_optimal_siting")
     base_profile = np.array([100.0, 110.0, 120.0], dtype=np.float64)
 
@@ -24,7 +22,12 @@ def _build_system_with_loads() -> tuple[System, dict[str, ReEDSDemand], np.ndarr
     for region_name in ("p1", "p4", "p5"):
         region = ReEDSRegion(name=region_name)
         system.add_component(region)
-        demand = ReEDSDemand(name=f"{region_name}_load", region=region, max_active_power=200.0)
+        demand = ReEDSDemand(
+            name=f"{region_name}_load_{solve_year}",
+            region=region,
+            max_active_power=200.0,
+            solve_year=solve_year,
+        )
         system.add_component(demand)
 
         ts = SingleTimeSeries.from_array(
@@ -33,7 +36,7 @@ def _build_system_with_loads() -> tuple[System, dict[str, ReEDSDemand], np.ndarr
             initial_timestamp=datetime(2012, 1, 1),
             resolution=timedelta(hours=1),
         )
-        system.add_time_series(ts, demand)
+        system.add_time_series(ts, demand, solve_year=solve_year, weather_year=2012)
         demands[region_name] = demand
 
     return system, demands, base_profile
@@ -48,6 +51,60 @@ def _run_optimal_siting(system: System, **kwargs) -> System:
     result = optimal_siting.add_optimal_siting(system, optimal_siting.OptimalSitingConfig(**kwargs))
     assert result.is_ok()
     return result.unwrap()
+
+
+def test_optimal_siting_scopes_yearless_inputs_to_selected_demands(tmp_path: Path) -> None:
+    system = System(name="yearless_optimal_siting")
+    region = ReEDSRegion(name="p1")
+    system.add_component(region)
+    demands = {
+        year: ReEDSDemand(
+            name=f"p1_load_{year}",
+            region=region,
+            max_active_power=100.0,
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    for year, demand in demands.items():
+        system.add_component(demand)
+        series = SingleTimeSeries.from_array(
+            data=np.array([10.0, 20.0]),
+            name="max_active_power",
+            initial_timestamp=datetime(2012, 1, 1),
+            resolution=timedelta(hours=1),
+        )
+        system.add_time_series(series, demand, solve_year=year, weather_year=2012)
+
+    loadsite_path = _write_csv(
+        tmp_path / "loadsite_op.csv",
+        {"r": ["p1", "p1"], "allh": ["h1", "h2"], "Value": [1.0, 2.0]},
+    )
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1, 2], "h": ["h1", "h2"]})
+
+    _run_optimal_siting(
+        system,
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
+        solve_year=2032,
+    )
+
+    np.testing.assert_array_equal(
+        system.get_time_series(demands[2032], name="max_active_power", solve_year=2032).data,
+        np.array([11.0, 22.0]),
+    )
+    np.testing.assert_array_equal(
+        system.get_time_series(demands[2035], name="max_active_power", solve_year=2035).data,
+        np.array([10.0, 20.0]),
+    )
+    assert system.list_time_series_keys(demands[2032])[0].features == {
+        "solve_year": 2032,
+        "weather_year": 2012,
+    }
+    assert system.list_time_series_keys(demands[2035])[0].features == {
+        "solve_year": 2035,
+        "weather_year": 2012,
+    }
 
 
 def test_optimal_siting_applies_increments_with_solve_year_filter(tmp_path: Path) -> None:
@@ -77,9 +134,9 @@ def test_optimal_siting_applies_increments_with_solve_year_filter(tmp_path: Path
         solve_year=2032,
     )
 
-    p4_profile = system.get_time_series(demands["p4"]).data
-    p5_profile = system.get_time_series(demands["p5"]).data
-    p1_profile = system.get_time_series(demands["p1"]).data
+    p4_profile = system.get_time_series(demands["p4"], solve_year=2032).data
+    p5_profile = system.get_time_series(demands["p5"], solve_year=2032).data
+    p1_profile = system.get_time_series(demands["p1"], solve_year=2032).data
 
     np.testing.assert_allclose(p4_profile, base_profile + 500.0, atol=1e-6)
     np.testing.assert_allclose(p5_profile, base_profile + 300.0, atol=1e-6)
@@ -91,8 +148,26 @@ def test_optimal_siting_skips_when_paths_missing(caplog) -> None:
 
     _run_optimal_siting(system)
 
-    np.testing.assert_allclose(system.get_time_series(demands["p4"]).data, base_profile, atol=1e-6)
+    np.testing.assert_allclose(
+        system.get_time_series(demands["p4"], solve_year=2032).data, base_profile, atol=1e-6
+    )
     assert "Missing loadsite_op_fpath or hour_map_myr_fpath" in caplog.text
+
+
+def test_optimal_siting_returns_missing_configured_file_error(tmp_path: Path) -> None:
+    system, _, _ = _build_system_with_loads()
+
+    result = optimal_siting.add_optimal_siting(
+        system,
+        optimal_siting.OptimalSitingConfig(
+            loadsite_op_fpath=tmp_path / "missing-loadsite.csv",
+            hour_map_myr_fpath=tmp_path / "missing-hour-map.csv",
+        ),
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), FileNotFoundError)
+    assert str(result.unwrap_err()).endswith("missing-loadsite.csv")
 
 
 def test_optimal_siting_skips_load_without_time_series(tmp_path: Path) -> None:
@@ -131,33 +206,13 @@ def test_optimal_siting_skips_load_without_time_series(tmp_path: Path) -> None:
     assert system.has_time_series(demand) is False
 
 
-def test_optimal_siting_returns_err_when_expand_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_optimal_siting_returns_err_for_duplicate_region_hour_keys(tmp_path: Path) -> None:
     system, _, _ = _build_system_with_loads()
-
     loadsite_path = _write_csv(
         tmp_path / "loadsite_op.csv",
-        {
-            "r": ["p4"],
-            "allh": ["h1"],
-            "t": [2032],
-            "Value": [1.0],
-        },
+        {"r": ["p4", "p4"], "allh": ["h1", "h1"], "t": [2032, 2032], "Value": [1.0, 2.0]},
     )
-    hour_map_path = _write_csv(
-        tmp_path / "hmap_myr.csv",
-        {
-            "yearhour": [1],
-            "h": ["h1"],
-        },
-    )
-
-    def _boom_expand(loadsite: pl.DataFrame, hour_map: pl.DataFrame):
-        del loadsite, hour_map
-        return Err("failed to expand")
-
-    monkeypatch.setattr(optimal_siting, "expand_loadsite_hourly", _boom_expand)
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1], "h": ["h1"]})
 
     result = optimal_siting.add_optimal_siting(
         system,
@@ -169,48 +224,39 @@ def test_optimal_siting_returns_err_when_expand_fails(
     )
 
     assert result.is_err()
-    assert "failed to expand" in str(result.unwrap_err())
+    assert isinstance(result.unwrap_err(), ValueError)
+    assert "duplicate solve-year/region/hour-period keys" in str(result.unwrap_err())
 
 
-def test_optimal_siting_handles_exception_from_data_store(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_optimal_siting_returns_original_error_for_malformed_csv(tmp_path: Path) -> None:
     system, _, _ = _build_system_with_loads()
-
-    def _raise_load_file(*args: Any, **kwargs: Any) -> None:
-        del args, kwargs
-        raise RuntimeError("store exploded")
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _raise_load_file)
+    loadsite_path = _write_csv(tmp_path / "loadsite_op.csv", {"unexpected": [1]})
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1], "h": ["h1"]})
 
     result = optimal_siting.add_optimal_siting(
         system,
         optimal_siting.OptimalSitingConfig(
-            loadsite_op_fpath="fake.csv",
-            hour_map_myr_fpath="fake2.csv",
+            loadsite_op_fpath=loadsite_path,
+            hour_map_myr_fpath=hour_map_path,
             solve_year=2032,
         ),
     )
 
     assert result.is_err()
-    assert "store exploded" in str(result.unwrap_err())
+    assert isinstance(result.unwrap_err(), pl.exceptions.PolarsError)
 
 
-def test_load_and_prepare_frames_handles_lazy_frames(monkeypatch: pytest.MonkeyPatch) -> None:
-    loadsite_df = pl.DataFrame({"r": ["p4"], "allh": ["h1"], "t": [2032], "Value": [10.0]})
-    hour_map_df = pl.DataFrame({"yearhour": [1], "h": ["h1"]})
-
-    calls = [loadsite_df.lazy(), hour_map_df.lazy()]
-
-    def _mock_load_file(*args: Any, **kwargs: Any) -> pl.LazyFrame:
-        del args, kwargs
-        return calls.pop(0)
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _mock_load_file)
-
+def test_load_and_prepare_frames_reads_csv_sources(tmp_path: Path) -> None:
+    loadsite_path = _write_csv(
+        tmp_path / "load.csv", {"r": ["p4"], "allh": ["h1"], "t": [2032], "Value": [10.0]}
+    )
+    hour_map_path = _write_csv(tmp_path / "hmap.csv", {"yearhour": [1], "h": ["h1"]})
     config = optimal_siting.OptimalSitingConfig(
-        loadsite_op_fpath="load.csv",
-        hour_map_myr_fpath="hmap.csv",
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
         solve_year=[2032],
     )
+
     prepared = optimal_siting._load_and_prepare_frames(config)
 
     assert prepared is not None
@@ -219,55 +265,37 @@ def test_load_and_prepare_frames_handles_lazy_frames(monkeypatch: pytest.MonkeyP
     assert hour_map.columns == ["sequential_hour", "hour_period"]
 
 
-def test_load_and_prepare_frames_returns_none_when_filtered_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    loadsite_df = pl.DataFrame({"r": ["p4"], "allh": ["h1"], "t": [2040], "Value": [10.0]})
-    hour_map_df = pl.DataFrame({"yearhour": [1], "h": ["h1"]})
-
-    calls = [loadsite_df, hour_map_df]
-
-    def _mock_load_file(*args: Any, **kwargs: Any) -> pl.DataFrame:
-        del args, kwargs
-        return calls.pop(0)
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _mock_load_file)
-
+def test_load_and_prepare_frames_returns_none_when_filtered_empty(tmp_path: Path) -> None:
+    loadsite_path = _write_csv(
+        tmp_path / "load.csv", {"r": ["p4"], "allh": ["h1"], "t": [2040], "Value": [10.0]}
+    )
+    hour_map_path = _write_csv(tmp_path / "hmap.csv", {"yearhour": [1], "h": ["h1"]})
     config = optimal_siting.OptimalSitingConfig(
-        loadsite_op_fpath="load.csv",
-        hour_map_myr_fpath="hmap.csv",
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
         solve_year=2032,
     )
+
     assert optimal_siting._load_and_prepare_frames(config) is None
 
 
-def test_load_and_prepare_frames_returns_none_on_empty_frames(monkeypatch: pytest.MonkeyPatch) -> None:
-    empty = pl.DataFrame({"r": [], "allh": [], "t": [], "Value": []}, schema_overrides={"r": pl.String})
-    hour_map_df = pl.DataFrame({"yearhour": [1], "h": ["h1"]})
-
-    calls = [empty, hour_map_df]
-
-    def _mock_load_file(*args: Any, **kwargs: Any) -> pl.DataFrame:
-        del args, kwargs
-        return calls.pop(0)
-
-    monkeypatch.setattr(optimal_siting.DataStore, "load_file", _mock_load_file)
-
+def test_load_and_prepare_frames_returns_none_on_empty_file(tmp_path: Path) -> None:
+    loadsite_path = tmp_path / "load.csv"
+    loadsite_path.write_text("r,allh,t,Value\\n", encoding="utf-8")
+    hour_map_path = _write_csv(tmp_path / "hmap.csv", {"yearhour": [1], "h": ["h1"]})
     config = optimal_siting.OptimalSitingConfig(
-        loadsite_op_fpath="load.csv",
-        hour_map_myr_fpath="hmap.csv",
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
     )
+
     assert optimal_siting._load_and_prepare_frames(config) is None
 
 
-def test_build_region_increments_empty_expand(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _mock_expand(loadsite: pl.DataFrame, hour_map: pl.DataFrame):
-        del loadsite, hour_map
-        return Ok(pl.DataFrame({"region": [], "sequential_hour": [], "value": []}))
+def test_build_region_increments_returns_empty_for_empty_sources() -> None:
+    loadsite = pl.DataFrame(schema={"region": pl.String, "hour_period": pl.String, "value": pl.Float64})
+    hour_map = pl.DataFrame(schema={"sequential_hour": pl.Int64, "hour_period": pl.String})
 
-    monkeypatch.setattr(optimal_siting, "expand_loadsite_hourly", _mock_expand)
-
-    result = optimal_siting._build_region_increments(pl.DataFrame(), pl.DataFrame())
-    assert result.is_ok()
-    assert result.unwrap() == {}
+    assert optimal_siting._build_region_increments(loadsite, hour_map) == {}
 
 
 def test_apply_increments_handles_min_len_zero() -> None:
@@ -285,18 +313,66 @@ def test_apply_increments_handles_min_len_zero() -> None:
     )
     system.add_time_series(ts, demand)
 
-    updated = optimal_siting._apply_increments_to_demands(system, {"p4": np.array([], dtype=np.float64)})
+    updated = optimal_siting._apply_increments_to_demands(
+        system, {(None, "p4"): np.array([], dtype=np.float64)}
+    )
     assert updated == 0
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (None, None),
-        ([], None),
-        ([2035], 2035),
-        (2036, 2036),
-    ],
-)
-def test_resolve_solve_year(value: int | list[int] | None, expected: int | None) -> None:
-    assert optimal_siting._resolve_solve_year(value) == expected
+def test_optimal_siting_updates_only_selected_year_and_preserves_series_features(tmp_path: Path) -> None:
+    system = System(name="two_year_optimal_siting")
+    region = ReEDSRegion(name="p4")
+    system.add_component(region)
+    demands = {
+        year: ReEDSDemand(
+            name=f"p4_load_{year}",
+            region=region,
+            max_active_power=1000.0,
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    for year, demand in demands.items():
+        system.add_component(demand)
+        profile = SingleTimeSeries.from_array(
+            data=np.array([100.0, 110.0] if year == 2032 else [1000.0, 1100.0]),
+            name="max_active_power",
+            initial_timestamp=datetime(2012, 1, 1),
+            resolution=timedelta(hours=1),
+        )
+        system.add_time_series(profile, demand, solve_year=year, weather_year=2012)
+
+    loadsite_path = _write_csv(
+        tmp_path / "loadsite_op.csv",
+        {
+            "r": ["p4", "p4", "p4", "p4"],
+            "allh": ["h1", "h2", "h1", "h2"],
+            "t": [2032, 2032, 2035, 2035],
+            "Value": [5.0, 5.0, 50.0, 50.0],
+        },
+    )
+    hour_map_path = _write_csv(tmp_path / "hmap_myr.csv", {"yearhour": [1, 2], "h": ["h1", "h2"]})
+
+    _run_optimal_siting(
+        system,
+        loadsite_op_fpath=loadsite_path,
+        hour_map_myr_fpath=hour_map_path,
+        solve_year=2032,
+    )
+
+    assert system.get_time_series(demands[2032], name="max_active_power", solve_year=2032).data.tolist() == [
+        105.0,
+        115.0,
+    ]
+    assert system.get_time_series(demands[2035], name="max_active_power", solve_year=2035).data.tolist() == [
+        1000.0,
+        1100.0,
+    ]
+    assert system.list_time_series_keys(demands[2032])[0].features == {
+        "solve_year": 2032,
+        "weather_year": 2012,
+    }
+    assert system.list_time_series_keys(demands[2035])[0].features == {
+        "solve_year": 2035,
+        "weather_year": 2012,
+    }

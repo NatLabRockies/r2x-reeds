@@ -2,14 +2,15 @@
 
 import pytest
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def test_excluded_techs_can_be_overridden(reeds_run_path):
 
-    from r2x_core import DataStore, PluginContext
+    from r2x_core import PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
     from r2x_reeds.models import ReEDSGenerator
+    from tests.fixtures.data_fixtures import current_data_store
 
     default_config = ReEDSConfig(
         solve_year=2032,
@@ -22,7 +23,7 @@ def test_excluded_techs_can_be_overridden(reeds_run_path):
     )
 
     def parse_generators(config):
-        data_store = DataStore.from_plugin_config(config, path=reeds_run_path)
+        data_store = current_data_store(reeds_run_path)
         context = PluginContext(config=config, store=data_store)
         parser = ReEDSParser.from_context(context)
         result_ctx = parser.run()
@@ -41,7 +42,7 @@ def test_excluded_techs_can_be_overridden(reeds_run_path):
 
 
 def test_excluded_techs_empty_list_default(reeds_config, reeds_run_path):
-    from r2x_core import DataStore, PluginContext
+    from r2x_core import PluginContext
     from r2x_reeds import ReEDSParser
     from r2x_reeds.models import ReEDSGenerator
 
@@ -53,7 +54,9 @@ def test_excluded_techs_empty_list_default(reeds_config, reeds_run_path):
         "smr_ccs",
     ]
 
-    data_store = DataStore.from_plugin_config(reeds_config, path=reeds_run_path)
+    from tests.fixtures.data_fixtures import current_data_store
+
+    data_store = current_data_store(reeds_run_path)
     ctx = PluginContext(config=reeds_config, store=data_store)
     parser = ReEDSParser.from_context(ctx)
     result_ctx = parser.run()

@@ -31,8 +31,13 @@ For the ReEDS electricity-consuming technologies handled here (`electrolyzer`, `
 - `hydrogen_production_load_fpath`: path to `prod_load.csv` with hydrogen-production demand profiles
 - `hydrogen_production_annual_load_fpath`: path to `prod_load_ann.csv` with annual hydrogen-production demand
 - `loadsite_op_fpath`: path to `loadsite_op.csv`
-- `solve_year`
-- `weather_year`
+- `solve_year`: optional scalar year used to select both input rows and the matching owner state
+- `weather_year`: profile timestamp year
+
+A yearless load input is associated with an explicitly configured scalar
+`solve_year`. Without it, the rows remain unscoped and do not automatically
+broadcast to every year-qualified owner. Use year-keyed inputs or configure the
+target solve year.
 
 <span id="example"></span>
 
@@ -58,7 +63,7 @@ schemas above.
 ...     purchaser_cfg = PurchaserLoadConfig(solve_year=2032, weather_year=2012, hour_map_myr_fpath=policy / "hours.csv", loadsite_op_fpath=policy / "sites.csv")
 ...     result = add_purchaser_load(system, purchaser_cfg)
 ...     assert result.is_ok(), result.unwrap_err()
-...     demand = system.get_component(ReEDSDataCenterDemand, "p1_data_center_demand")
+...     demand = system.get_component(ReEDSDataCenterDemand, "p1_data_center_demand_2032")
 ...     assert demand.capacity == 7.0
 ...     series = system.get_time_series(demand, name="max_active_power")
 ...     assert_allclose(series.data, [5.0, 6.0, 7.0])

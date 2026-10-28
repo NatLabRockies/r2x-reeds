@@ -7,8 +7,47 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+import polars as pl
 from loguru import logger
 from rust_ok import Err, Ok, Result
+
+from r2x_core import DataFile, DataReader, FileInfo, FileRequirement, ReaderConfig, TabularSource
+
+
+def read_tabular_frame(
+    path: Path | str,
+    /,
+    *,
+    name: str,
+    hdf5_group: str | None = None,
+) -> pl.DataFrame:
+    """Read one explicitly configured CSV or named HDF5 table as a required input."""
+    input_path = Path(path).expanduser().resolve()
+    options = (
+        {"group_key": hdf5_group, "columns_key": "columns", "columns_as_datasets": True}
+        if hdf5_group is not None
+        else {}
+    )
+    data_file = DataFile(
+        name=name,
+        fpath=input_path,
+        info=FileInfo(requirement=FileRequirement.REQUIRED),
+        reader=ReaderConfig(format="hdf5", options=options) if hdf5_group is not None else ReaderConfig(),
+    )
+    source = DataReader().read_data_files([data_file], folder_path=input_path.parent).get(name)
+    if not isinstance(source, TabularSource):
+        msg = f"Required input {name!r} did not decode as a tabular source"
+        raise TypeError(msg)
+    if isinstance(source.data, pl.LazyFrame):
+        collected = source.data.collect()
+        if not isinstance(collected, pl.DataFrame):
+            msg = f"Collecting required input {name!r} did not produce a Polars DataFrame"
+            raise TypeError(msg)
+        return collected
+    if isinstance(source.data, pl.DataFrame):
+        return source.data
+    msg = f"Required input {name!r} has an unsupported tabular representation"
+    raise TypeError(msg)
 
 
 def _deduplicate_records(records: Iterable[dict[str, Any]] | None, *, key: str) -> list[dict[str, Any]]:

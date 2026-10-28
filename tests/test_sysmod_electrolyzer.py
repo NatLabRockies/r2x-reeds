@@ -10,7 +10,7 @@ from infrasys.exceptions import ISNotStored
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import electrolyzer
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_regions() -> tuple[System, ReEDSRegion, ReEDSRegion]:
@@ -128,6 +128,23 @@ def test_electrolyzer_scope_missing_hour_map(tmp_path: Path, caplog) -> None:
 
     assert "hour_map data not available" in caplog.text
     assert not list(system.get_components(ReEDSDemand))
+
+
+def test_electrolyzer_missing_configured_file_preserves_error(tmp_path: Path) -> None:
+    system, _, _ = _build_regions()
+    result = electrolyzer.add_electrolizer_load(
+        system,
+        electrolyzer.ElectrolyzerConfig(
+            weather_year=2024,
+            hour_map_fpath=tmp_path / "missing-hour-map.csv",
+        ),
+    )
+
+    assert result.is_err()
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
 
 
 def test_electrolyzer_scope_empty_load(caplog) -> None:

@@ -9,7 +9,7 @@ from infrasys import System
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import ccs_credit
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system() -> tuple[System, ReEDSRegion]:
@@ -25,6 +25,7 @@ def _add_generator(
     name: str,
     technology: str,
     vintage: str = "2020",
+    solve_year: int | None = None,
 ) -> ReEDSGenerator:
     generator = ReEDSGenerator(
         name=name,
@@ -33,6 +34,7 @@ def _add_generator(
         capacity=100.0,
         category=technology,
         vintage=vintage,
+        solve_year=solve_year,
     )
     system.add_component(generator)
     return generator
@@ -75,6 +77,60 @@ def test_ccs_credit_scope_direct_match(tmp_path: Path) -> None:
     )
 
     assert generator.ext["UoS Charge"] == pytest.approx(-76.5)
+
+
+def test_ccs_credit_matches_year_specific_upgrade_paths(tmp_path: Path) -> None:
+    system, region = _build_system()
+    generators = {
+        year: _add_generator(
+            system,
+            region,
+            f"Coal_Pre_{year}",
+            "coal_pre",
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    co2_path = _write_csv(
+        tmp_path / "co2.csv",
+        {
+            "tech": ["coal_ccs", "coal_ccs"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "t": [2032, 2035],
+            "incentive": [60.0, 70.0],
+        },
+    )
+    capture_path = _write_csv(
+        tmp_path / "capture.csv",
+        {
+            "tech": ["coal_pre", "coal_pre"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "t": [2032, 2035],
+            "capture_rate": [0.5, 0.25],
+        },
+    )
+    upgrade_path = _write_csv(
+        tmp_path / "upgrade.csv",
+        {
+            "from": ["coal_pre", "coal_pre"],
+            "to": ["coal_ccs", "coal_ccs"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "t": [2032, 2035],
+        },
+    )
+
+    _run_ccs(
+        system,
+        co2_incentive_fpath=co2_path,
+        emission_capture_rate_fpath=capture_path,
+        upgrade_link_fpath=upgrade_path,
+    )
+
+    assert generators[2032].ext["UoS Charge"] == pytest.approx(-30.0)
+    assert generators[2035].ext["UoS Charge"] == pytest.approx(-17.5)
 
 
 def test_ccs_credit_scope_upgrade_path(tmp_path: Path) -> None:
@@ -173,9 +229,10 @@ def test_ccs_credit_scope_no_incentive(caplog, tmp_path: Path) -> None:
     assert "UoS Charge" not in generator.ext
 
 
-def test_ccs_credit_scope_caught_exception(caplog, tmp_path: Path) -> None:
-    """Exceptions during incentive calculation are logged and skipped."""
-    system, _ = _build_system()
+def test_ccs_credit_returns_error_for_malformed_capture_rate(tmp_path: Path) -> None:
+    """A malformed capture-rate table is not reported as a successful no-op."""
+    system, region = _build_system()
+    _add_generator(system, region, "Coal_CCS_1", "coal_ccs")
 
     co2_path = _write_csv(
         tmp_path / "co2.csv",
@@ -190,12 +247,17 @@ def test_ccs_credit_scope_caught_exception(caplog, tmp_path: Path) -> None:
         {"from": ["coal_ccs"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]},
     )
 
-    _run_ccs(
+    result = ccs_credit.add_ccs_credit(
         system,
-        co2_incentive_fpath=co2_path,
-        emission_capture_rate_fpath=capture_path,
-        upgrade_link_fpath=upgrade_path,
+        ccs_credit.CCSCreditConfig(
+            co2_incentive_fpath=co2_path,
+            emission_capture_rate_fpath=capture_path,
+            upgrade_link_fpath=upgrade_path,
+        ),
     )
+
+    assert result.is_err()
+    assert "capture_rate" in str(result.unwrap_err())
 
 
 def test_cast_string_columns_handles_empty_frame():
@@ -203,29 +265,29 @@ def test_cast_string_columns_handles_empty_frame():
     assert result.is_empty()
 
 
-def test_add_ccs_credit_logs_load_failure(monkeypatch, caplog):
+def test_add_ccs_credit_missing_configured_file_preserves_error(tmp_path: Path, caplog) -> None:
     system, _ = _build_system()
-
-    def fail_load(*args, **kwargs):
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(ccs_credit.DataStore, "load_file", staticmethod(fail_load))
+    missing = tmp_path / "missing.csv"
     caplog.set_level("ERROR", logger="r2x_reeds.sysmod.ccs_credit")
 
     result = ccs_credit.add_ccs_credit(
         system,
         ccs_credit.CCSCreditConfig(
-            co2_incentive_fpath="co2",
-            emission_capture_rate_fpath="capture",
-            upgrade_link_fpath="upgrade",
+            co2_incentive_fpath=missing,
+            emission_capture_rate_fpath=missing,
+            upgrade_link_fpath=missing,
         ),
     )
 
     assert result.is_err()
     assert "CCS credit plugin failed" in caplog.text
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
 
 
-def test_apply_ccs_credit_logs_warning_on_incentive_item_error(caplog):
+def test_apply_ccs_credit_rejects_ambiguous_incentive_rows():
     system, region = _build_system()
     _add_generator(system, region, "Coal_CCS_1", "coal_ccs")
 
@@ -244,8 +306,5 @@ def test_apply_ccs_credit_logs_warning_on_incentive_item_error(caplog):
         {"from": ["coal_ccs"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]}
     )
 
-    caplog.set_level("WARNING", logger="r2x_reeds.sysmod.ccs_credit")
-
-    ccs_credit._apply_ccs_credit(system, co2_incentive, emission_capture_rate, upgrade_link)
-
-    assert "Failed to apply CCS credit" in caplog.text
+    with pytest.raises(ValueError, match="Ambiguous CCS incentive rows"):
+        ccs_credit._apply_ccs_credit(system, co2_incentive, emission_capture_rate, upgrade_link)

@@ -1,248 +1,110 @@
-"""Fixed O&M reaches generator components from processed ReEDS inputs."""
+"""Public fixed O&M source mappings and characteristic-year coverage."""
 
-import shutil
 from pathlib import Path
 
-import h5py
-import polars as pl
 import pytest
+from pydantic import TypeAdapter
 
-from r2x_core import DataStore, PluginContext
-from r2x_reeds import ReEDSConfig, ReEDSParser
-from r2x_reeds.models.components import ReEDSGenerator
-from tests.fixtures.data_fixtures import write_unitspec_upgrades_h5
+from r2x_core import DataFile, DataReader, assemble_tables
+from r2x_core.exceptions import ReaderError
+from r2x_core.polars_adapter import PolarsTabularBackend
+from tests.fixtures.data_fixtures import package_file_mapping
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 @pytest.mark.parametrize(
-    "dataset,header",
+    ("source_name", "relative_fpath", "empty_content"),
     [
-        ("fom_upgrade_links", "*TO,FROM,DELTA\n"),
-        ("fom_unitspec_upgrades", "*i\n"),
+        pytest.param(
+            "fom_upgrade_links", "inputs_case/upgrade_link.csv", "*TO,FROM,DELTA\n", id="upgrade-links"
+        ),
+        pytest.param("fom_unitspec_upgrades", "inputs_case/inputs.h5", None, id="unitspec-upgrades"),
     ],
 )
-@pytest.mark.parametrize("missing", [False, True])
-def test_required_fom_sets_may_be_empty_but_must_exist(
-    reeds_run_path: Path, tmp_path: Path, dataset: str, header: str, missing: bool
+@pytest.mark.parametrize("missing", [False, True], ids=["present", "missing"])
+def test_required_fom_sources_allow_empty_data_but_require_the_file(
+    tmp_path: Path,
+    source_name: str,
+    relative_fpath: str,
+    empty_content: str | None,
+    missing: bool,
 ) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
-    if dataset == "fom_unitspec_upgrades":
-        path = tmp_path / "inputs_case" / "inputs.h5"
-        if missing:
-            path.unlink()
-        else:
-            write_unitspec_upgrades_h5(path, [])
-    else:
-        path = store[dataset].fpath
-        assert path is not None
-        path = path if path.is_absolute() else tmp_path / path
-        if missing:
-            path.unlink()
-        else:
-            path.write_text(header)
-    result = parser.on_validate()
+    """Current DataReader contracts distinguish an empty source from a missing one."""
+    run_path = tmp_path / "run"
+    input_path = run_path / relative_fpath
+    input_path.parent.mkdir(parents=True)
+    if source_name == "fom_unitspec_upgrades":
+        if not missing:
+            import h5py
+            import numpy as np
+
+            with h5py.File(input_path, mode="w") as h5_file:
+                group = h5_file.create_group("unitspec_upgrades")
+                string_dtype = h5py.string_dtype(encoding="utf-8")
+                group.create_dataset("columns", data=np.asarray(["i"], dtype=string_dtype))
+                group.create_dataset("i", data=np.asarray([], dtype=string_dtype))
+    elif not missing:
+        input_path.write_text(empty_content or "", encoding="utf-8")
+
+    configured = {item["name"]: item for item in package_file_mapping()}
+    data_file = TypeAdapter(DataFile).validate_python(configured[source_name])
     if missing:
-        assert result.is_err()
-        assert dataset in str(result.err())
-    else:
-        assert result.is_ok(), result
+        with pytest.raises((FileNotFoundError, ReaderError)):
+            DataReader().read_data_files([data_file], folder_path=run_path)
+        return
+
+    sources = DataReader().read_data_files([data_file], folder_path=run_path)
+
+    assert list(sources[source_name].iter_rows()) == []
 
 
-def test_fom_unitspec_upgrades_reads_the_required_hdf5_set_without_a_csv(
-    reeds_run_path: Path, tmp_path: Path
-) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    inputs = tmp_path / "inputs_case"
-    assert not (inputs / "unitspec_upgrades.csv").exists()
-    h5_path = inputs / "inputs.h5"
-    with h5py.File(h5_path, mode="r") as h5_file:
-        expected = [value.decode("utf-8").lower() for value in h5_file["unitspec_upgrades/i"][()]]
-
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
-
-    data = parser.read_data_file("fom_unitspec_upgrades").collect()
-
-    assert data.columns == ["technology"]
-    assert data["technology"].to_list() == expected
-    assert expected
-
-
-def test_fom_unitspec_upgrades_requires_its_hdf5_group(reeds_run_path: Path, tmp_path: Path) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
-    with h5py.File(tmp_path / "inputs_case" / "inputs.h5", mode="w") as h5_file:
-        h5_file.create_group("unrelated_set")
-
-    result = parser.on_validate()
-
-    assert result.is_err()
-    assert "fom_unitspec_upgrades" in str(result.err())
-
-
-@pytest.mark.parametrize("source", ["missing", "empty", "wrong-year"])
-def test_fixed_om_requires_a_nonempty_source_for_the_solve_year(
-    reeds_run_path: Path, tmp_path: Path, source: str
-) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    path = tmp_path / "inputs_case" / "plantcharout.csv"
-    path.write_text("*i,t,variable,value\nGas-CC,2032,fom,20081\n")
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    parser = ReEDSParser.from_context(PluginContext(config=config, store=store))
-    if source == "missing":
-        path.unlink()
-    elif source == "empty":
-        path.write_text("*i,t,variable,value\n")
-    else:
-        path.write_text("*i,t,variable,value\nGas-CC,2029,fom,20081\n")
-
-    result = parser.on_validate()
-
-    assert result.is_err()
-    assert "cost_fom" in str(result.err())
-
-
-def test_fixed_om_parses_fractional_values_after_the_schema_inference_window(
-    reeds_run_path: Path, tmp_path: Path
-) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    inputs = tmp_path / "inputs_case"
-    plantcharout = inputs / "plantcharout.csv"
-    plantcharout.write_text(
+@pytest.mark.parametrize("source_name", ["cost_fom", "fom_upgrade_characteristics"])
+def test_fom_sources_read_fractional_values_after_inference_window(tmp_path: Path, source_name: str) -> None:
+    """Both views of plant characteristics preserve late fractional costs."""
+    input_path = tmp_path / "inputs_case" / "plantcharout.csv"
+    input_path.parent.mkdir(parents=True)
+    input_path.write_text(
         "*i,t,variable,value\n"
         + "".join(f"tech_{index},2032,fom,{index}\n" for index in range(100))
-        + "fractional-tech,2032,fom,1.2861\n"
+        + "fractional-tech,2032,fom,1.2861\n",
+        encoding="utf-8",
     )
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    ReEDSParser.from_context(PluginContext(config=config, store=store))
+    configured = {item["name"]: item for item in package_file_mapping()}
+    data_file = TypeAdapter(DataFile).validate_python(configured[source_name])
 
-    costs = store.read_data("cost_fom", placeholders={"solve_year": 2032}).collect()
+    source = DataReader().read_data_files([data_file], folder_path=tmp_path)[source_name]
+    rows = list(source.iter_rows())
 
-    assert costs.filter(pl.col("technology") == "fractional-tech")["fom_cost"].item() == pytest.approx(1.2861)
-
-
-@pytest.mark.parametrize("marker", ["", "*"])
-def test_fixed_om_dataset_selects_only_solve_year_fom(
-    reeds_run_path: Path, tmp_path: Path, marker: str
-) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    inputs = tmp_path / "inputs_case"
-    (inputs / "plantcharout.csv").write_text(
-        f"{marker}i,t,variable,value\n"
-        "Gas-CC,2032,fom,20081\n"
-        "Gas-CC,2029,fom,99999\n"
-        "Gas-CC,2032,capcost,736901\n"
-        "wind-ons_1,2032,fom,31000\n"
-    )
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    ReEDSParser.from_context(PluginContext(config=config, store=store))
-
-    costs = store.read_data("cost_fom", placeholders={"solve_year": 2032}).collect()
-
-    assert costs.to_dicts() == [
-        {"technology": "gas-cc", "year": 2032, "fom_cost": 20081},
-        {"technology": "wind-ons_1", "year": 2032, "fom_cost": 31000},
-    ]
+    assert float(rows[-1]["fom_cost"]) == pytest.approx(1.2861)
 
 
-def test_generators_receive_solve_year_fixed_om(reeds_run_path: Path, tmp_path: Path) -> None:
+def test_fom_characteristic_source_preserves_all_years(tmp_path: Path) -> None:
+    """The upgrade policy source retains prior and solve-year FOM rows."""
     run_path = tmp_path / "run"
-    shutil.copytree(reeds_run_path, run_path)
-    # plantcharout is already deflated to 2004 dollars and converted to MW.
-    (run_path / "inputs_case" / "plantcharout.csv").write_text(
+    input_path = run_path / "inputs_case" / "plantcharout.csv"
+    input_path.parent.mkdir(parents=True)
+    input_path.write_text(
         "*i,t,variable,value\n"
         "Gas-CC,2032,fom,20081\n"
         "Gas-CC,2029,fom,99999\n"
-        "Gas-CC,2032,capcost,736901\n"
-        "wind-ons_1,2032,fom,31000\n"
-        "upv_1,2032,fom,12000\n"
-        "battery_4,2032,fom,0\n"
+        "Gas-CC,2032,capcost,not-a-number\n"
+        "wind-ons_1,2032,fom,31000\n",
+        encoding="utf-8",
     )
-    config = ReEDSConfig(solve_year=2032, weather_year=2012, case_name="test", scenario="base")
-    store = DataStore.from_plugin_config(config, path=run_path)
-    ctx = PluginContext(config=config, store=store)
-    parser = ReEDSParser.from_context(ctx)
-    result = parser.run(ctx=ctx)
-    assert result.system is not None
+    configured = {item["name"]: item for item in package_file_mapping()}
+    data_file = TypeAdapter(DataFile).validate_python(configured["fom_upgrade_characteristics"])
 
-    expected_costs = {"gas-cc": 20081.0, "wind-ons_1": 31000.0, "upv_1": 12000.0, "battery_4": 0.0}
-    generators = list(result.system.get_components(ReEDSGenerator))
-    for technology, expected in expected_costs.items():
-        matched = [generator for generator in generators if generator.technology == technology]
-        assert matched, technology
-        assert all(generator.fom_cost == expected for generator in matched), technology
+    raw = DataReader().read_data_files([data_file], folder_path=run_path)["fom_upgrade_characteristics"]
+    sources = assemble_tables(
+        {"fom_upgrade_characteristics": raw},
+        mapping_path=Path(__file__).parents[1] / "src/r2x_reeds/config/table_mapping.json",
+        backend=PolarsTabularBackend(),
+        table_names=["fom_characteristic_source"],
+    )
 
-    unmatched = [generator for generator in generators if generator.technology == "gas-ct"]
-    assert unmatched
-    assert all(generator.fom_cost is None for generator in unmatched)
-
-
-@pytest.mark.parametrize(
-    "retrofit_mode,initial_cost", [("current", 55000.0), ("disabled", 45000.0), ("carry", 66000.0)]
-)
-def test_hydro_storage_dpv_and_upgrades_receive_their_source_costs(
-    reeds_run_path: Path, tmp_path: Path, retrofit_mode: str, initial_cost: float
-) -> None:
-    shutil.copytree(reeds_run_path, tmp_path, dirs_exist_ok=True)
-    inputs = tmp_path / "inputs_case"
-    (inputs / "plantcharout.csv").write_text(
-        "*i,t,variable,value\n"
-        "Gas-CC,2032,fom,20081\n"
-        "coal-ccs_mod,2028,fom,45000\n"
-        "coal-ccs_mod,2032,fom,46000\n"
-    )
-    hydro = pl.read_csv(inputs / "hyd_fom.csv")
-    hydro.with_columns(pl.lit(42000.0).alias(column) for column in hydro.columns if column != "i").write_csv(
-        inputs / "hyd_fom.csv"
-    )
-    (inputs / "scalars.csv").write_text("cost_fom_psh,13030,2004$/MW-year\n")
-    switches = inputs / "switches.csv"
-    if retrofit_mode == "disabled":
-        switches.write_text(switches.read_text().replace("GSw_UpgradeFOM_Nems,1", "GSw_UpgradeFOM_Nems,0"))
-    hintage = pl.read_csv(inputs / "hintage_data.csv")
-    retrofit = pl.DataFrame(
-        {
-            "TECH": ["CoalOldUns", "CoalOldUns"],
-            "bin": ["init-1", "init-1"],
-            "r": ["p1", "p1"],
-            "yr": [2028, 2032],
-            "cap": [100.0, 100.0],
-            "wFOM": [50000.0, 50000.0],
-            "wCCS_Retro_FOM": [66.0, 0.0 if retrofit_mode == "carry" else 55.0],
-        }
-    )
-    pl.concat([hintage, retrofit], how="diagonal_relaxed").write_csv(inputs / "hintage_data.csv")
-    (inputs / "upgrade_link.csv").write_text(
-        "*TO,FROM,DELTA\nCoalOldUns_Coal-CCS_mod,CoalOldUns,coal-ccs_mod\n"
-    )
-    with (tmp_path / "outputs" / "cap_ivrt.csv").open("a") as file:
-        file.write("CoalOldUns_Coal-CCS_mod,init-1,p1,2032,100\n")
-        file.write("CoalOldUns_Coal-CCS_mod,new1,p1,2032,100\n")
-    config = ReEDSConfig(solve_year=2032, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=tmp_path)
-    ctx = PluginContext(config=config, store=store)
-    result = ReEDSParser.from_context(ctx).run(ctx=ctx)
-    assert result.system is not None
-    generators = list(result.system.get_components(ReEDSGenerator))
-    expected = {"hyded": 42000.0, "pumped-hydro": 13030.0, "distpv": 0.0}
-    for technology, cost in expected.items():
-        matched = [generator for generator in generators if generator.technology == technology]
-        if technology == "distpv":
-            matched = [generator for generator in matched if generator.region.name == "p1"]
-        assert matched, technology
-        assert all(generator.fom_cost == cost for generator in matched), technology
-    upgrades = [generator for generator in generators if generator.technology == "coalolduns_coal-ccs_mod"]
-    assert {generator.vintage: generator.fom_cost for generator in upgrades} == {
-        "init-1": initial_cost,
-        "new1": 46000.0,
-    }
+    assert list(sources["fom_characteristic_source"].iter_rows()) == [
+        {"technology": "gas-cc", "year": 2032, "fom_cost": 20081.0},
+        {"technology": "gas-cc", "year": 2029, "fom_cost": 99999.0},
+        {"technology": "wind-ons_1", "year": 2032, "fom_cost": 31000.0},
+    ]

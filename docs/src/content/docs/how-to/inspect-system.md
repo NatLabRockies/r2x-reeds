@@ -16,7 +16,7 @@ Open `python` in the tutorial workspace after completing the tutorial:
 >>> system = System.from_json("outputs/pacific-system.json")
 >>> assert len(list(system.get_components(ReEDSRegion))) == 11
 >>> assert len(list(system.get_components(ReEDSGenerator))) == 673
->>> load = next(item for item in system.get_components(ReEDSDemand) if item.name == "p1_load")
+>>> load = system.get_component(ReEDSDemand, "p1_load_2032")
 >>> profile = system.get_time_series(load, name="max_active_power")
 >>> assert profile.name == "max_active_power"
 >>> assert len(profile.data) == 8760
@@ -66,7 +66,7 @@ The script uses `sys`, the system supplied by `r2x read`:
 >>> inspection = """from r2x_reeds import ReEDSRegion, ReEDSGenerator, ReEDSDemand
 ... assert len(list(sys.get_components(ReEDSRegion))) == 11
 ... assert len(list(sys.get_components(ReEDSGenerator))) == 673
-... load = next(item for item in sys.get_components(ReEDSDemand) if item.name == "p1_load")
+... load = sys.get_component(ReEDSDemand, "p1_load_2032")
 ... profile = sys.get_time_series(load, name="max_active_power")
 ... assert len(profile.data) == 8760
 ... print("Verified 11 regions, 673 generators and 8760 demand samples")

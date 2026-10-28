@@ -2,7 +2,7 @@
 title: Changelog
 ---
 
-Read the [canonical CHANGELOG.md](https://github.com/NatLabRockies/r2x-reeds/blob/main/CHANGELOG.md)
+Read the [project CHANGELOG.md](https://github.com/NatLabRockies/r2x-reeds/blob/main/CHANGELOG.md)
 for release notes. This site does not maintain a second copy.
 
 To inspect source documentation for a release, choose its tag in the

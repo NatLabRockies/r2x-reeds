@@ -34,7 +34,7 @@ def test_break_generator_fails_with_wrong_reference_type():
 
     result = break_generators(sys, BreakGensConfig(reference_units={"wind": "invalid"}))
     assert result.is_err()
-    assert "No reference technologies" in result.unwrap_err()
+    assert "No reference technologies" in str(result.unwrap_err())
 
 
 def test_break_generator_fails_with_missing_file(tmp_path: Path):
@@ -43,7 +43,8 @@ def test_break_generator_fails_with_missing_file(tmp_path: Path):
 
     result = break_generators(sys, BreakGensConfig(reference_units=missing))
     assert result.is_err()
-    assert "Reference technologies file not found" in result.unwrap_err()
+    assert "Reference technologies file not found" in str(result.unwrap_err())
+    assert isinstance(result.unwrap_err(), FileNotFoundError)
 
 
 def test_break_generator_warns_on_duplicate_reference(tmp_path: Path, caplog):
@@ -70,6 +71,17 @@ def test_break_generator_warns_on_duplicate_reference(tmp_path: Path, caplog):
     assert result.is_ok()
 
     assert "Duplicate entries found for key 'name'" in caplog.text
+
+
+def test_break_generator_fails_with_malformed_json(tmp_path: Path):
+    sys = System(name="Test")
+    malformed = tmp_path / "malformed.json"
+    malformed.write_text("{invalid", encoding="utf-8")
+
+    result = break_generators(sys, BreakGensConfig(reference_units=malformed))
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), json.JSONDecodeError)
 
 
 def test_break_generators_splits_and_preserves_data(system_with_region) -> None:
@@ -374,7 +386,7 @@ def test_create_split_generator_preserves_all_fields(system_with_region) -> None
         forced_outage_rate=0.05,
         planned_outage_rate=0.10,
         fuel_type="wind",
-        fuel_price=0.0,
+        fuel_price=0.1,
         vom_cost=25.0,
         vintage="2020",
     )
@@ -390,7 +402,7 @@ def test_create_split_generator_preserves_all_fields(system_with_region) -> None
     assert split.forced_outage_rate == pytest.approx(0.05)
     assert split.planned_outage_rate == pytest.approx(0.10)
     assert split.fuel_type == "wind"
-    assert split.fuel_price == pytest.approx(0.0)
+    assert split.fuel_price == pytest.approx(0.1)
     assert split.vom_cost == pytest.approx(25.0)
     assert split.vintage == "2020"
 

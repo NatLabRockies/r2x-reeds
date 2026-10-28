@@ -11,7 +11,7 @@ from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator, ReEDSRegi
 from r2x_reeds.models.enums import EmissionType
 from r2x_reeds.sysmod import emission_cap
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system() -> tuple[System, ReEDSRegion]:
@@ -115,6 +115,23 @@ def test_emission_cap_scope_missing_emissions(caplog) -> None:
 
     assert "Did not find any emission type" in caplog.text
     assert not hasattr(system, "_emission_constraints")
+
+
+def test_emission_cap_missing_configured_file_preserves_error(tmp_path: Path) -> None:
+    system, region = _build_system()
+    generator = _add_generator(system, region, "coal_2010_west")
+    _attach_emission(system, generator)
+
+    result = emission_cap.add_emission_cap(
+        system,
+        emission_cap.EmissionCapConfig(co2_cap_fpath=tmp_path / "missing-cap.csv"),
+    )
+
+    assert result.is_err()
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
 
 
 @pytest.mark.parametrize(

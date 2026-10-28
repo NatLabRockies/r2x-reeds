@@ -27,11 +27,14 @@ and run the [import check](/r2x-reeds/getting-started/verify/) there. Record all
 package versions before investigating API drift; upgrading one dependency blindly
 can make a saved artifact harder to reproduce.
 
-## `Required dataset '…' not found in outputs.h5 or fallback CSV`
+## A configured output file or HDF5 group is missing
 
-This message means neither the mapped HDF5 group nor its supported CSV fallback
-provided the required dataset. A pipeline dry run cannot establish file availability.
-From the tutorial workspace, inspect the run root:
+The packaged `file_mapping.json` explicitly reads output groups from
+`outputs/outputs.h5`; parser reads do not fall back to `outputs/<dataset>.csv`.
+Core selects the reader from the configured file extension, but that does not
+select an alternate source. A pipeline dry run cannot establish file or group
+availability. From the run root, inspect the mapped file and its configured
+reader keys:
 
 ```python doctest
 >>> from pathlib import Path
@@ -42,21 +45,32 @@ From the tutorial workspace, inspect the run root:
 ```
 
 A failed directory assertion often means the parser was pointed at `outputs/` or an extra enclosing
-folder. Pass the root containing all three items to `DataStore.from_plugin_config`.
-If the root is correct, compare the named dataset with the
-[configuration mappings](/r2x-reeds/reference/configuration/) and restore/regenerate
-that actual report from the same completed ReEDS run. Renaming an unrelated CSV
-or creating an empty placeholder does not supply its schema. Rerun the parser alone
-and inspect regions, generators and demand before adding modifiers.
+folder. Pass the root containing `meta.csv`, `inputs_case/` and `outputs/` to
+`DataStore(path=run_path)` in the parser's `PluginContext`. Compare the file mapping's
+path and HDF5 `group_key`, `data_key` or `columns_key` with the run's actual report.
+Restore or regenerate the mapped report from that completed ReEDS run if it is absent
+or incomplete. Renaming an unrelated CSV or creating an empty placeholder does not
+supply the required schema.
 
-For `Degraded capacity dataset 'cap_deg_ivrt' was not found`, the request came from
-`use_degraded_capacity=True`. Supply degradation-adjusted capacity output, or use
-`False` only if undegraded `cap_ivrt` capacity is the intended modeling choice.
-Verify capacities after rerunning; the choices need not give the same MW.
+If the run provides CSV outputs, select them with a complete `file_mapping`
+asset override. The
+[configuration reference](/r2x-reeds/reference/configuration/) shows how to
+modify the packaged mapping explicitly. Adjust those paths and reader settings
+for the CSV files present in your run. The configured extension selects the
+reader, while the mapping selects the source. Rerun the parser alone and inspect
+regions, generators and demand before adding modifiers.
+
+Choose the capacity series explicitly with
+`ReEDSConfig(generator_capacity_source="degraded")` or
+`ReEDSConfig(generator_capacity_source="standard")`. These select
+`online_capacity_degraded` (HDF5 group `cap_deg_ivrt`) or `online_capacity`
+(`cap_ivrt`) respectively. Verify the selected file and group exist. A missing
+selected source is an input error, not a request to use the other capacity
+series. The two series need not have the same MW values.
 
 ## `invalid HDF5 signature` or `file signature not found`
 
-The validation helper identifies an unreadable HDF5 binary, commonly an incomplete
+The mapped reader rejects an unreadable HDF5 binary, commonly an incomplete
 copy or mislabeled file. Check the actual mapped file, not only its extension:
 
 ```python doctest
@@ -71,30 +85,46 @@ This checks the fixture load binary. Replace the path with the reported failing 
 the source run, then require `h5py.is_hdf5(path)` to return `True` and rerun parsing.
 A valid signature alone does not prove the required groups exist. A permission
 error is a different failure: verify read access to the reported path rather than
-replacing good data. See the
-[validation implementation and tests](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/tests/test_parser_checks.py).
+replacing good data. Source paths and input constraints are declared in
+[file_mapping](/r2x-reeds/reference/configuration/).
 
-## A requested year is absent, or `hour_map` validation fails
+## A requested year is absent
 
-The solve year selects capacity; the weather year selects hourly data. After the
-same `config` and `store` setup as the tutorial, inspect the mapped modeled years:
+A `System` retains one component state per requested solve year. Component
+identities include the solve year, so select a year's components through
+`System.get_components(..., filter_func=...)`. Profiles retain their solve-year
+association as well. The weather calendar still uses `config.primary_weather_year`,
+the first configured weather year. To inspect the modeled years through the
+current public reader API:
 
 ```python doctest
->>> modeled = store.read_data("modeled_years").collect()
->>> assert not modeled.is_empty()
->>> assert config.primary_solve_year == 2032
+>>> from pathlib import Path
+>>> from pydantic import TypeAdapter
+>>> from r2x_core import DataFile, DataReader
+>>> from r2x_reeds import ReEDSConfig
+>>> run_path = Path("tutorial-inputs/test_Pacific")
+>>> config = ReEDSConfig(solve_year=2032, weather_year=2012)
+>>> files = TypeAdapter(list[DataFile]).validate_json(config.fmap_path.read_bytes())
+>>> modeled_years_file = next(item for item in files if item.name == "modeled_years")
+>>> source = DataReader().read_data_files([modeled_years_file], folder_path=run_path)["modeled_years"]
+>>> assert list(source.iter_rows())
+>>> assert config.solve_year == 2032
 >>> assert config.primary_weather_year == 2012
 ```
 
-Choose a solve year shown in that data. An error listing available weather years
-must be resolved against the run's own hour map and profiles, not by substituting
-the solve year. `hour_map file exists but contains no rows` and a missing `year`
-column are malformed-input failures. Restore the matching hour map from the run;
-do not delete it to force the parser's missing-file fallback. Rerun the parser,
-then inspect profile length, initial timestamp and hourly resolution as in
-[profile inspection](/r2x-reeds/tutorials/parse-run/#inspect-a-demand-profile).
-The Pacific example has 8,760 samples beginning in 2012; do not pad, truncate or
-relabel other calendars merely to match that example.
+Choose a solve year shown in that data. The configured `modeled_years` constraint
+checks solve-year coverage. Verify that the selected load and renewable sources
+contain the requested solve and weather years. Changing the solve year does not
+supply missing weather data.
+
+The generated profile calendar does not replace the `hour_map` or `hour_map_myr`
+inputs used by representative-period modifiers. Restore a missing or malformed
+mapping when a modifier requires it. No synthetic hour-map fallback is supplied.
+
+Rerun parsing, then inspect profile length, initial timestamp and hourly resolution
+as in [profile inspection](/r2x-reeds/tutorials/parse-run/#inspect-a-demand-profile).
+The Pacific example has 8,760 samples beginning in 2012. Do not relabel source
+calendars merely to match that example.
 
 ## Modifier succeeds but imports or purchaser loads are absent
 
@@ -105,7 +135,7 @@ check the actual components rather than relying on the pipeline exit code:
 >>> from r2x_reeds import ReEDSGenerator, ReEDSDemand
 >>> technologies = {item.technology for item in system.get_components(ReEDSGenerator)}
 >>> assert "gas-cc" in technologies
->>> assert any(item.name == "p1_load" for item in system.get_components(ReEDSDemand))
+>>> assert any(item.name == "p1_load_2032" for item in system.get_components(ReEDSDemand))
 ```
 
 Default generator exclusions include `can-imports`, `electrolyzer`, `smr` and
@@ -123,7 +153,7 @@ If a modifier returns `Err`, inspect it immediately:
 >>> from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
 >>> result = break_generators(system, BreakGensConfig(reference_units="missing-reference.json"))
 >>> assert result.is_err()
->>> assert "Reference technologies file not found" in result.unwrap_err()
+>>> assert "Reference technologies file not found" in str(result.unwrap_err())
 ```
 
 Fix the named file/column/calendar against the [transform contract](/r2x-reeds/reference/transforms/),
