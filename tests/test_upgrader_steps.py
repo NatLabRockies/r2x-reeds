@@ -238,6 +238,39 @@ def test_upgrade_transmission_distance_accepts_starred_region_column(tmp_path: P
     assert distance_path.read_text() == upgraded_contents
 
 
+def test_upgrade_transmission_cost_preserves_current_fields_with_starred_region(tmp_path: Path) -> None:
+    """Normalize a starred region header without discarding existing target values."""
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir(parents=True)
+    ac_path = inputs_case / "transmission_cost_ac.csv"
+    ac_path.write_text(
+        "*r,rr,USD2004perMW_forward,USD2004perMW_reverse,tscbin,binwidth_USD2004\np1,p2,100,200,3,50\n"
+    )
+
+    upgrade_transmission_cost_format(tmp_path)
+
+    with ac_path.open(newline="") as source:
+        reader = csv.DictReader(source)
+        assert reader.fieldnames == [
+            "r",
+            "rr",
+            "USD2004perMW_forward",
+            "USD2004perMW_reverse",
+            "tscbin",
+            "binwidth_USD2004",
+        ]
+        assert list(reader) == [
+            {
+                "r": "p1",
+                "rr": "p2",
+                "USD2004perMW_forward": "100",
+                "USD2004perMW_reverse": "200",
+                "tscbin": "3",
+                "binwidth_USD2004": "50",
+            }
+        ]
+
+
 def test_upgrade_unitspec_upgrades_csv_preserves_existing_hdf5_groups(tmp_path: Path) -> None:
     inputs_case = tmp_path / "inputs_case"
     inputs_case.mkdir(parents=True)

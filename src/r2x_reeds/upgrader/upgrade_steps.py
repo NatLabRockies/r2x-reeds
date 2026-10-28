@@ -85,7 +85,10 @@ def _rewrite_transmission_csv(path: Path, column_mapping: dict[str, str | None])
         resolved_sources = {}
         for target, source in column_mapping.items():
             if source is None:
-                resolved_sources[target] = None
+                resolved_sources[target] = next(
+                    (candidate for candidate in (target, f"*{target}") if candidate in source_fields),
+                    None,
+                )
                 continue
             candidates = (source, f"*{source}", target, f"*{target}")
             resolved_sources[target] = next(
