@@ -800,7 +800,7 @@ wheels = [
 [[package]]
 name = "r2x-core"
 version = "0.9.0"
-source = { git = "https://github.com/NatLabRockies/r2x-core.git?rev=feat%2Fcsv-2#7a9cc14da14cb1edbfeb5622504d545c68940cb2" }
+source = { git = "https://github.com/NatLabRockies/r2x-core.git?rev=feat%2Fcsv-2#08ccc27125d79d98678c7bd817832d126839cd0d" }
 dependencies = [
     { name = "h5py" },
     { name = "infrasys" },

@@ -45,20 +45,32 @@ POST_ASSEMBLY_VALIDATION_RECORDS = frozenset(
 
 
 class ReEDSParser(Plugin[ReEDSConfig]):
-    """Read configured ReEDS sources and build their domain objects.
+    """Build a ReEDS ``System`` from a configured run directory.
 
-    After preparing the Pacific fixture and its CSV mapping in the tutorial, run
-    from the tutorial workspace. Parsing can upgrade the working input copy.
+    The parser loads configuration assets, loads the file mapping when the
+    ``DataStore`` is empty, applies configured input upgrades, reads and
+    assembles sources, and builds domain components from parser instructions.
+    Configuration assets can be customized with ``config_path_override``.
+    Upgrades may modify run files, so parse a copy when the original inputs must
+    remain unchanged.
+
+    Create the parser with a ``PluginContext`` containing ``ReEDSConfig`` and a
+    ``DataStore`` rooted at a prepared ReEDS run directory. Replace
+    ``Path.cwd()`` below with that run directory before calling ``run()``:
 
     >>> from pathlib import Path
     >>> from r2x_core import DataStore, PluginContext
-    >>> from r2x_reeds import ReEDSConfig, ReEDSParser, ReEDSRegion
-    >>> config = ReEDSConfig(solve_year=2032, weather_year=2012, config_path_override=Path("pacific-config"))
-    >>> store = DataStore(path=Path("tutorial-inputs/test_Pacific"))
+    >>> from r2x_reeds import ReEDSConfig, ReEDSParser
+    >>> config = ReEDSConfig(solve_year=2032, weather_year=2012)
+    >>> store = DataStore(path=Path.cwd())
     >>> context = PluginContext(config=config, store=store)
-    >>> system = ReEDSParser.from_context(context).run().system
-    >>> assert system is not None
-    >>> assert len(list(system.get_components(ReEDSRegion))) == 11
+    >>> parser = ReEDSParser.from_context(context)
+    >>> parser.config.solve_year
+    2032
+
+    ``parser.run()`` returns a ``PluginContext`` containing the parsed system.
+    It raises ``PluginError`` when configuration or input data cannot be
+    processed. See the parsing tutorial for a complete end-to-end example.
     """
 
     def __init__(self) -> None:

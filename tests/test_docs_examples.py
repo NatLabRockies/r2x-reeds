@@ -86,15 +86,14 @@ def test_console_fences_are_discoverable() -> None:
         assert all(">>> " in block for block in FENCES.findall(text)), path
 
 
-def test_parser_docstring(
-    tutorial_console: tuple[Path, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Keep the public parser docstring's lifecycle example executable too."""
+def test_parser_docstring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the general parser setup example executable and fixture-independent."""
     from r2x_reeds import ReEDSParser
 
-    workspace, _ = tutorial_console
-    monkeypatch.chdir(workspace)
+    monkeypatch.chdir(tmp_path)
     assert ReEDSParser.__doc__ is not None
+    assert "test_Pacific" not in ReEDSParser.__doc__
+    assert "tutorial workspace" not in ReEDSParser.__doc__
     test = doctest.DocTestParser().get_doctest(
         ReEDSParser.__doc__, {}, "ReEDSParser", "src/r2x_reeds/parser.py", 0
     )
