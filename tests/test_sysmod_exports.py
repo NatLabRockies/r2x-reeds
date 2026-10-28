@@ -87,6 +87,37 @@ def test_exports_select_year_and_region_and_expand_hourly_profile(tmp_path: Path
     assert sum(west_series.data.tolist()) - 460.0 == pytest.approx(2000.0)
 
 
+def test_exports_accept_fraction_hours_from_other_mapped_years(tmp_path: Path) -> None:
+    system, west_demand, _ = _build_system()
+    inputs = _write_inputs(tmp_path)
+    inputs["hour_map_fpath"] = _write_csv(
+        tmp_path / "hmap_multi_year.csv",
+        {
+            "*timestamp": [
+                "2011-01-01 00:00:00-06:00",
+                "2012-01-01 00:00:00-06:00",
+                "2012-01-01 01:00:00-06:00",
+                "2012-01-01 02:00:00-06:00",
+                "2012-01-01 03:00:00-06:00",
+            ],
+            "year": [2011, 2012, 2012, 2012, 2012],
+            "h": ["h_other_year", "h1", "h1", "h1", "h2"],
+        },
+    )
+    inputs["canada_exports_h_frac_fpath"] = _write_csv(
+        tmp_path / "can_exports_h_frac_multi_year.csv",
+        {"*h": ["h1", "h2", "h_other_year"], "frac_weighted": [0.25, 0.75, 0.5]},
+    )
+
+    _run_exports(system, weather_year=2012, solve_year=2040, **inputs)
+
+    west_series = system.get_time_series(west_demand, name="max_active_power")
+    assert west_series.data.tolist() == pytest.approx(
+        [100.0 + 2000 / 12, 110.0 + 2000 / 12, 120.0 + 2000 / 12, 1630.0]
+    )
+    assert sum(west_series.data.tolist()) - 460.0 == pytest.approx(2000.0)
+
+
 def test_exports_require_solve_year_for_wide_input(tmp_path: Path) -> None:
     system, _, _ = _build_system()
     inputs = _write_inputs(tmp_path)
@@ -134,6 +165,24 @@ def test_exports_reject_duplicate_demand_components(tmp_path: Path) -> None:
     assert "Multiple demand components found for region west" in result.unwrap_err()
 
 
+def test_exports_ignore_electrolyzer_demand_in_same_region(tmp_path: Path) -> None:
+    system, west_demand, _ = _build_system()
+    electrolyzer_demand = ReEDSDemand(
+        name="west_electrolyzer",
+        region=west_demand.region,
+        max_active_power=50.0,
+        category="electrolyzer",
+    )
+    system.add_component(electrolyzer_demand)
+    inputs = _write_inputs(tmp_path)
+
+    _run_exports(system, weather_year=2012, solve_year=2040, **inputs)
+
+    west_series = system.get_time_series(west_demand, name="max_active_power")
+    assert sum(west_series.data.tolist()) - 460.0 == pytest.approx(2000.0)
+    assert not system.has_time_series(electrolyzer_demand)
+
+
 def test_exports_skip_regions_without_demand_components(tmp_path: Path, caplog) -> None:
     system = System(name="test_exports_without_demands")
     inputs = _write_inputs(tmp_path)
@@ -147,12 +196,20 @@ def test_exports_skip_regions_without_demand_components(tmp_path: Path, caplog) 
 def test_exports_skip_demand_without_existing_load_profile(tmp_path: Path, caplog) -> None:
     system, west_demand, east_demand = _build_system()
     system.remove_time_series(west_demand, name="max_active_power")
+    unrelated_series = SingleTimeSeries.from_array(
+        data=[1.0, 2.0, 3.0, 4.0],
+        name="other_profile",
+        initial_timestamp=datetime(2012, 1, 1),
+        resolution=timedelta(hours=1),
+    )
+    system.add_time_series(unrelated_series, west_demand)
     inputs = _write_inputs(tmp_path)
 
     _run_exports(system, weather_year=2012, solve_year=2040, **inputs)
 
     assert "Demand component for export region west has no load profile" in caplog.text
-    assert not system.has_time_series(west_demand)
+    assert system.has_time_series(west_demand, name="other_profile")
+    assert not system.has_time_series(west_demand, name="max_active_power")
     assert system.has_time_series(east_demand)
 
 

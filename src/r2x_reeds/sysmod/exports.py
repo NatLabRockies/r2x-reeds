@@ -61,6 +61,8 @@ def _prepare_hourly_export_fractions(
             .str.to_datetime(format="%Y-%m-%d %H:%M:%S"),
         )
 
+    mapped_profile_hours = hour_map.select("h").unique()
+
     if "year" in hour_map.columns:
         mapped_years = hour_map["year"].drop_nulls().cast(pl.Int32).unique().sort().to_list()
         if weather_year in mapped_years:
@@ -80,7 +82,6 @@ def _prepare_hourly_export_fractions(
     mapped_hours = hour_map.join(hourly_fractions, on="h", how="left").sort("time_index")
     if mapped_hours["value"].null_count():
         raise ValueError("Hour map contains representative hours without export fractions")
-    mapped_profile_hours = mapped_hours.select("h").unique()
     missing_profile_hours = hourly_fractions.join(mapped_profile_hours, on="h", how="anti")
     if missing_profile_hours.height:
         raise ValueError("Hourly export fractions contain hours absent from the hour map")
@@ -164,7 +165,10 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
         )
 
         demands_by_region: dict[str, ReEDSDemand] = {}
-        for demand in system.get_components(ReEDSDemand):
+        for demand in system.get_components(
+            ReEDSDemand,
+            filter_func=lambda component: component.category != "electrolyzer",
+        ):
             region_name = demand.region.name
             if region_name in demands_by_region:
                 raise ValueError(f"Multiple demand components found for region {region_name}")
@@ -176,7 +180,7 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
             if demand is None:
                 logger.warning("No demand component found for export region {}", region_name)
                 continue
-            if not system.has_time_series(demand):
+            if not system.has_time_series(demand, name="max_active_power"):
                 logger.warning("Demand component for export region {} has no load profile", region_name)
                 continue
 
