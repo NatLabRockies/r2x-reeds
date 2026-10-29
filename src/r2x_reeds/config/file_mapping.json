@@ -278,8 +278,11 @@
         "columns_key": "columns",
         "datetime_key": "index_datetime",
         "additional_keys": [
-          "index_0"
-        ]
+          "index_year"
+        ],
+        "column_name_mapping": {
+          "index_year": "year"
+        }
       },
       "function": null
     },
@@ -1229,9 +1232,7 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
         "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }
@@ -1247,9 +1248,6 @@
     "proc_spec": {
       "column_mapping": {
         "class": "resource_class",
-        "cf": "capacity_factor",
-        "cap_avail": "available_capacity",
-        "cost_per_mw": "supply_curve_cost",
         "supply_curve_cost_per_mw": "supply_curve_cost"
       }
     }

@@ -1142,7 +1142,18 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
     def _normalize_resource_frame(self, df: pl.DataFrame, *, source_name: str) -> pl.DataFrame:
         """Normalize resource dataset column names."""
-
+        aliases = {
+            "cf": "capacity_factor",
+            "cost_per_mw": "supply_curve_cost",
+            "supply_curve_cost_per_mw": "supply_curve_cost",
+        }
+        renames = {
+            alias: target
+            for alias, target in aliases.items()
+            if alias in df.columns and target not in df.columns
+        }
+        if renames:
+            df = df.rename(renames)
         if "technology" not in df.columns:
             return df.with_columns(pl.lit(source_name).alias("technology"))
         return df
@@ -2440,6 +2451,18 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                     ", ".join(group_cols),
                     default_heat_rate,
                 )
+
+        capacity_threshold = self.config.drop_gen_capacity_threshold
+        if capacity_threshold > 0:
+            generator_count = variable_df.height + non_variable_df.height
+            variable_df = variable_df.filter(pl.col("capacity") >= capacity_threshold)
+            non_variable_df = non_variable_df.filter(pl.col("capacity") >= capacity_threshold)
+            dropped_count = generator_count - variable_df.height - non_variable_df.height
+            logger.info(
+                "Dropped {} generators below the {} MW capacity threshold",
+                dropped_count,
+                capacity_threshold,
+            )
 
         self._variable_generator_df = variable_df
         self._non_variable_generator_df = non_variable_df
