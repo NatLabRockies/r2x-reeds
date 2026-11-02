@@ -43,8 +43,9 @@ class CountyMembership:
     ``region_to_counties`` maps each displayed region label to normalized,
     five-digit FIPS keys. ``county_to_region`` is its inverse, and
     ``county_labels`` retains the source display label for each FIPS key. Direct
-    construction requires the two mappings to be exact inverses with no repeated
-    or split county assignments.
+    construction requires canonical five-digit FIPS keys (see
+    ``normalize_county_fips``) and the two mappings to be exact inverses with no
+    repeated or split county assignments.
     """
 
     region_to_counties: Mapping[str, tuple[str, ...]]
@@ -52,6 +53,15 @@ class CountyMembership:
     county_labels: Mapping[str, str]
 
     def __post_init__(self) -> None:
+        county_keys = [county for counties in self.region_to_counties.values() for county in counties]
+        county_keys += [*self.county_to_region, *self.county_labels]
+        for county in county_keys:
+            if normalize_county_fips(county) != county:
+                raise CountyMembershipError(
+                    f"County key {county!r} is not a canonical five-digit FIPS; "
+                    f"use {normalize_county_fips(county)!r}."
+                )
+
         assignments: dict[str, str] = {}
         for region, counties in self.region_to_counties.items():
             for county in counties:

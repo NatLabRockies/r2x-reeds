@@ -49,6 +49,38 @@ def test_direct_membership_rejects_duplicate_or_inconsistent_mappings(
         )
 
 
+@pytest.mark.parametrize(
+    ("region_to_counties", "county_to_region", "county_labels"),
+    [
+        ({"a": ("53001",), "b": ("p53001",)}, {"53001": "a", "p53001": "b"}, {}),
+        ({"a": ("1001",)}, {"1001": "a"}, {}),
+        ({"a": (" 53001",)}, {" 53001": "a"}, {}),
+        ({"a": ("53001",)}, {"53001": "a"}, {"p53001": "Adams"}),
+    ],
+    ids=["prefixed-alias-in-other-region", "unpadded", "whitespace", "label-key"],
+)
+def test_direct_membership_rejects_noncanonical_fips_keys(
+    region_to_counties: dict[str, tuple[str, ...]],
+    county_to_region: dict[str, str],
+    county_labels: dict[str, str],
+) -> None:
+    with pytest.raises(CountyMembershipError, match="not a canonical five-digit FIPS"):
+        CountyMembership(
+            region_to_counties=region_to_counties,
+            county_to_region=county_to_region,
+            county_labels=county_labels,
+        )
+
+
+def test_direct_membership_rejects_invalid_fips_keys() -> None:
+    with pytest.raises(CountyMembershipError, match="Invalid county FIPS"):
+        CountyMembership(
+            region_to_counties={"a": ("abc",)},
+            county_to_region={"abc": "a"},
+            county_labels={},
+        )
+
+
 def test_load_county2zone_normalizes_fips_and_preserves_labels() -> None:
     membership = load_county_membership(INPUT_CASE / "county2zone.csv")
 
