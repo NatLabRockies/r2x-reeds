@@ -28,8 +28,11 @@ Source: [parser](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cf
 
 Import `load_county_membership`, `CountyMembership` and `align_regions` from
 `r2x_reeds`. The loader accepts ReEDS `county2zone.csv` files with `FIPS` and
-`ba` columns (and optional `county_name`) and `r_county.csv` files with `r` and
-`county` columns. County identifiers are normalized to five-digit FIPS keys;
+`ba` columns (and optional `county_name`), zone-definition files with `FIPS` and
+`r` columns, and `r_county.csv` files with `r` and `county` columns. When a file
+has both `r` and `ba`, `r` is used because the same county can belong to
+different modeled regions across zone definitions. County identifiers are
+normalized to five-digit FIPS keys;
 region labels and available county display labels remain available on the
 membership as `region_to_counties`, `county_to_region` and `county_labels`.
 

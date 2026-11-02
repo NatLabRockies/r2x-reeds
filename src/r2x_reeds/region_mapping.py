@@ -133,9 +133,11 @@ def load_county_membership(path: str | Path) -> CountyMembership:
     """Read a supported ReEDS county mapping CSV.
 
     Supports ``county2zone.csv`` (``FIPS``, ``ba``, optionally
-    ``county_name``) and ``r_county.csv`` (``r``, ``county``). County keys
-    are normalized to five-digit FIPS strings while region and county display
-    labels are retained from the source.
+    ``county_name``), zone-definition files (``FIPS``, ``r``) and
+    ``r_county.csv`` (``r``, ``county``). When both ``r`` and ``ba`` are
+    present, ``r`` is used because it reflects the run's modeled regions. County
+    keys are normalized to five-digit FIPS strings while region and county
+    display labels are retained from the source.
 
     Raises
     ------
@@ -149,16 +151,15 @@ def load_county_membership(path: str | Path) -> CountyMembership:
         if reader.fieldnames is None:
             raise CountyMembershipError(f"County mapping file {mapping_path} has no header row.")
         columns = {name.strip().casefold(): name for name in reader.fieldnames if name is not None}
-        if {"fips", "ba"} <= columns.keys():
-            region_column, county_column = columns["ba"], columns["fips"]
-            label_column = columns.get("county_name")
-        elif {"r", "county"} <= columns.keys():
-            region_column, county_column = columns["r"], columns["county"]
-            label_column = county_column
-        else:
+        region_key = next((key for key in ("r", "ba") if key in columns), None)
+        county_key = next((key for key in ("fips", "county") if key in columns), None)
+        if region_key is None or county_key is None:
             raise CountyMembershipError(
-                f"Unsupported county mapping headers in {mapping_path}; expected FIPS/ba or r/county."
+                f"Unsupported county mapping headers in {mapping_path}; "
+                "expected a FIPS or county column and an r or ba column."
             )
+        region_column, county_column = columns[region_key], columns[county_key]
+        label_column = columns.get("county_name")
 
         region_counties: dict[str, list[str]] = defaultdict(list)
         county_regions: dict[str, str] = {}

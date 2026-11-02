@@ -89,6 +89,35 @@ def test_load_county2zone_normalizes_fips_and_preserves_labels() -> None:
     assert membership.county_labels["53007"] == "chelan"
 
 
+def test_load_zone_definition_with_fips_and_r_columns(tmp_path: Path) -> None:
+    mapping = tmp_path / "zones.csv"
+    mapping.write_text("FIPS,r\n42023,z122\n1001,z5\n")
+
+    membership = load_county_membership(mapping)
+
+    assert membership.county_to_region == {"42023": "z122", "01001": "z5"}
+    assert membership.county_labels["01001"] == "1001"
+
+
+def test_load_prefers_modeled_r_over_original_ba(tmp_path: Path) -> None:
+    mapping = tmp_path / "county2zone.csv"
+    mapping.write_text("FIPS,ba,r,county_name\n42023,p119,z122,cameron\n42027,p119,z120,centre\n")
+
+    membership = load_county_membership(mapping)
+
+    assert membership.county_to_region == {"42023": "z122", "42027": "z120"}
+    assert "p119" not in membership.region_to_counties
+    assert membership.county_labels["42023"] == "cameron"
+
+
+def test_load_rejects_mapping_without_region_column(tmp_path: Path) -> None:
+    mapping = tmp_path / "no_region.csv"
+    mapping.write_text("FIPS,county_name\n42023,cameron\n")
+
+    with pytest.raises(CountyMembershipError, match="Unsupported county mapping headers"):
+        load_county_membership(mapping)
+
+
 def test_align_county_and_balancing_area_memberships_in_both_orders() -> None:
     balancing_areas = load_county_membership(INPUT_CASE / "county2zone.csv")
     counties = _county_level_membership(balancing_areas)
