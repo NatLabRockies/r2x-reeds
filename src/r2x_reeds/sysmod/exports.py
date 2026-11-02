@@ -174,7 +174,7 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
                 raise ValueError(f"Multiple demand components found for region {region_name}")
             demands_by_region[region_name] = demand
 
-        staged_updates: list[tuple[ReEDSDemand, SingleTimeSeries]] = []
+        staged_updates: list[tuple[ReEDSDemand, SingleTimeSeries, float]] = []
         for export_row in annual_exports.iter_rows(named=True):
             region_name = export_row["r"]
             demand = demands_by_region.get(region_name)
@@ -200,18 +200,20 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
                     f"but the export profile has {len(export_load_mw)} hours"
                 )
 
+            updated_load_mw = base_load_mw + export_load_mw
             updated_time_series = SingleTimeSeries.from_array(
-                data=base_load_mw + export_load_mw,
+                data=updated_load_mw,
                 name=time_series.name,
                 initial_timestamp=time_series.initial_timestamp,
                 resolution=time_series.resolution,
             )
-            staged_updates.append((demand, updated_time_series))
+            staged_updates.append((demand, updated_time_series, float(updated_load_mw.max())))
 
-        for demand, updated_time_series in staged_updates:
+        for demand, updated_time_series, peak_load_mw in staged_updates:
             time_series_name = updated_time_series.name
             system.remove_time_series(demand, name=time_series_name)
             system.add_time_series(updated_time_series, demand)
+            demand.max_active_power = peak_load_mw
             logger.debug("Added Canadian export demand to region {}", demand.region.name)
     except Exception as error:
         logger.error("Error in exports plugin: {}", error)

@@ -85,6 +85,8 @@ def test_exports_select_year_and_region_and_expand_hourly_profile(tmp_path: Path
     )
     assert east_series.data.tolist() == pytest.approx([100.0 + 500.0, 110.0 + 500.0, 120.0 + 500.0, 4630.0])
     assert sum(west_series.data.tolist()) - 460.0 == pytest.approx(2000.0)
+    assert west_demand.max_active_power == pytest.approx(1630.0)
+    assert east_demand.max_active_power == pytest.approx(4630.0)
 
 
 def test_exports_accept_fraction_hours_from_other_mapped_years(tmp_path: Path) -> None:
@@ -289,6 +291,8 @@ def test_exports_validation_error_does_not_partially_update_demands(tmp_path: Pa
     assert "Export energy for region east cannot be negative" in result.unwrap_err()
     assert system.get_time_series(west_demand, name="max_active_power").data.tolist() == west_before.tolist()
     assert system.get_time_series(east_demand, name="max_active_power").data.tolist() == east_before.tolist()
+    assert west_demand.max_active_power == 200.0
+    assert east_demand.max_active_power == 200.0
 
 
 def test_exports_skip_when_required_files_are_missing(caplog) -> None:
