@@ -97,6 +97,14 @@ class ReEDSConfig(PluginConfig):
             ),
         ),
     ] = False
+    drop_gen_capacity_threshold: Annotated[
+        float,
+        Field(
+            default=0.0,
+            ge=0,
+            description=("Drop generators with installed capacity below this threshold in MW."),
+        ),
+    ] = 0.0
 
     @property
     def primary_solve_year(self) -> int:

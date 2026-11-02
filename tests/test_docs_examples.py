@@ -75,6 +75,31 @@ def test_documented_console(
         exec(Path("inspect_pcm.py").read_text(), {"sys": system})
 
 
+def test_documented_exclusion_lists_keep_can_exports() -> None:
+    """Explicit lists replace the defaults, so dropping can-exports double-counts exports."""
+    import re
+
+    import yaml
+
+    yaml_fence = re.compile(r"```yaml\n(.*?)```", re.DOTALL)
+
+    def exclusion_lists(node: Any) -> list[Any]:
+        if isinstance(node, dict):
+            found = [node["excluded_techs"]] if "excluded_techs" in node else []
+            return found + [lst for value in node.values() for lst in exclusion_lists(value)]
+        if isinstance(node, list):
+            return [lst for value in node for lst in exclusion_lists(value)]
+        return []
+
+    checked = 0
+    for path in (DOCS / "how-to").rglob("*.md"):
+        for block in yaml_fence.findall(path.read_text()):
+            for excluded in exclusion_lists(yaml.safe_load(block)):
+                assert excluded and "can-exports" in excluded, f"{path.name}: {excluded}"
+                checked += 1
+    assert checked >= 3
+
+
 def test_console_fences_are_discoverable() -> None:
     """Prevent prompt-bearing examples from silently falling outside collection."""
     assert len(PAGES) >= 8

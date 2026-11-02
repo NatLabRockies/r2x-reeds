@@ -108,9 +108,11 @@ check the actual components rather than relying on the pipeline exit code:
 >>> assert any(item.name == "p1_load" for item in system.get_components(ReEDSDemand))
 ```
 
-Default generator exclusions include `can-imports`, `electrolyzer`, `smr` and
-`smr_ccs`. Import budgets need parsed import generators and their mapped inputs;
-purchaser demand needs its own production/site inputs. Use the exact configuration
+Default generator exclusions include `can-imports`, `can-exports`,
+`electrolyzer`, `smr` and `smr_ccs`. Import budgets need matching parsed import
+generators; Canadian export demand is added to existing regional
+`ReEDSDemand` profiles and does not use export generators. Purchaser demand
+needs its own production/site inputs. Use the exact configuration
 and per-modifier checks in [PCM handoff](/r2x-reeds/how-to/pcm-handoff/), including
 its explicit exclusion-list replacement. Never combine modern purchaser hydrogen
 and legacy electrolyzer demand for the same load. Verify the added component names,

@@ -182,14 +182,30 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
         if "actual_period" in hour_map.columns and "season" not in hour_map.columns:
             hour_map = hour_map.rename({"actual_period": "season"})
 
-        if "value" not in total_imports.columns:
+        if "r" not in total_imports.columns:
+            raise ValueError("Import data is missing required region column 'r'")
+        if "value" in total_imports.columns:
+            if "t" in total_imports.columns:
+                if config.solve_year is None:
+                    raise ValueError("Solve year is required for long-form Canadian import data")
+                total_imports = total_imports.filter(pl.col("t") == config.solve_year)
+            total_imports = total_imports.select("r", pl.col("value").cast(pl.Float64))
+        else:
             if config.solve_year is None:
                 raise ValueError("Solve year is required for wide Canadian import data")
             if str(config.solve_year) not in total_imports.columns:
                 raise ValueError(f"Import data does not contain a column for year {config.solve_year}")
             total_imports = total_imports.select(
                 "r",
-                pl.col(str(config.solve_year)).alias("value"),
+                pl.col(str(config.solve_year)).cast(pl.Float64).alias("value"),
+            )
+
+        duplicate_regions = total_imports.group_by("r").len().filter(pl.col("len") > 1)
+        if not duplicate_regions.is_empty():
+            region_name = duplicate_regions["r"].item(0)
+            raise ValueError(
+                f"Import data contains multiple values for region {region_name} "
+                f"in solve year {config.solve_year}"
             )
 
         daily_fractions = _prepare_daily_import_fractions(hour_map, szn_frac, config.weather_year)
@@ -199,7 +215,11 @@ def add_imports(system: System, config: ImportsConfig) -> Result[System, str]:
         # Find Canadian import generators
         for generator in system.get_components(
             ReEDSGenerator,
-            filter_func=lambda x: "can-imports" in x.name.lower() or "canada" in x.technology.lower(),
+            filter_func=lambda component: (
+                component.category == "imports"
+                or "can-imports" in component.name.lower()
+                or "canada_import" in component.technology.lower()
+            ),
         ):
             # Get region name from the generator's region
             region_name = generator.region.name

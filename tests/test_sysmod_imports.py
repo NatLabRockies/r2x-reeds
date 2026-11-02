@@ -125,6 +125,66 @@ def test_imports_scope_reeds_input_shapes(tmp_path: Path) -> None:
     assert time_series.data.tolist() == pytest.approx([0.6, 0.6, 0.8])
 
 
+def test_imports_scope_long_form_data_selects_solve_year(tmp_path: Path) -> None:
+    system, generator = _build_generator()
+    hour_map_path = _write_csv(
+        tmp_path / "hour_map.csv",
+        {
+            "time_index": ["2024-01-01T00:00:00", "2024-01-02T00:00:00"],
+            "season": ["winter", "winter"],
+        },
+    )
+    szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", {"season": ["winter"], "value": [1.0]})
+    imports_path = _write_csv(
+        tmp_path / "imports.csv",
+        {"r": ["west", "west"], "t": [2034, 2035], "value": [1000.0, 2000.0]},
+    )
+
+    _run_imports(
+        system,
+        weather_year=2024,
+        solve_year=2035,
+        canada_imports_fpath=imports_path,
+        canada_szn_frac_fpath=szn_frac_path,
+        hour_map_fpath=hour_map_path,
+    )
+
+    time_series = system.get_time_series(generator, name="hydro_budget")
+    assert time_series.data.tolist() == pytest.approx([1.0, 1.0])
+
+
+def test_imports_do_not_attach_budgets_to_canadian_export_generators(tmp_path: Path) -> None:
+    system, import_generator = _build_generator()
+    export_generator = ReEDSGenerator(
+        name="can-exports_west",
+        region=import_generator.region,
+        capacity=50.0,
+        technology="canada_export",
+        category="exports",
+    )
+    system.add_component(export_generator)
+    hour_map_path = _write_csv(
+        tmp_path / "hour_map.csv",
+        {
+            "time_index": ["2024-01-01T00:00:00", "2024-01-02T00:00:00"],
+            "season": ["winter", "winter"],
+        },
+    )
+    szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", {"season": ["winter"], "value": [1.0]})
+    imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "value": [1000.0]})
+
+    _run_imports(
+        system,
+        weather_year=2024,
+        canada_imports_fpath=imports_path,
+        canada_szn_frac_fpath=szn_frac_path,
+        hour_map_fpath=hour_map_path,
+    )
+
+    assert system.has_time_series(import_generator, name="hydro_budget")
+    assert not system.has_time_series(export_generator)
+
+
 def test_imports_scope_wide_data_requires_solve_year(tmp_path: Path) -> None:
     """Wide Canadian import data requires an explicit solve year."""
     system, _ = _build_generator()
@@ -219,6 +279,53 @@ def test_imports_scope_empty_join(tmp_path: Path) -> None:
 
     assert result.is_err()
     assert "hour map does not contain seasons" in result.unwrap_err().lower()
+    assert system.has_time_series(generator) is False
+
+
+@pytest.mark.parametrize(
+    ("hour_map", "fractions", "error_message"),
+    [
+        (
+            {
+                "time_index": ["2024-01-01T00:00:00", "2024-01-01T01:00:00"],
+                "season": ["winter", "spring"],
+            },
+            {"season": ["winter", "spring"], "value": [0.5, 0.5]},
+            "more than one representative season",
+        ),
+        (
+            {
+                "time_index": ["2024-01-01T00:00:00", "2024-01-02T00:00:00"],
+                "season": ["winter", "winter"],
+            },
+            {"season": ["winter", "spring"], "value": [0.5, 0.5]},
+            "does not include seasonal fractions for",
+        ),
+    ],
+)
+def test_imports_scope_invalid_daily_season_mapping(
+    tmp_path: Path,
+    hour_map: dict[str, list[str]],
+    fractions: dict[str, list],
+    error_message: str,
+) -> None:
+    system, generator = _build_generator()
+    hour_map_path = _write_csv(tmp_path / "hour_map.csv", hour_map)
+    szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", fractions)
+    imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "value": [1000.0]})
+
+    result = imports.add_imports(
+        system,
+        imports.ImportsConfig(
+            weather_year=2024,
+            canada_imports_fpath=imports_path,
+            canada_szn_frac_fpath=szn_frac_path,
+            hour_map_fpath=hour_map_path,
+        ),
+    )
+
+    assert result.is_err()
+    assert error_message in result.unwrap_err().lower()
     assert system.has_time_series(generator) is False
 
 

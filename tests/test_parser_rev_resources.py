@@ -239,6 +239,13 @@ def test_resource_helpers_coerce_and_merge(parser, sample_region):
     assert normalized.columns.count("available_capacity") == 1
     assert normalized[0, "technology"] == "upv"
 
+    legacy_aliases = parser._normalize_resource_frame(
+        pl.DataFrame({"cf": [0.25], "cost_per_mw": [1200.0]}),
+        source_name="wind-ofs",
+    )
+    assert legacy_aliases[0, "capacity_factor"] == pytest.approx(0.25)
+    assert legacy_aliases[0, "supply_curve_cost"] == pytest.approx(1200.0)
+
     merged = parser._merge_resource_frames(normalized, enrichment, "upv")
     merged_row = merged.row(0, named=True)
 

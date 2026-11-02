@@ -65,6 +65,29 @@ def test_reeds_config_can_use_degraded_capacity():
     assert config.use_degraded_capacity is True
 
 
+def test_reeds_config_generator_capacity_threshold_defaults_to_zero():
+    config = ReEDSConfig(solve_year=2030, weather_year=2012)
+    assert config.drop_gen_capacity_threshold == 0.0
+
+
+def test_reeds_config_accepts_generator_capacity_threshold():
+    config = ReEDSConfig(
+        solve_year=2030,
+        weather_year=2012,
+        drop_gen_capacity_threshold=5.0,
+    )
+    assert config.drop_gen_capacity_threshold == 5.0
+
+
+def test_reeds_config_rejects_negative_generator_capacity_threshold():
+    with pytest.raises(ValueError):
+        ReEDSConfig(
+            solve_year=2030,
+            weather_year=2012,
+            drop_gen_capacity_threshold=-1.0,
+        )
+
+
 def test_reeds_config_scenario_field():
     """Test scenario field."""
     config = ReEDSConfig(

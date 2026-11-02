@@ -49,6 +49,7 @@ add-electrolyzer-load = "r2x_reeds.sysmod.electrolyzer:add_electrolizer_load"
 add-ccs-credit = "r2x_reeds.sysmod.ccs_credit:add_ccs_credit"
 break-gens = "r2x_reeds.sysmod.break_gens:break_generators"
 add-imports = "r2x_reeds.sysmod.imports:add_imports"
+add-exports = "r2x_reeds.sysmod.exports:add_exports"
 add-optimal-siting = "r2x_reeds.sysmod.optimal_siting:add_optimal_siting"
 add-purchaser-load = "r2x_reeds.sysmod.purchaser_load:add_purchaser_load"
 
