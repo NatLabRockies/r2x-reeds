@@ -157,13 +157,12 @@ The parser excludes `can-imports` by default. Before choosing an imports profile
 retain the other current exclusions but allow imports:
 
 ```yaml
-excluded_techs: [electrolyzer, smr, smr_ccs]
 excluded_techs: [can-exports, electrolyzer, smr, smr_ccs]
 ```
 
-This replaces the exclusion list; it is not an append operation. Keeping
-`can-exports` in the list prevents parsing export generators while enabling
-imports. The modifier cannot attach budgets to import generators that were
+This replaces the default exclusion list; it is not an append operation, so every
+default you still want must be listed. Keeping `can-exports` in the list prevents
+parsing export generators while enabling imports. The modifier cannot attach budgets to import generators that were
 never parsed.
 
 **Check:** inspect matched import generators, list their `hydro_budget` series,
@@ -177,14 +176,17 @@ selected weather year, then scales them by the region's annual exports for the
 selected solve year. The added hourly energy therefore reconciles to the annual
 MWh input. A regional demand component with an existing hourly profile is
 required; Canadian export generators are not used by this modifier. The
-`can-exports` parser exclusion should remain enabled: removing it enables
-generator supply, not export demand. Apply demand through the explicit
-`add-exports` transform, for example:
+`can-exports` parser exclusion must remain enabled: removing it parses export
+generators as supply while `add-exports` also adds the same exports as demand.
+
+An explicit `excluded_techs` list replaces the package defaults rather than
+extending them. Omit the key to keep the defaults, or list every exclusion you
+need and keep `can-exports` in it, for example:
 
 ```yaml
 excluded_techs:
-  # - can-imports
-  # - can-exports
+  - can-imports
+  - can-exports
   - electrolyzer
   - smr
   - smr_ccs
