@@ -583,9 +583,11 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
         - Capacity summed
         - Specific fields use first() (resource_class, fuel_type)
         - Fixed O&M capacity-weighted, preserving unknown rates
+        - Capacity factor adjustment and inverter loading ratio (ILR) capacity-weighted
         - Other fields averaged
     """
     first_fields = {"resource_class", "fuel_type"}
+    weighted_avg_fields = {"capacity_factor_adjustment", "inverter_loading_ratio"}
     agg_exprs = [pl.col("capacity").sum()]
 
     for col in AGG_COLUMNS:
@@ -597,6 +599,11 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
                 pl.when(unknown_cost | (pl.col("capacity").sum() <= 0))
                 .then(pl.lit(None, dtype=pl.Float64))
                 .otherwise((pl.col(col) * pl.col("capacity")).sum() / pl.col("capacity").sum())
+                .alias(col)
+            )
+        elif col in weighted_avg_fields:
+            agg_exprs.append(
+                (pl.col(col) * pl.col("capacity")).sum() / pl.col("capacity").sum()
                 .alias(col)
             )
         elif col in first_fields:
