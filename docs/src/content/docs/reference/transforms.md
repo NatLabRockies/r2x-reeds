@@ -18,6 +18,7 @@ CLI pipeline profiles.
 - `break-gens`
 - `add-imports`
 - `add-optimal-siting`
+- `scale-distpv-capacity`
 
 ## Configuration Summary
 
@@ -35,6 +36,39 @@ Source definitions give each field type, default and required input.
 | `add-ccs-credit`        | `CCSCreditConfig`     | Apply CCS incentives                            |
 | `add-imports`           | `ImportsConfig`       | Add Canadian import time series                 |
 | `add-optimal-siting`    | `OptimalSitingConfig` | Apply loadsite increments to demand profiles    |
+| `scale-distpv-capacity` | `DistPVCapacityConfig` | Adjust distpv capacity for distribution losses |
+
+## DistPV Capacity Transform
+
+Module: `r2x_reeds.sysmod.distpv_capacity`
+
+Function: `scale_distpv_capacity(system, config)`
+
+Scales only the installed capacity (MW) of generators whose `technology` is
+exactly `distpv` by `1 / (1 - distloss)`. All other fields and time series,
+including already-scaled `max_active_power` profiles, remain unchanged.
+This is a capacity-only adjustment, not an additional energy adjustment.
+
+Configure a manual `distloss` fraction or `scalars_fpath` pointing to the
+headerless ReEDS `inputs_case/scalars.csv`. A manual value takes precedence,
+including zero. Losses must be finite and in `[0, 1)`; missing inputs, missing
+or duplicate `distloss` rows, and invalid values fail rather than being skipped.
+The scalar is national and has no solve-year or weather-year selection.
+
+Add `r2x-reeds.scale-distpv-capacity` once after parsing and before translation
+to the target model. Repeated application compounds the capacity change.
+Refresh the installed package metadata after adding this entry point so the
+CLI can discover it.
+
+```yaml
+config:
+	r2x-reeds.scale-distpv-capacity:
+		scalars_fpath: ${reeds_run}/inputs_case/scalars.csv
+		# Alternatively, set distloss: 0.05 as a manual override.
+```
+
+At `distloss: 0.05`, a 100 MW distpv generator becomes approximately
+105.263 MW, with no change to its hourly profile.
 
 ## Purchaser Load Transform
 
