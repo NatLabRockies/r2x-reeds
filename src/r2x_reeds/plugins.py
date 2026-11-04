@@ -9,6 +9,7 @@ from __future__ import annotations
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.sysmod.break_gens import break_generators
 from r2x_reeds.sysmod.ccs_credit import add_ccs_credit
+from r2x_reeds.sysmod.distpv_capacity import scale_distpv_capacity
 from r2x_reeds.sysmod.electrolyzer import add_electrolizer_load
 from r2x_reeds.sysmod.emission_cap import add_emission_cap
 from r2x_reeds.sysmod.exports import add_exports
@@ -33,6 +34,7 @@ system_modifiers = {
     "add-exports": add_exports,
     "add-optimal-siting": add_optimal_siting,
     "add-purchaser-load": add_purchaser_load,
+    "scale-distpv-capacity": scale_distpv_capacity,
 }
 
 __all__ = [
