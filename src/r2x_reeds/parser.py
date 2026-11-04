@@ -1994,6 +1994,17 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
         logger.trace("Parsed {} tech-region renewable profile columns", tech_regions.height)
 
+        if self.config.pv_ilr_adj:
+            # Get set of unique PV technologies for ILR adjustment
+            pv_tech_names = (
+                tech_regions.filter(pl.col("tech").str.contains("pv"))
+                .select("tech")
+                .unique()
+                .get_column("tech")
+            )
+
+            pv_tech_names = set(pv_tech_names)
+
         for row in tech_regions.iter_rows(named=True):
             tech = row["tech"]
             region_name = row["region"]
@@ -2014,6 +2025,21 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             # Scale profiles by rated capaciy
             for generator in matching_generators:
                 data = cf_data * generator.capacity
+                if self.config.apply_cf_adj:
+                    # Scale profiles based on their capacity factor adjustment
+                    data *= generator.capacity_factor_adjustment
+
+                if self.config.pv_ilr_adj and tech in pv_tech_names:
+                    # Scale PV profiles by their inverter loading ratio (capacity factor profile is based on DC capacity)
+                    data *= generator.inverter_loading_ratio
+
+                    if data.max() > generator.capacity:
+                        logger.warning(
+                            "PV profile for tech {} in region {} exceeds generator capacity after ILR adjustment",
+                            tech,
+                            region_name,
+                        )
+
                 ts = SingleTimeSeries.from_array(
                     data=data,
                     name="max_active_power",
@@ -2395,6 +2421,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "storage_efficiency": self.read_data_file("storage_efficiency"),
                 "storage_duration_out": self.read_data_file("storage_duration_out"),
                 "consume_characteristics": self.read_data_file("consume_characteristics"),
+                "capacity_factor_adjustment": self.read_data_file("renewable_cf_adjustment"),
+                "inverter_loading_ratio": self.read_data_file("ilr")
             },
             excluded_technologies=self._excluded_techs,
             technology_categories=self._tech_categories,

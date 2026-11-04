@@ -13,6 +13,8 @@ title: Configuration Reference
 | `excluded_techs`               | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
 | `use_degraded_capacity`        | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
 | `drop_gen_capacity_threshold`  | `float`               | `0.0`    | Drop generators below this installed capacity in MW            |
+| `apply_cf_adj`                 | `bool`                | `False`  | Apply renewable capacity-factor adjustment to hourly profiles  |
+| `pv_ilr_adj`                   | `bool`                | `False`  | Scale PV hourly profiles by their inverter loading ratio       |
 
 `primary_solve_year` and `primary_weather_year` return the first value when a list
 is supplied. The CLI tutorial uses scalar years so downstream plugins receive one
@@ -34,12 +36,38 @@ Key fields:
 - `scenario`: optional string, default `base`
 - `use_degraded_capacity`: bool, default `False`; choose degradation-adjusted `cap_deg_ivrt` instead of `cap_ivrt` for online capacity.
 - `drop_gen_capacity_threshold`: float, default `0.0`; omit generators with installed capacity strictly below this value in MW.
+- `apply_cf_adj`: bool, default `False`; multiply renewable profiles by generators' `capacity_factor_adjustment` values.
+- `pv_ilr_adj`: bool, default `False`; multiply PV profiles by generators' `inverter_loading_ratio` values to account for DC-based capacity factors.
 - `excluded_techs`: optional list of technologies to exclude. When omitted, the list from `defaults.json` is used.
 
 Convenience properties:
 
 - `primary_solve_year`
 - `primary_weather_year`
+
+### Renewable profile adjustments
+
+With both flags disabled, the parser constructs hourly `max_active_power` in MW
+as the source capacity-factor profile multiplied by generator capacity.
+`apply_cf_adj=True` additionally multiplies renewable profiles by the generator's
+`capacity_factor_adjustment`, read through the `renewable_cf_adjustment` mapping
+from the ReEDS `cf_adj_t` dataset for the selected solve year.
+`pv_ilr_adj=True` additionally multiplies PV profiles by `inverter_loading_ratio`,
+read through the `ilr` mapping from the ReEDS `ilr` dataset. The current PV
+selection includes technology names containing `pv`, including `distpv`.
+These datasets are read from `outputs/outputs.h5`, with the CSV fallback described below.
+
+Since renewable generators are aggregated into a single, representative generator by
+region, renewable profile adjustments use capacity-weighted average values of
+`capacity_factor_adjustment` and `inverter_loading_ratio` for each region.
+
+The flags are independent; when both are enabled, both multipliers apply to PV
+profiles. Enabling an adjustment requires its corresponding generator values to
+be present. Neither flag changes installed generator capacity. Capacity selection
+remains controlled separately by `use_degraded_capacity`. The parser warns if an
+ILR-adjusted PV profile exceeds generator capacity; it does not clip the profile.
+Leave an adjustment disabled if the source profile already includes that factor
+to avoid applying it twice.
 
 ## Parser Configuration Assets
 

@@ -52,6 +52,7 @@ add-imports = "r2x_reeds.sysmod.imports:add_imports"
 add-exports = "r2x_reeds.sysmod.exports:add_exports"
 add-optimal-siting = "r2x_reeds.sysmod.optimal_siting:add_optimal_siting"
 add-purchaser-load = "r2x_reeds.sysmod.purchaser_load:add_purchaser_load"
+scale-distpv-capacity = "r2x_reeds.sysmod.distpv_capacity:scale_distpv_capacity"
 
 [dependency-groups]
 dev = [
