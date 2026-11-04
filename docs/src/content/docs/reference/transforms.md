@@ -62,9 +62,9 @@ CLI can discover it.
 
 ```yaml
 config:
-	r2x-reeds.scale-distpv-capacity:
-		scalars_fpath: ${reeds_run}/inputs_case/scalars.csv
-		# Alternatively, set distloss: 0.05 as a manual override.
+  r2x-reeds.scale-distpv-capacity:
+    scalars_fpath: ${reeds_run}/inputs_case/scalars.csv
+    # Alternatively, set distloss: 0.05 as a manual override.
 ```
 
 At `distloss: 0.05`, a 100 MW distpv generator becomes approximately
@@ -133,6 +133,17 @@ A generator is split if it matches any one of `include_regions`, `include_genera
 If these fields are omitted, `break-gens` keeps the original workflow and considers all eligible generators.
 
 ## Configuration fields and source
+
+### DistPVCapacityConfig
+
+Module: `r2x_reeds.sysmod.distpv_capacity`.
+
+Package fields:
+
+- `distloss`: `float | None`, default `None`; finite distribution loss fraction in `[0, 1)`. Overrides the scalars file when provided, including zero.
+- `scalars_fpath`: `Path | str | None`, default `None`; path to the headerless ReEDS `inputs_case/scalars.csv` containing exactly one `distloss` row.
+
+Provide at least one of these fields. See [DistPV Capacity Transform](#distpv-capacity-transform) for behavior and an example.
 
 ### BreakGensConfig
 
