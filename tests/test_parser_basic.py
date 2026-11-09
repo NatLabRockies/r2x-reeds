@@ -27,6 +27,8 @@ def _build_parser(
     *,
     use_degraded_capacity: bool = False,
     drop_gen_capacity_threshold: float = 0.0,
+    apply_cf_adjustment: bool = False,
+    apply_ilr_adjustment: bool = False,
 ):
     from r2x_core import DataStore, PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
@@ -38,10 +40,163 @@ def _build_parser(
         scenario="base",
         use_degraded_capacity=use_degraded_capacity,
         drop_gen_capacity_threshold=drop_gen_capacity_threshold,
+        apply_cf_adjustment=apply_cf_adjustment,
+        apply_ilr_adjustment=apply_ilr_adjustment,
     )
     store = DataStore.from_plugin_config(config, path=run_path)
     ctx = PluginContext(config=config, store=store)
     return ReEDSParser.from_context(ctx)
+
+
+@pytest.mark.parametrize("apply_cf_adjustment", [False, True])
+@pytest.mark.parametrize("apply_ilr_adjustment", [False, True])
+@pytest.mark.parametrize(
+    "field,technology",
+    [
+        ("capacity_factor_adjustment", "wind-ons_1"),
+        ("capacity_factor_adjustment", "upv_1"),
+        ("inverter_loading_ratio", "upv_1"),
+        ("inverter_loading_ratio", "wind-ons_1"),
+        (None, "upv_1"),
+        (None, "wind-ons_1"),
+    ],
+)
+def test_prepare_generator_datasets_warns_for_enabled_null_adjustments(
+    reeds_run_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    apply_cf_adjustment: bool,
+    apply_ilr_adjustment: bool,
+    field: str | None,
+    technology: str,
+) -> None:
+    parser = _build_parser(
+        reeds_run_path,
+        apply_cf_adjustment=apply_cf_adjustment,
+        apply_ilr_adjustment=apply_ilr_adjustment,
+    )
+    assert parser._ensure_config_assets().is_ok()
+    assert parser._prepare_default_metadata().is_ok()
+    adjustments = {
+        "capacity_factor_adjustment": [0.8, 1.2],
+        "inverter_loading_ratio": [1.1, 1.5],
+    }
+    if field is not None:
+        adjustments[field][1] = None
+    datasets = {
+        "online_capacity": pl.LazyFrame(
+            {
+                "technology": [technology, technology],
+                "vintage": ["new1", "new2"],
+                "region": ["p1", "p1"],
+                "year": [2032, 2032],
+                "capacity": [100.0, 300.0],
+            }
+        ),
+        "fom_switches": pl.LazyFrame({"switch": ["gsw_upgradechar_year"], "value": ["2030"]}),
+        "fuel_tech_map": pl.LazyFrame({"technology": [technology], "fuel_type": ["renewable"]}),
+        "biofuel_price": pl.LazyFrame(
+            schema={"technology": pl.String, "region": pl.String, "year": pl.Int64, "fuel_price": pl.Float64}
+        ),
+    }
+    for source, column in (
+        ("renewable_cf_adjustment", "capacity_factor_adjustment"),
+        ("ilr", "inverter_loading_ratio"),
+    ):
+        datasets[source] = pl.LazyFrame(
+            {
+                "technology": [technology, technology],
+                "vintage": ["new1", "new2"],
+                column: pl.Series(adjustments[column], dtype=pl.Float64),
+            }
+        )
+    monkeypatch.setattr(parser, "read_data_file", lambda name: datasets.get(name))
+    monkeypatch.setattr(type(parser.store), "read_data", lambda *_args, **_kwargs: None)
+
+    result = parser._prepare_generator_datasets()
+
+    assert result.is_ok(), result
+    prepared = parser._variable_generator_df
+    assert prepared is not None
+    assert prepared.height == 1
+    assert prepared["capacity"].item() == 400.0
+    if field is None:
+        assert prepared["capacity_factor_adjustment"].item() == pytest.approx(1.1)
+        assert prepared["inverter_loading_ratio"].item() == pytest.approx(1.4)
+    else:
+        assert prepared[field].item() is None
+    expected_warning = (
+        apply_cf_adjustment
+        if field == "capacity_factor_adjustment"
+        else field == "inverter_loading_ratio" and apply_ilr_adjustment and "pv" in technology
+    )
+    warnings = [record.message for record in caplog.records if record.levelname == "WARNING"]
+    assert len(warnings) == int(expected_warning)
+    if expected_warning:
+        assert f"{field} is null for 1/1 aggregated variable generators" in warnings[0]
+        assert technology in warnings[0]
+        assert "p1" in warnings[0]
+        assert "400.0" in warnings[0]
+        assert "Null values have been preserved" in warnings[0]
+
+
+@pytest.mark.parametrize("apply_cf_adjustment", [False, True])
+@pytest.mark.parametrize("apply_ilr_adjustment", [False, True])
+def test_attach_renewable_profiles_scales_enabled_adjustments(
+    reeds_run_path: Path,
+    sample_region,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    apply_cf_adjustment: bool,
+    apply_ilr_adjustment: bool,
+) -> None:
+    from r2x_core import System
+    from r2x_reeds.models import ReEDSVariableGenerator
+
+    parser = _build_parser(
+        reeds_run_path,
+        apply_cf_adjustment=apply_cf_adjustment,
+        apply_ilr_adjustment=apply_ilr_adjustment,
+    )
+    system = System(name="renewable-adjustments")
+    system.add_component(sample_region)
+    technologies = ["wind-ons_1", "wind-ofs_1", "upv_1", "distpv", "dupv", "pvb_1", "csp_1"]
+    capacity_factors = np.array([0.0, 0.25, 1.0])
+    profiles = pl.DataFrame({f"{technology}|p1": capacity_factors for technology in technologies})
+    original_profiles = profiles.clone()
+    for technology in technologies:
+        generator = ReEDSVariableGenerator(
+            name=f"{technology}_p1",
+            technology=technology,
+            region=sample_region,
+            capacity=100.0,
+            capacity_factor_adjustment=0.8,
+            inverter_loading_ratio=1.3 if "pv" in technology else None,
+        )
+        system.add_component(generator)
+        parser._generator_cache[generator.name] = generator
+    monkeypatch.setattr(parser, "read_data_file", lambda _name: profiles.lazy())
+    caplog.clear()
+
+    result = parser._attach_renewable_profiles(system)
+
+    assert result.is_ok(), result
+    for generator in parser._generator_cache.values():
+        multiplier = 100.0
+        if apply_cf_adjustment:
+            multiplier *= 0.8
+        if apply_ilr_adjustment and "pv" in generator.technology:
+            multiplier *= 1.3
+        time_series = system.get_time_series(generator)
+        np.testing.assert_allclose(time_series.data, capacity_factors * multiplier)
+        assert time_series.name == "max_active_power"
+        assert generator.capacity == 100.0
+        assert generator.capacity_factor_adjustment == 0.8
+        assert generator.inverter_loading_ratio == (1.3 if "pv" in generator.technology else None)
+    assert profiles.equals(original_profiles)
+    warnings = [record.message for record in caplog.records if record.levelname == "WARNING"]
+    assert len(warnings) == (4 if apply_ilr_adjustment else 0)
+    assert all("exceeds generator capacity after ILR adjustment" in warning for warning in warnings)
 
 
 def test_prepare_generator_datasets_drops_below_capacity_threshold(reeds_run_path: Path) -> None:

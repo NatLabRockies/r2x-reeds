@@ -1573,3 +1573,113 @@ def test_renewable_fom_preserves_annual_cost_and_unknowns(
     assert result["fom_cost"].to_list() == [expected]
     if expected is not None:
         assert result["capacity"][0] * result["fom_cost"][0] == 10000.0
+
+
+@pytest.mark.parametrize("field", ["capacity_factor_adjustment", "inverter_loading_ratio"])
+@pytest.mark.parametrize("technology,category", [("wind-ons_1", "wind"), ("upv_1", "solar")])
+@pytest.mark.parametrize(
+    "capacities,adjustments,expected",
+    [
+        pytest.param([100.0, 300.0], [0.8, 1.2], 1.1, id="unequal-capacity-weights"),
+        pytest.param([100.0, 300.0], [None, 1.2], None, id="first-positive-capacity-null"),
+        pytest.param([100.0, 300.0], [0.8, None], None, id="last-positive-capacity-null"),
+        pytest.param([100.0, 300.0], [None, None], None, id="all-null"),
+        pytest.param([100.0, 0.0], [0.8, None], 0.8, id="zero-capacity-null"),
+        pytest.param([0.0, 0.0], [0.8, 1.2], None, id="zero-total-capacity"),
+    ],
+)
+def test_renewable_adjustment_capacity_weighting_and_nulls(
+    field: str,
+    technology: str,
+    category: str,
+    capacities: list[float],
+    adjustments: list[float | None],
+    expected: float | None,
+) -> None:
+    import polars as pl
+
+    from r2x_reeds.parser_utils import aggregate_variable_generators
+
+    generators = pl.DataFrame(
+        {
+            "technology": [technology, technology],
+            "region": ["p1", "p1"],
+            "category": [category, category],
+            "categories": [[category], [category]],
+            "capacity": capacities,
+            field: pl.Series(adjustments, dtype=pl.Float64),
+        }
+    )
+
+    result = aggregate_variable_generators(generators)
+
+    assert result.height == 1
+    assert result["technology"].item() == technology
+    assert result["capacity"].item() == pytest.approx(sum(capacities))
+    actual = result[field].item()
+    if expected is None:
+        assert actual is None
+    else:
+        assert actual == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("field", ["capacity_factor_adjustment", "inverter_loading_ratio"])
+def test_renewable_adjustment_missing_column_stays_null(field: str) -> None:
+    import polars as pl
+
+    from r2x_reeds.parser_utils import aggregate_variable_generators
+
+    generators = pl.DataFrame(
+        {
+            "technology": ["upv_1"],
+            "region": ["p1"],
+            "category": ["solar"],
+            "categories": [["solar"]],
+            "capacity": [100.0],
+        }
+    )
+
+    result = aggregate_variable_generators(generators)
+
+    assert result[field].item() is None
+
+
+def test_renewable_adjustment_weighting_keeps_technology_and_region_groups_separate() -> None:
+    import polars as pl
+
+    from r2x_reeds.parser_utils import aggregate_variable_generators
+
+    generators = pl.DataFrame(
+        {
+            "technology": ["upv_1", "upv_1", "upv_1", "upv_2", "upv_1"],
+            "region": ["p1", "p1", "p2", "p1", "p1"],
+            "category": ["solar", "solar", "solar", "solar", "other"],
+            "categories": [["solar"], ["solar"], ["solar"], ["solar"], ["other"]],
+            "capacity": [100.0, 300.0, 200.0, 50.0, 25.0],
+            "capacity_factor_adjustment": [0.8, 1.2, 0.5, 0.9, None],
+            "inverter_loading_ratio": [1.1, 1.5, 1.8, 1.0, None],
+        }
+    )
+
+    result = aggregate_variable_generators(generators)
+
+    expected = {
+        ("upv_1", "p1", "solar"): (400.0, 1.1, 1.4),
+        ("upv_1", "p2", "solar"): (200.0, 0.5, 1.8),
+        ("upv_2", "p1", "solar"): (50.0, 0.9, 1.0),
+        ("upv_1", "p1", "other"): (25.0, None, None),
+    }
+    assert result.height == len(expected)
+    for row in result.iter_rows(named=True):
+        capacity, cf_adjustment, ilr_adjustment = expected[
+            (row["technology"], row["region"], row["category"])
+        ]
+        assert row["capacity"] == pytest.approx(capacity)
+        for field, adjustment in (
+            ("capacity_factor_adjustment", cf_adjustment),
+            ("inverter_loading_ratio", ilr_adjustment),
+        ):
+            if adjustment is None:
+                assert row[field] is None
+            else:
+                assert row[field] == pytest.approx(adjustment)
