@@ -77,7 +77,7 @@ def test_prepare_generator_datasets_warns_for_enabled_null_adjustments(
     )
     assert parser._ensure_config_assets().is_ok()
     assert parser._prepare_default_metadata().is_ok()
-    adjustments = {
+    adjustments: dict[str, list[float | None]] = {
         "capacity_factor_adjustment": [0.8, 1.2],
         "inverter_loading_ratio": [1.1, 1.5],
     }
@@ -197,6 +197,103 @@ def test_attach_renewable_profiles_scales_enabled_adjustments(
     warnings = [record.message for record in caplog.records if record.levelname == "WARNING"]
     assert len(warnings) == (4 if apply_ilr_adjustment else 0)
     assert all("exceeds generator capacity after ILR adjustment" in warning for warning in warnings)
+
+
+@pytest.mark.parametrize("apply_cf_adjustment", [False, True])
+@pytest.mark.parametrize("apply_ilr_adjustment", [False, True])
+@pytest.mark.parametrize("technology", ["wind-ons_1", "upv_1", "csp_1"])
+@pytest.mark.parametrize("missing_field", ["capacity_factor_adjustment", "inverter_loading_ratio"])
+def test_attach_renewable_profiles_rejects_only_applicable_missing_adjustments(
+    reeds_run_path: Path,
+    sample_region,
+    monkeypatch: pytest.MonkeyPatch,
+    apply_cf_adjustment: bool,
+    apply_ilr_adjustment: bool,
+    technology: str,
+    missing_field: str,
+) -> None:
+    from r2x_core import System
+    from r2x_reeds.models import ReEDSVariableGenerator
+
+    parser = _build_parser(
+        reeds_run_path,
+        apply_cf_adjustment=apply_cf_adjustment,
+        apply_ilr_adjustment=apply_ilr_adjustment,
+    )
+    system = System(name="missing-renewable-adjustments")
+    system.add_component(sample_region)
+    cf_adjustment = None if missing_field == "capacity_factor_adjustment" else 0.8
+    ilr_adjustment = None if missing_field == "inverter_loading_ratio" else 1.3
+    generator = ReEDSVariableGenerator(
+        name=f"{technology}_p1",
+        technology=technology,
+        region=sample_region,
+        capacity=100.0,
+        capacity_factor_adjustment=cf_adjustment,
+        inverter_loading_ratio=ilr_adjustment,
+    )
+    system.add_component(generator)
+    parser._generator_cache[generator.name] = generator
+    profiles = pl.DataFrame({f"{technology}|p1": [0.0, 0.25, 0.5]})
+    original_profiles = profiles.clone()
+    monkeypatch.setattr(parser, "read_data_file", lambda _name: profiles.lazy())
+
+    result = parser._attach_renewable_profiles(system)
+
+    expected_error = None
+    if apply_cf_adjustment and cf_adjustment is None:
+        expected_error = f"Missing CF adjustment for {generator.name}"
+    elif apply_ilr_adjustment and "pv" in technology and ilr_adjustment is None:
+        expected_error = f"Missing ILR adjustment for {generator.name}"
+    if expected_error is not None:
+        assert result.is_err()
+        assert result.unwrap_err() == expected_error
+        assert not system.has_time_series(generator)
+    else:
+        assert result.is_ok(), result
+        expected = np.array([0.0, 0.25, 0.5]) * 100.0
+        if apply_cf_adjustment:
+            expected *= cf_adjustment
+        if apply_ilr_adjustment and "pv" in technology:
+            expected *= ilr_adjustment
+        np.testing.assert_allclose(system.get_time_series(generator).data, expected)
+    assert generator.capacity == 100.0
+    assert generator.capacity_factor_adjustment == cf_adjustment
+    assert generator.inverter_loading_ratio == ilr_adjustment
+    assert profiles.equals(original_profiles)
+
+
+@pytest.mark.parametrize("apply_cf_adjustment", [False, True])
+@pytest.mark.parametrize("apply_ilr_adjustment", [False, True])
+def test_attach_renewable_profiles_rejects_unexpected_generator_type(
+    reeds_run_path: Path,
+    sample_region,
+    monkeypatch: pytest.MonkeyPatch,
+    apply_cf_adjustment: bool,
+    apply_ilr_adjustment: bool,
+) -> None:
+    from r2x_core import System
+    from r2x_reeds.models import ReEDSGenerator
+
+    parser = _build_parser(
+        reeds_run_path,
+        apply_cf_adjustment=apply_cf_adjustment,
+        apply_ilr_adjustment=apply_ilr_adjustment,
+    )
+    system = System(name="unexpected-renewable-generator")
+    system.add_component(sample_region)
+    generator = ReEDSGenerator(name="upv_1_p1", technology="upv_1", region=sample_region, capacity=100.0)
+    system.add_component(generator)
+    parser._generator_cache[generator.name] = generator
+    monkeypatch.setattr(parser, "read_data_file", lambda _name: pl.LazyFrame({"upv_1|p1": [0.0, 0.25, 0.5]}))
+
+    result = parser._attach_renewable_profiles(system)
+
+    assert result.is_err()
+    assert result.unwrap_err() == (
+        f"Renewable profile matched unexpected generator type ReEDSGenerator: {generator.name}"
+    )
+    assert not system.has_time_series(generator)
 
 
 def test_prepare_generator_datasets_drops_below_capacity_threshold(reeds_run_path: Path) -> None:

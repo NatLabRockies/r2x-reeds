@@ -61,6 +61,7 @@ from .models.components import (
     ReEDSResourceBuild,
     ReEDSResourceSite,
     ReEDSTransmissionLine,
+    ReEDSVariableGenerator,
 )
 from .models.enums import ReserveType
 from .parser_checks import check_dataset_non_empty, check_required_values_in_column
@@ -2024,14 +2025,26 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
             # Scale profiles by rated capaciy
             for generator in matching_generators:
+                if not isinstance(generator, ReEDSVariableGenerator):
+                    return Err(
+                        f"Renewable profile matched unexpected generator type "
+                        f"{type(generator).__name__}: {generator.name}"
+                    )
+
                 data = cf_data * generator.capacity
                 if self.config.apply_cf_adjustment:
                     # Scale profiles based on their capacity factor adjustment
-                    data *= generator.capacity_factor_adjustment
+                    cf_adjustment = generator.capacity_factor_adjustment
+                    if cf_adjustment is None:
+                        return Err(f"Missing CF adjustment for {generator.name}")
+                    data *= cf_adjustment
 
                 if self.config.apply_ilr_adjustment and tech in pv_tech_names:
                     # Scale PV profiles by their inverter loading ratio (capacity factor profile is based on DC capacity)
-                    data *= generator.inverter_loading_ratio
+                    ilr_adjustment = generator.inverter_loading_ratio
+                    if ilr_adjustment is None:
+                        return Err(f"Missing ILR adjustment for {generator.name}")
+                    data *= ilr_adjustment
 
                     if data.max() > generator.capacity:
                         logger.warning(
