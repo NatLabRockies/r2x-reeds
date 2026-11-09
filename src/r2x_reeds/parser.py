@@ -1994,7 +1994,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
         logger.trace("Parsed {} tech-region renewable profile columns", tech_regions.height)
 
-        if self.config.pv_ilr_adj:
+        if self.config.apply_ilr_adjustment:
             # Get set of unique PV technologies for ILR adjustment
             pv_tech_names = (
                 tech_regions.filter(pl.col("tech").str.contains("pv"))
@@ -2025,11 +2025,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             # Scale profiles by rated capaciy
             for generator in matching_generators:
                 data = cf_data * generator.capacity
-                if self.config.apply_cf_adj:
+                if self.config.apply_cf_adjustment:
                     # Scale profiles based on their capacity factor adjustment
                     data *= generator.capacity_factor_adjustment
 
-                if self.config.pv_ilr_adj and tech in pv_tech_names:
+                if self.config.apply_ilr_adjustment and tech in pv_tech_names:
                     # Scale PV profiles by their inverter loading ratio (capacity factor profile is based on DC capacity)
                     data *= generator.inverter_loading_ratio
 
@@ -2422,7 +2422,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "storage_duration_out": self.read_data_file("storage_duration_out"),
                 "consume_characteristics": self.read_data_file("consume_characteristics"),
                 "capacity_factor_adjustment": self.read_data_file("renewable_cf_adjustment"),
-                "inverter_loading_ratio": self.read_data_file("ilr")
+                "inverter_loading_ratio": self.read_data_file("ilr"),
             },
             excluded_technologies=self._excluded_techs,
             technology_categories=self._tech_categories,
@@ -2434,6 +2434,30 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             return Err("Generator data result was unexpectedly None")
 
         variable_df, non_variable_df = generator_data
+
+        # Check for null values of CF adjustment and ILR if those adjustments will be applied
+        if not variable_df.is_empty():
+            to_check = set()
+            if self.config.apply_cf_adjustment:
+                to_check.add("capacity_factor_adjustment")
+            if self.config.apply_ilr_adjustment:
+                to_check.add("inverter_loading_ratio")
+            for field in to_check:
+                applicable = variable_df
+                if field == "inverter_loading_ratio":
+                    applicable = applicable.filter(pl.col("technology").str.contains("pv"))
+
+                missing = applicable.filter(pl.col(field).is_null())
+                if not missing.is_empty():
+                    logger.warning(
+                        "{} is null for {}/{} aggregated variable generators. "
+                        "Sample: {}. Null values have been preserved.",
+                        field,
+                        missing.height,
+                        applicable.height,
+                        missing.select("technology", "region", "capacity").head(10).to_dicts(),
+                    )
+
         ramprate_data = self.read_data_file("ramprate")
         if ramprate_data is not None:
             ramprate_df = ramprate_data.collect()

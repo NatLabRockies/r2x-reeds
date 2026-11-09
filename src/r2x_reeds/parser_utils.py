@@ -602,8 +602,11 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
                 .alias(col)
             )
         elif col in weighted_avg_fields:
+            unknown_adjustment = (pl.col(col).is_null() & (pl.col("capacity") > 0)).any()
             agg_exprs.append(
-                (pl.col(col) * pl.col("capacity")).sum() / pl.col("capacity").sum()
+                pl.when(unknown_adjustment | (pl.col("capacity").sum() <= 0))
+                .then(pl.lit(None, dtype=pl.Float64))
+                .otherwise((pl.col(col) * pl.col("capacity")).sum() / pl.col("capacity").sum())
                 .alias(col)
             )
         elif col in first_fields:

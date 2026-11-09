@@ -5,7 +5,7 @@ title: Prepare ReEDS results for a PCM handoff
 Choose and verify the source-system modifications needed before handing ReEDS
 results to a production-cost-model translator. This guide describes optional
 `r2x.transforms` and parser profile adjustments. Successful plugin calls are not
-proof of a valid PCM. The new `apply_cf_adj`, `pv_ilr_adj` and
+proof of a valid PCM. The new `apply_cf_adjustment`, `apply_ilr_adjustment` and
 `scale-distpv-capacity` features require a checkout or release containing them;
 do not assume they are included in the published `r2x-reeds` 0.9.3 package.
 
@@ -93,8 +93,8 @@ Neither pair is a general deduplication mechanism.
 Choose these adjustments explicitly for your input data. They are independent,
 and neither parser flag changes installed generator capacity:
 
-- `apply_cf_adj=True` multiplies attached renewable `max_active_power` profiles by a capacity-weighted average `capacity_factor_adjustment`, sourced from ReEDS `cf_adj_t` for the selected solve year.
-- `pv_ilr_adj=True` multiplies PV profiles by `inverter_loading_ratio`, sourced from ReEDS `ilr`, to account for DC-based capacity-factor profiles. The current PV selection includes technology names containing `pv`, including `distpv`.
+- `apply_cf_adjustment=True` multiplies attached renewable `max_active_power` profiles by a capacity-weighted average `capacity_factor_adjustment`, sourced from ReEDS `cf_adj_t` for the selected solve year.
+- `apply_ilr_adjustment=True` multiplies PV profiles by `inverter_loading_ratio`, sourced from ReEDS `ilr`, to account for DC-based capacity-factor profiles. The current PV selection includes technology names containing `pv`, including `distpv`.
 - `scale-distpv-capacity` multiplies only the capacity of generators with technology exactly `distpv` by `1 / (1 - distloss)`. This does **not** change generation profiles for `distpv` generators and is primarily used to avoid errors from generation profiles exceeding capacity after ILR scaling. All time series remain unchanged, including already-scaled `max_active_power`.
 
 Both parser flags default to `False`. Enable them only when the source profiles
@@ -386,8 +386,8 @@ config:
     solve_year: ${solve_year}
     weather_year: ${weather_year}
     case_name: pcm-handoff
-    apply_cf_adj: false
-    pv_ilr_adj: false
+    apply_cf_adjustment: false
+    apply_ilr_adjustment: false
   scale-distpv-capacity:
     scalars_fpath: ${run_dir}/inputs_case/scalars.csv
     # Alternatively, set distloss: 0.05 as a manual override.
@@ -433,7 +433,7 @@ step 4 to `config.reeds-parser`. Before a data-center purchaser branch, add its
 `loadsite_op_fpath` but remove optimal siting for those same increments. The YAML
 never runs modern and legacy hydrogen representations together.
 
-For `pcm-renewable-adjustments`, set `apply_cf_adj` and/or `pv_ilr_adj` to `true`
+For `pcm-renewable-adjustments`, set `apply_cf_adjustment` and/or `apply_ilr_adjustment` to `true`
 only when those profile adjustments are needed. Both remain `false` above to
 preserve the baseline parser behavior. The parser configuration is shared by
 all profiles in this file: enabling a flag affects every profile using

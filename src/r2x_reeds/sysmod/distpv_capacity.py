@@ -76,9 +76,11 @@ def scale_distpv_capacity(system: System, config: DistPVCapacityConfig) -> Resul
         for generator, capacity in updates:
             generator.capacity = capacity
         logger.info(
-            "Scaled capacity of {} distpv generators by {} using distloss={} from {}; "
-            "time series unchanged",
-            len(updates), factor, loss, source,
+            "Scaled capacity of {} distpv generators by {} using distloss={} from {}; time series unchanged",
+            len(updates),
+            factor,
+            loss,
+            source,
         )
     except Exception as error:
         logger.error("Error in distpv capacity transform: {}", error)

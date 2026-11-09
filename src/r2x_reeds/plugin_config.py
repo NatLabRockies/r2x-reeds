@@ -30,9 +30,9 @@ class ReEDSConfig(PluginConfig):
     excluded_techs : list[str], optional
         Technologies to exclude from the parsed system. When omitted, the list
         from ``defaults.json`` is used.
-    apply_cf_adj : bool, optional
+    apply_cf_adjustment : bool, optional
         Apply capacity factor adjustment (based on vintages/locations) to renewable generators.
-    pv_ilr_adj : bool, optional
+    apply_ilr_adjustment : bool, optional
         Adjust PV capacity factor profiles based on the inverter loading ratio (increases effective capacity by treating CF profiles as based on DC nameplate).
 
     Examples
@@ -109,7 +109,7 @@ class ReEDSConfig(PluginConfig):
             description=("Drop generators with installed capacity below this threshold in MW."),
         ),
     ] = 0.0
-    apply_cf_adj: Annotated[
+    apply_cf_adjustment: Annotated[
         bool,
         Field(
             default=False,
@@ -118,7 +118,7 @@ class ReEDSConfig(PluginConfig):
             ),
         ),
     ] = False
-    pv_ilr_adj: Annotated[
+    apply_ilr_adjustment: Annotated[
         bool,
         Field(
             default=False,
