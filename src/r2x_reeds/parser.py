@@ -1995,17 +1995,6 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         )
         logger.trace("Parsed {} tech-region renewable profile columns", tech_regions.height)
 
-        if self.config.apply_ilr_adjustment:
-            # Get set of unique PV technologies for ILR adjustment
-            pv_tech_names = (
-                tech_regions.filter(pl.col("tech").str.contains("pv"))
-                .select("tech")
-                .unique()
-                .get_column("tech")
-            )
-
-            pv_tech_names = set(pv_tech_names)
-
         for row in tech_regions.iter_rows(named=True):
             tech = row["tech"]
             region_name = row["region"]
@@ -2039,7 +2028,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                         return Err(f"Missing CF adjustment for {generator.name}")
                     data *= cf_adjustment
 
-                if self.config.apply_ilr_adjustment and tech in pv_tech_names:
+                if self.config.apply_ilr_adjustment and "pv" in tech:
                     # Scale PV profiles by their inverter loading ratio (capacity factor profile is based on DC capacity)
                     ilr_adjustment = generator.inverter_loading_ratio
                     if ilr_adjustment is None:
