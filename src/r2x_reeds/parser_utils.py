@@ -1007,7 +1007,7 @@ def calculate_hydro_profiles_for_generator(
     results: list[HydroProfileResult] = []
 
     tech_region_filter = (pl.col("technology") == generator.technology) & (
-        pl.col("region") == generator.region.name
+        pl.col("region").str.to_uppercase() == generator.region.name.upper()
     )
     if generator.vintage:
         tech_region_filter = tech_region_filter & (pl.col("vintage") == generator.vintage)
@@ -1040,7 +1040,8 @@ def calculate_hydro_profiles_for_generator(
 
         if generator.is_dispatchable and hydro_capacity_adjustment is not None:
             capacity_adjustment = hydro_capacity_adjustment.filter(
-                (pl.col("technology") == generator.technology) & (pl.col("region") == generator.region.name)
+                (pl.col("technology") == generator.technology)
+                & (pl.col("region").str.to_uppercase() == generator.region.name.upper())
             ).sort("month_num")
             monthly_adjustment = capacity_adjustment["capacity_adjustment"].to_list()
             if len(monthly_adjustment) == 12 and not any(value is None for value in monthly_adjustment):

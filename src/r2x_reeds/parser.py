@@ -2224,7 +2224,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         hydro_capacity = pl.DataFrame(
             [
-                (gen.name, gen.technology, gen.region.name, gen.capacity, gen.vintage)
+                (gen.name, gen.technology, gen.region.name.upper(), gen.capacity, gen.vintage)
                 for gen in hydro_generators
             ],
             schema=["name", "technology", "region", "capacity", "vintage"],
@@ -2549,6 +2549,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         hydro_cf = (
             hydro_cf.with_columns(
+                pl.col("region").str.to_uppercase(),
                 pl.col("month")
                 .map_elements(lambda x: self.month_map.get(x, x), return_dtype=pl.Int16)
                 .alias("month_num"),
@@ -2568,6 +2569,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         self._hydro_capacity_adjustment_prepared = (
             hydro_capacity_adjustment.with_columns(
+                pl.col("region").str.to_uppercase(),
                 pl.col("month")
                 .map_elements(lambda x: self.month_map.get(x, x), return_dtype=pl.Int16)
                 .alias("month_num"),
