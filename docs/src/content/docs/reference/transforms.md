@@ -130,7 +130,7 @@ Module: `r2x_reeds.sysmod.electrolyzer`.
 
 Package fields are `weather_year`, `electrolyzer_load_fpath`, `h2_fuel_price_fpath`, `hour_map_fpath` and `scalars_fpath`.
 
-[Source and defaults](https://github.com/NatLabRockies/r2x-reeds/blob/main/src/r2x_reeds/sysmod/electrolyzer.py).
+[Source and defaults](https://github.com/NatLabRockies/r2x-reeds/blob/7c16ba16779abf080614c58e655b96e604786f9c/src/r2x_reeds/sysmod/electrolyzer.py).
 
 ### PurchaserLoadConfig
 
