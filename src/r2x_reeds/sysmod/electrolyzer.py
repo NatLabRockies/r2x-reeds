@@ -15,7 +15,7 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import DataFile, DataStore, PluginConfig, ReaderConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator, ReEDSRegion
 
 
@@ -32,7 +32,11 @@ class ElectrolyzerConfig(PluginConfig):
     )
     h2_fuel_price_fpath: Path | str | None = Field(
         default=None,
-        description="Path to CSV file containing monthly hydrogen fuel prices.",
+        description="Path to CSV file containing monthly hydrogen fuel prices in $/kg.",
+    )
+    scalars_fpath: Path | str | None = Field(
+        default=None,
+        description="Path to ReEDS scalars.csv. Required when adding hydrogen fuel prices.",
     )
     hour_map_fpath: Path | str | None = Field(
         default=None,
@@ -88,13 +92,44 @@ def add_electrolizer_load(system: System, config: ElectrolyzerConfig) -> Result[
             logger.warning("hour_map data not available. Cannot add electrolyzer load.")
             return Ok(system)
 
+        kg_per_mmbtu = None
+        if h2_prices is not None and not h2_prices.is_empty():
+            if config.scalars_fpath is None:
+                raise ValueError("scalars_fpath is required when adding hydrogen fuel prices")
+            scalars_path = Path(config.scalars_fpath)
+            scalar_store = DataStore(path=scalars_path.parent)
+            scalar_store.add_data(
+                [
+                    DataFile(
+                        name="scalars",
+                        fpath=scalars_path,
+                        reader=ReaderConfig(
+                            kwargs={
+                                "has_header": False,
+                                "new_columns": ["parameter", "value", "description"],
+                                "infer_schema": False,
+                            }
+                        ),
+                    )
+                ]
+            )
+            scalars = scalar_store.read_data("scalars").collect()
+            h2_scalars = {}
+            for name in ("h2_energy_intensity", "lb_per_tonne"):
+                values = scalars.filter(pl.col("parameter") == name)["value"].cast(pl.Float64, strict=False)
+                if len(values) != 1 or values[0] is None or not np.isfinite(values[0]) or values[0] <= 0:
+                    raise ValueError(f"scalars.csv must contain one finite positive value for {name}")
+                h2_scalars[name] = values[0]
+            # ReEDS hydrogen energy intensity is in Btu/lb. Convert it to kg/MMBtu.
+            kg_per_mmbtu = 1e9 / (h2_scalars["h2_energy_intensity"] * h2_scalars["lb_per_tonne"])
+
         # Add electrolyzer load
         if electrolyzer_load is not None:
             system = _add_electrolyzer_load(system, electrolyzer_load, hour_map, config.weather_year)
 
         # Add hydrogen fuel prices
-        if h2_prices is not None:
-            system = _add_hydrogen_fuel_price(system, h2_prices, config.weather_year)
+        if h2_prices is not None and kg_per_mmbtu is not None:
+            system = _add_hydrogen_fuel_price(system, h2_prices, config.weather_year, kg_per_mmbtu)
 
     except Exception as exc:
         logger.error("Error in electrolyzer plugin: {}", exc)
@@ -190,7 +225,7 @@ def _add_electrolyzer_load(
 
 
 def _add_hydrogen_fuel_price(
-    system: System, h2_prices: pl.DataFrame | pl.LazyFrame | None, weather_year: int
+    system: System, h2_prices: pl.DataFrame | pl.LazyFrame | None, weather_year: int, kg_per_mmbtu: float
 ) -> System:
     """Add monthly hydrogen fuel price for generators using hydrogen.
 
@@ -199,9 +234,11 @@ def _add_hydrogen_fuel_price(
     system : System
         The system to modify.
     h2_prices : pl.DataFrame | pl.LazyFrame | None
-        Hydrogen fuel price data with columns: region, month, h2_price.
+        Hydrogen fuel price data with columns region, month and h2_price in $/kg.
     weather_year : int
         The weather year for the time series.
+    kg_per_mmbtu : float
+        Kilograms of hydrogen per MMBtu based on the ReEDS case scalars.
 
     Returns
     -------
@@ -222,7 +259,7 @@ def _add_hydrogen_fuel_price(
         np.datetime64(f"{weather_year}"),
         np.datetime64(f"{weather_year + 1}"),
         dtype="datetime64[h]",
-    )[:-24]  # Removing 1 day to match ReEDS convention
+    )[:8760]  # ReEDS drops December 31 only in leap years.
 
     months = np.array([dt.astype("datetime64[M]").astype(int) % 12 + 1 for dt in date_time_array])
 
@@ -251,14 +288,10 @@ def _add_hydrogen_fuel_price(
             month_filter = np.where(months == month)
             month_datetime_series[month_filter] = row["h2_price"]
 
-        # Units from monthly hydrogen fuel price are in $/kg
-        # Convert $/kg to $/MWh using conversion factor
-        # Typical conversion: ~33.3 kWh/kg H2, so 1 kg = 0.0333 MWh
-        # Therefore $/kg * (1 kg / 0.0333 MWh) = $/MWh * 30
-        month_datetime_series = month_datetime_series * 30.0  # Convert $/kg to $/MWh
+        month_datetime_series = month_datetime_series * kg_per_mmbtu
 
         ts = SingleTimeSeries.from_array(
-            data=month_datetime_series,  # Data in $/MWh
+            data=month_datetime_series,  # Data in $/MMBtu
             name="fuel_price",
             initial_timestamp=datetime(year=weather_year, month=1, day=1),
             resolution=timedelta(hours=1),
