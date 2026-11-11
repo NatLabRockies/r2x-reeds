@@ -128,9 +128,9 @@ Package fields: `emission_cap`, `switches_fpath`, `emission_rates_fpath`, `co2_c
 
 Module: `r2x_reeds.sysmod.electrolyzer`.
 
-Package fields: `weather_year`, `electrolyzer_load_fpath`, `h2_fuel_price_fpath`, `hour_map_fpath`.
+Package fields are `weather_year`, `electrolyzer_load_fpath`, `h2_fuel_price_fpath`, `hour_map_fpath` and `scalars_fpath`.
 
-[Source and defaults](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/sysmod/electrolyzer.py).
+[Source and defaults](https://github.com/NatLabRockies/r2x-reeds/blob/7c16ba16779abf080614c58e655b96e604786f9c/src/r2x_reeds/sysmod/electrolyzer.py).
 
 ### PurchaserLoadConfig
 

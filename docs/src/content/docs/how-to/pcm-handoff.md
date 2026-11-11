@@ -212,16 +212,21 @@ so a separate siting profile cannot add the same data-center demand twice.
 ## 5. Or choose the legacy electrolyzer representation
 
 `add-electrolyzer-load` is the alternative for legacy fixed-load inputs.
-It needs `weather_year` and `hour_map_fpath`; provide
+It needs `weather_year` and `hour_map_fpath`. Provide
 `electrolyzer_load_fpath` and/or `h2_fuel_price_fpath` for the effects you want.
-Normalized load columns are `region,hour,load_MW`; hydrogen prices use
-`region,month,h2_price`. The hour map must join on `hour`. Do not point this at an
-arbitrary raw `prod_load.csv` and assume purchaser-load normalization applies.
+Normalized load columns are `region,hour,load_MW`. Hydrogen prices use
+`region,month,h2_price` with `h2_price` in $/kg. The hour map must join on `hour`.
+Do not point this at an arbitrary raw `prod_load.csv` and assume purchaser-load
+normalization applies.
 
-It creates `ReEDSDemand` named `<region>_electrolyzer` with a `fixed_load` series;
-loads below 1 MW are skipped. Hydrogen price input affects matching hydrogen-fuel
-generators. The Python function is historically spelled `add_electrolizer_load`;
-the CLI name remains `add-electrolyzer-load`.
+When providing hydrogen prices, also set `scalars_fpath` to the case's
+`inputs_case/scalars.csv`. The attached `fuel_price` profile is converted to
+$/MMBtu.
+
+It creates `ReEDSDemand` named `<region>_electrolyzer` with a `fixed_load` series.
+Loads below 1 MW are skipped. Hydrogen price input affects matching hydrogen-fuel
+generators. The Python function is historically spelled `add_electrolizer_load`.
+The CLI name remains `add-electrolyzer-load`.
 
 **Check:** inspect the new fixed-load profiles, weather-year timestamps and
 hydrogen-fuel prices. Use `pcm-legacy` instead of the modern purchaser profile for
@@ -359,6 +364,7 @@ config:
     hour_map_fpath: policy/legacy-hour-map.csv
     electrolyzer_load_fpath: policy/legacy-electrolyzer-load.csv
     h2_fuel_price_fpath: policy/legacy-hydrogen-prices.csv
+    scalars_fpath: ${run_dir}/inputs_case/scalars.csv
   add-optimal-siting:
     solve_year: ${solve_year}
     loadsite_op_fpath: policy/loadsite_op.csv
