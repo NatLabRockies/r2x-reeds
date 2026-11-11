@@ -582,19 +582,20 @@ def aggregate_variable_generators(df: pl.DataFrame) -> pl.DataFrame:
         Aggregated data with one row per tech-region-category combination
         - Capacity summed
         - Specific fields use first() (resource_class, fuel_type)
-        - Fixed O&M capacity-weighted, preserving unknown rates
+        - Fixed O&M, capacity factor adjustment, and inverter loading ratio (ILR) capacity-weighted, preserving unknown rates
         - Other fields averaged
     """
     first_fields = {"resource_class", "fuel_type"}
+    weighted_avg_fields = {"fom_cost", "capacity_factor_adjustment", "inverter_loading_ratio"}
     agg_exprs = [pl.col("capacity").sum()]
 
     for col in AGG_COLUMNS:
         if col not in df.columns:
             agg_exprs.append(pl.lit(None).alias(col))
-        elif col == "fom_cost":
-            unknown_cost = (pl.col(col).is_null() & (pl.col("capacity") > 0)).any()
+        elif col in weighted_avg_fields:
+            unknown_adjustment = (pl.col(col).is_null() & (pl.col("capacity") > 0)).any()
             agg_exprs.append(
-                pl.when(unknown_cost | (pl.col("capacity").sum() <= 0))
+                pl.when(unknown_adjustment | (pl.col("capacity").sum() <= 0))
                 .then(pl.lit(None, dtype=pl.Float64))
                 .otherwise((pl.col(col) * pl.col("capacity")).sum() / pl.col("capacity").sum())
                 .alias(col)
@@ -997,7 +998,7 @@ def calculate_hydro_profiles_for_generator(
     results: list[HydroProfileResult] = []
 
     tech_region_filter = (pl.col("technology") == generator.technology) & (
-        pl.col("region") == generator.region.name
+        pl.col("region").str.to_uppercase() == generator.region.name.upper()
     )
     if generator.vintage:
         tech_region_filter = tech_region_filter & (pl.col("vintage") == generator.vintage)
@@ -1030,7 +1031,8 @@ def calculate_hydro_profiles_for_generator(
 
         if generator.is_dispatchable and hydro_capacity_adjustment is not None:
             capacity_adjustment = hydro_capacity_adjustment.filter(
-                (pl.col("technology") == generator.technology) & (pl.col("region") == generator.region.name)
+                (pl.col("technology") == generator.technology)
+                & (pl.col("region").str.to_uppercase() == generator.region.name.upper())
             ).sort("month_num")
             monthly_adjustment = capacity_adjustment["capacity_adjustment"].to_list()
             if len(monthly_adjustment) == 12 and not any(value is None for value in monthly_adjustment):

@@ -148,7 +148,7 @@ Startup cost stays a **$/MW coefficient** through defaults and splitting. If a
 custom step multiplied it by the original block capacity, remove that conversion
 and rerun from the parser checkpoint; the target adapter must convert once using
 final unit capacity. Verify the coefficient and reconcile removed MW when splitting
-small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#1-add-operating-defaults-without-rescaling-startup-coefficients)
+small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#2-add-operating-defaults-without-rescaling-startup-coefficients)
 explains the unit boundary and override behavior.
 
 Current source reads solve-year fixed O&M from `cost_fom` and the operating-cost

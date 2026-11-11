@@ -61,6 +61,7 @@ from .models.components import (
     ReEDSResourceBuild,
     ReEDSResourceSite,
     ReEDSTransmissionLine,
+    ReEDSVariableGenerator,
 )
 from .models.enums import ReserveType
 from .parser_checks import check_dataset_non_empty, check_required_values_in_column
@@ -2013,7 +2014,34 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
             # Scale profiles by rated capaciy
             for generator in matching_generators:
+                if not isinstance(generator, ReEDSVariableGenerator):
+                    return Err(
+                        f"Renewable profile matched unexpected generator type "
+                        f"{type(generator).__name__}: {generator.name}"
+                    )
+
                 data = cf_data * generator.capacity
+                if self.config.apply_cf_adjustment:
+                    # Scale profiles based on their capacity factor adjustment
+                    cf_adjustment = generator.capacity_factor_adjustment
+                    if cf_adjustment is None:
+                        return Err(f"Missing CF adjustment for {generator.name}")
+                    data *= cf_adjustment
+
+                if self.config.apply_ilr_adjustment and "pv" in tech:
+                    # Scale PV profiles by their inverter loading ratio (capacity factor profile is based on DC capacity)
+                    ilr_adjustment = generator.inverter_loading_ratio
+                    if ilr_adjustment is None:
+                        return Err(f"Missing ILR adjustment for {generator.name}")
+                    data *= ilr_adjustment
+
+                    if data.max() > generator.capacity:
+                        logger.warning(
+                            "PV profile for tech {} in region {} exceeds generator capacity after ILR adjustment",
+                            tech,
+                            region_name,
+                        )
+
                 ts = SingleTimeSeries.from_array(
                     data=data,
                     name="max_active_power",
@@ -2185,7 +2213,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         hydro_capacity = pl.DataFrame(
             [
-                (gen.name, gen.technology, gen.region.name, gen.capacity, gen.vintage)
+                (gen.name, gen.technology, gen.region.name.upper(), gen.capacity, gen.vintage)
                 for gen in hydro_generators
             ],
             schema=["name", "technology", "region", "capacity", "vintage"],
@@ -2395,6 +2423,8 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "storage_efficiency": self.read_data_file("storage_efficiency"),
                 "storage_duration_out": self.read_data_file("storage_duration_out"),
                 "consume_characteristics": self.read_data_file("consume_characteristics"),
+                "capacity_factor_adjustment": self.read_data_file("renewable_cf_adjustment"),
+                "inverter_loading_ratio": self.read_data_file("ilr"),
             },
             excluded_technologies=self._excluded_techs,
             technology_categories=self._tech_categories,
@@ -2406,6 +2436,30 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             return Err("Generator data result was unexpectedly None")
 
         variable_df, non_variable_df = generator_data
+
+        # Check for null values of CF adjustment and ILR if those adjustments will be applied
+        if not variable_df.is_empty():
+            to_check = set()
+            if self.config.apply_cf_adjustment:
+                to_check.add("capacity_factor_adjustment")
+            if self.config.apply_ilr_adjustment:
+                to_check.add("inverter_loading_ratio")
+            for field in to_check:
+                applicable = variable_df
+                if field == "inverter_loading_ratio":
+                    applicable = applicable.filter(pl.col("technology").str.contains("pv"))
+
+                missing = applicable.filter(pl.col(field).is_null())
+                if not missing.is_empty():
+                    logger.warning(
+                        "{} is null for {}/{} aggregated variable generators. "
+                        "Sample: {}. Null values have been preserved.",
+                        field,
+                        missing.height,
+                        applicable.height,
+                        missing.select("technology", "region", "capacity").head(10).to_dicts(),
+                    )
+
         ramprate_data = self.read_data_file("ramprate")
         if ramprate_data is not None:
             ramprate_df = ramprate_data.collect()
@@ -2484,6 +2538,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         hydro_cf = (
             hydro_cf.with_columns(
+                pl.col("region").str.to_uppercase(),
                 pl.col("month")
                 .map_elements(lambda x: self.month_map.get(x, x), return_dtype=pl.Int16)
                 .alias("month_num"),
@@ -2503,6 +2558,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
 
         self._hydro_capacity_adjustment_prepared = (
             hydro_capacity_adjustment.with_columns(
+                pl.col("region").str.to_uppercase(),
                 pl.col("month")
                 .map_elements(lambda x: self.month_map.get(x, x), return_dtype=pl.Int16)
                 .alias("month_num"),

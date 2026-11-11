@@ -3,9 +3,11 @@ title: Prepare ReEDS results for a PCM handoff
 ---
 
 Choose and verify the source-system modifications needed before handing ReEDS
-results to a production-cost-model translator. This guide covers **all eight**
-registered `r2x.transforms` in current main and the published `r2x-reeds` 0.9.3
-package. It does not treat eight successful plugin calls as proof of a valid PCM.
+results to a production-cost-model translator. This guide describes optional
+`r2x.transforms` and parser profile adjustments. Successful plugin calls are not
+proof of a valid PCM. The new `apply_cf_adjustment`, `apply_ilr_adjustment` and
+`scale-distpv-capacity` features require a checkout or release containing them;
+do not assume they are included in the published `r2x-reeds` 0.9.3 package.
 
 The [ReEDS model](https://github.com/ReEDS-Model/ReEDS) produces the capacity-expansion runs consumed here. `r2x-reeds` parses those results and applies optional system modifiers; it does not solve the ReEDS model.
 
@@ -34,12 +36,13 @@ Python virtual environments and the CLI runtime are separate. Record the package
 versions, solve/weather years, selected pipeline and input/policy file revisions
 with the saved output. The examples below use one solve year and one weather year.
 
-## Complete modifier inventory
+## Modifier inventory
 
 | Entry point             | Public config / Python module                  | Main effect                                                 |
 | ----------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
 | `add-pcm-defaults`      | `PCMDefaultsConfig`, `sysmod.pcm_defaults`     | Fill or override generator operating fields                 |
 | `break-gens`            | `BreakGensConfig`, `sysmod.break_gens`         | Split aggregated generator blocks                           |
+| `scale-distpv-capacity` | `DistPVCapacityConfig`, `sysmod.distpv_capacity` | Adjust only distpv installed capacity to account for lack of distribution losses |
 | `add-imports`           | `ImportsConfig`, `sysmod.imports`              | Attach Canadian import energy budgets                       |
 | `add-purchaser-load`    | `PurchaserLoadConfig`, `sysmod.purchaser_load` | Explicit hydrogen-production and data-center demand         |
 | `add-electrolyzer-load` | `ElectrolyzerConfig`, `sysmod.electrolyzer`    | Legacy fixed electrolyzer load and hydrogen prices          |
@@ -49,15 +52,18 @@ with the saved output. The examples below use one solve year and one weather yea
 
 The Python module prefix is `r2x_reeds.`. See [registered entry points](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/pyproject.toml)
 and [public fields/source links](/r2x-reeds/reference/transforms/#configuration-fields-and-source).
-All eight config models allow omitted file paths, but several plugins then return
-success without changing anything. **Operational input requirements below are
-stricter than model-construction requirements.** Check effects, not just exit status.
+Several plugins allow omitted file paths and then return success without changing
+anything. `scale-distpv-capacity` instead requires a manual loss or scalars file
+and returns an error if neither is supplied. **Operational input requirements
+below can be stricter than model-construction requirements.** Check effects, not
+just exit status.
 
 ## Choose a sequence and avoid double counting
 
 ```mermaid
 flowchart TD
-  P["Parse a working run copy"] --> D["PCM defaults<br/>review operating coefficients"]
+  P["Parse a working run copy<br/>choose CF and ILR profile adjustments"] --> A["Optional distpv capacity adjustment<br/>leave profiles unchanged"]
+  A --> D["PCM defaults<br/>review operating coefficients"]
   D --> B["Split generators<br/>inspect final unit capacities"]
   B --> I["Optional Canadian imports"]
   I --> Q{"Demand representation"}
@@ -82,7 +88,47 @@ modifier or the legacy electrolyzer modifier. Likewise, do not feed the same
 siting unless you have explicitly separated which demand each represents.
 Neither pair is a general deduplication mechanism.
 
-## 1. Add operating defaults without rescaling startup coefficients
+## 1. Optional renewable profile and distpv capacity adjustments
+
+Choose these adjustments explicitly for your input data. They are independent,
+and neither parser flag changes installed generator capacity:
+
+- `apply_cf_adjustment=True` multiplies attached renewable `max_active_power` profiles by a capacity-weighted average `capacity_factor_adjustment`, sourced from ReEDS `cf_adj_t` for the selected solve year.
+- `apply_ilr_adjustment=True` multiplies PV profiles by `inverter_loading_ratio`, sourced from ReEDS `ilr`, to account for DC-based capacity-factor profiles. The current PV selection includes technology names containing `pv`, including `distpv`.
+- `scale-distpv-capacity` multiplies only the capacity of generators with technology exactly `distpv` by `1 / (1 - distloss)`. This does **not** change generation profiles for `distpv` generators and is primarily used to avoid errors from generation profiles exceeding capacity after ILR scaling. All time series remain unchanged, including already-scaled `max_active_power`.
+
+Both parser flags default to `False`. Enable them only when the source profiles
+do not already contain those adjustments and the required generator values are
+available. When both are enabled, both multipliers apply to PV profiles.
+`use_degraded_capacity` independently selects the capacity basis. See
+[configuration](/r2x-reeds/reference/configuration/#renewable-profile-adjustments)
+for the dataset mappings and ILR warning behavior.
+
+The distpv transform reads the national loss fraction from the file specified by `scalars_fpath` (should point towards the headerless ReEDS `inputs_case/scalars.csv`, which must contain exactly one `distloss` row). Alternatively, supply `distloss` manually; that value takes precedence, including
+zero. The fraction must be finite and in `[0, 1)`. Missing or invalid loss inputs
+fail rather than silently skipping the adjustment.
+
+The opt-in `pcm-renewable-adjustments` profile is included in the
+[CLI pipeline example below](#a-coherent-cli-pipeline-with-explicit-optional-profiles).
+Replace its run path and years with your actual selections. Enable either parser
+flag only if its factor is not already present in the source profiles.
+
+Run the capacity transform once after parsing and before target translation.
+The renewable-adjustments profile places it before capacity-dependent defaults and splitting
+so those steps see the adjusted capacity. If splitting can affect distpv, review
+its capacity thresholds and any discarded MW; moving the adjustment across that
+step can change the result. Reapplying the transform compounds the adjustment.
+Do not multiply the hourly profile by the distribution-loss factor again.
+
+**Check:** compare a parser-only checkpoint with the post-transform system by
+generator name. At `distloss=0.05`, each 100 MW distpv generator should become
+approximately 105.263 MW, with identical hourly `max_active_power` values and
+timestamps. Non-distpv capacities and generator counts should be unchanged.
+Check parser profile scaling separately against source CF times capacity and
+the enabled CF/ILR multipliers, before applying the capacity-only transform.
+See the [transform contract](/r2x-reeds/reference/transforms/#distpv-capacity-transform).
+
+## 2. Add operating defaults without rescaling startup coefficients
 
 `add-pcm-defaults` accepts `pcm_defaults_dict` or `pcm_defaults_fpath`; the inline
 dictionary takes precedence. Lookup tries generator name, then technology, then
@@ -121,7 +167,7 @@ then check the coefficient remains 50 after splitting. Review unmatched/missing
 fields explicitly. Re-running override-enabled defaults is not a universal
 idempotence guarantee for capacity-scaled fields.
 
-## 2. Disaggregate generator blocks
+## 3. Disaggregate generator blocks
 
 `break-gens` uses packaged reference sizes when `reference_units=None`; override
 with a JSON path or mapping. `break_category="category"` chooses the matching
@@ -139,7 +185,7 @@ unit capacities and startup coefficients, and account for discarded remainders.
 The Pacific baseline with the package's reference sizes has 292 generators before
 splitting and 673 afterward; counts are not a validation rule for other cases.
 
-## 3. Add Canadian import energy budgets when applicable
+## 4. Add Canadian import energy budgets when applicable
 
 `add-imports` needs `weather_year`, `canada_imports_fpath`,
 `canada_szn_frac_fpath` and `hour_map_fpath`. Wide import files also need
@@ -192,7 +238,7 @@ excluded_techs:
   - smr_ccs
 ```
 
-## 4. Choose modern purchaser demand
+## 5. Choose modern purchaser demand
 
 `add-purchaser-load` requires `hour_map_myr_fpath` to do useful work.
 `weather_year` defaults to 2012; select `solve_year` when inputs contain several
@@ -209,7 +255,7 @@ see [the dedicated purchaser-load guide](/r2x-reeds/how-to/purchaser-load/).
 It creates `ReEDSElectrolyzerDemand`, `ReEDSSteamMethaneReformingDemand` and/or
 so a separate siting profile cannot add the same data-center demand twice.
 
-## 5. Or choose the legacy electrolyzer representation
+## 6. Or choose the legacy electrolyzer representation
 
 `add-electrolyzer-load` is the alternative for legacy fixed-load inputs.
 It needs `weather_year` and `hour_map_fpath`. Provide
@@ -232,7 +278,7 @@ The CLI name remains `add-electrolyzer-load`.
 hydrogen-fuel prices. Use `pcm-legacy` instead of the modern purchaser profile for
 the same demand, not in addition to it.
 
-## 6. Add cost-optimal siting increments to existing electric load
+## 7. Add cost-optimal siting increments to existing electric load
 
 `add-optimal-siting` needs `loadsite_op_fpath` and `hour_map_myr_fpath`.
 Select `solve_year` when filtering a multi-year file; the config also accepts a
@@ -249,7 +295,7 @@ difference and annual sum with the chosen loadsite increments. Confirm that
 unselected regions/years did not change and that profiles retain compatible
 length, timestamp and resolution.
 
-## 7. Apply CCS credit economics to eligible units
+## 8. Apply CCS credit economics to eligible units
 
 `add-ccs-credit` needs all three paths:
 `co2_incentive_fpath`, `emission_capture_rate_fpath` and `upgrade_link_fpath`.
@@ -267,7 +313,7 @@ one row. Confirm that your downstream translator/exporter carries this metadata
 into the intended target property; preserving an `ext` value alone does not prove
 that the PCM consumes it.
 
-## 8. Record annual emission policy
+## 9. Record annual emission policy
 
 `add-emission-cap` needs existing CO2 supplemental attributes and either an
 explicit `emission_cap` or a compatible `co2_cap_fpath`. The file reader expects a
@@ -309,6 +355,11 @@ pipelines:
     - reeds-parser
     - add-pcm-defaults
     - break-gens
+  pcm-renewable-adjustments:
+    - reeds-parser
+    - scale-distpv-capacity
+    - add-pcm-defaults
+    - break-gens
   pcm-hydrogen:
     - reeds-parser
     - add-pcm-defaults
@@ -340,6 +391,11 @@ config:
     solve_year: ${solve_year}
     weather_year: ${weather_year}
     case_name: pcm-handoff
+    apply_cf_adjustment: false
+    apply_ilr_adjustment: false
+  scale-distpv-capacity:
+    scalars_fpath: ${run_dir}/inputs_case/scalars.csv
+    # Alternatively, set distloss: 0.05 as a manual override.
   add-pcm-defaults:
     pcm_defaults_fpath: policy/pcm-defaults.json
     pcm_defaults_override: true
@@ -379,9 +435,16 @@ config:
 ```
 
 Before an imports profile, add the explicit exclusion-list override described in
-step 3 to `config.reeds-parser`. Before a data-center purchaser branch, add its
+step 4 to `config.reeds-parser`. Before a data-center purchaser branch, add its
 `loadsite_op_fpath` but remove optimal siting for those same increments. The YAML
 never runs modern and legacy hydrogen representations together.
+
+For `pcm-renewable-adjustments`, set `apply_cf_adjustment` and/or `apply_ilr_adjustment` to `true`
+only when those profile adjustments are needed. Both remain `false` above to
+preserve the baseline parser behavior. The parser configuration is shared by
+all profiles in this file: enabling a flag affects every profile using
+`reeds-parser`, not just `pcm-renewable-adjustments`. The capacity-only transform
+runs only in the renewable-adjustments profile.
 
 List the profiles, then preview only the baseline you have inputs for:
 
@@ -405,8 +468,9 @@ mkdir -p outputs
 r2x run pcm-preparation.yaml pcm-base --zip -o outputs/pcm-prepared.zip
 ```
 
-Select `pcm-hydrogen`, `pcm-sited` or `pcm-legacy` only after preparing their
-external files and validating each modifier's effect on a checkpoint copy.
+Select `pcm-renewable-adjustments`, `pcm-hydrogen`, `pcm-sited` or `pcm-legacy`
+only after preparing their external files and validating each modifier's effect
+on a checkpoint copy.
 
 ## Inspect before handing off
 
@@ -456,10 +520,14 @@ and pass it explicitly to the target workflow when required.
 
 The published-package Pacific parse/modifier/reload tutorial, `pcm-base`, its
 startup-coefficient inspection, and CLI artifact loading were executed. The
-repository's focused tests exercise all eight modifiers with purpose-built data,
-including startup-cost preservation. They are distinct from an all-modifier
+existing modifier tests use purpose-built data, including startup-cost
+preservation. They are distinct from an all-modifier
 production run. Imports, purchaser/legacy demand, optimal siting, CCS and emission
 policy profiles above were **not** run against a complete external production
 case; their schemas, optional behavior and units were checked against current
 public configs and source. Supply and validate the needed inputs before claiming
 a PCM-ready handoff. For failures, use [troubleshooting](/r2x-reeds/troubleshooting/).
+
+The new renewable-adjustment template above has not been executed as part of this
+guide's validation. Added distpv capacity tests do not establish a passing runtime
+check until they have run successfully in a working development environment.

@@ -13,7 +13,9 @@ for the build and distinguish declared fields from inherited contracts.
 Import `ReEDSConfig` and `ReEDSParser` from `r2x_reeds`.
 `ReEDSConfig` requires `solve_year: int | list[int]` and
 `weather_year: int | list[int]`. Optional package fields are `case_name`, `scenario`,
-`excluded_techs` and `use_degraded_capacity`. See [configuration](/r2x-reeds/reference/configuration/).
+`excluded_techs`, `use_degraded_capacity`, `apply_cf_adjustment` and `apply_ilr_adjustment`.
+Both profile-adjustment flags default to `False`.
+See [configuration](/r2x-reeds/reference/configuration/) for their behavior.
 
 Construct `PluginContext(config=config, store=DataStore.from_plugin_config(config, path=run_path))`
 from `r2x_core`, then call `ReEDSParser.from_context(context).run()`.
