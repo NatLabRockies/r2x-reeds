@@ -89,6 +89,34 @@ config:
 See [transforms](/r2x-reeds/reference/transforms/) for the supported entry points and
 [Python composition](/r2x-reeds/how-to/reeds-to-x-script/) for explicit error handling.
 
+To add Canadian exports as regional demand, include `add-exports` after the
+parser and keep `can-exports` excluded. Removing that exclusion enables export
+generators, which is a separate supply representation:
+
+```yaml
+pipelines:
+  parse-with-canadian-exports:
+    - reeds-parser
+    - add-exports
+config:
+  reeds-parser:
+    path: ${reeds_run}
+    solve_year: ${solve_year}
+    weather_year: ${weather_year}
+    excluded_techs:
+      - can-imports
+      - can-exports
+      - electrolyzer
+      - smr
+      - smr_ccs
+  add-exports:
+    weather_year: ${weather_year}
+    solve_year: ${solve_year}
+    canada_exports_fpath: ${reeds_run}/inputs_case/can_exports.csv
+    canada_exports_h_frac_fpath: ${reeds_run}/inputs_case/rep/can_exports_h_frac.csv
+    hour_map_fpath: ${reeds_run}/inputs_case/rep/hmap_myr.csv
+```
+
 For complete exports, follow the maintained [ReEDS to PLEXOS](https://natlabrockies.github.io/R2X/how-to/reeds-to-plexos/)
 or [ReEDS to Sienna](https://natlabrockies.github.io/R2X/how-to/reeds-to-sienna/) guide.
 Install the target packages those guides specify and verify their own configuration

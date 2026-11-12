@@ -42,6 +42,18 @@ from .models import (
 )
 from .parser import ReEDSParser
 from .plugin_config import ReEDSConfig
+from .region_mapping import (
+    CountyMembership,
+    CountyMembershipError,
+    RegionAlignment,
+    RegionAlignmentError,
+    RegionAlignmentPolicy,
+    RegionMatch,
+    RegionResolution,
+    align_regions,
+    load_county_membership,
+    normalize_county_fips,
+)
 from .upgrader import ReEDSUpgrader
 
 logger.disable("r2x_reeds")
@@ -49,6 +61,8 @@ logger.disable("r2x_reeds")
 latest_commit = "401c0bb15cbf93d2ff9696b14b799edad763247a"
 
 __all__ = [
+    "CountyMembership",
+    "CountyMembershipError",
     "EmissionRate",
     "EmissionType",
     "FromTo_ToFrom",
@@ -78,7 +92,15 @@ __all__ = [
     "ReEDSTransmissionLine",
     "ReEDSUpgrader",
     "ReEDSVariableGenerator",
+    "RegionAlignment",
+    "RegionAlignmentError",
+    "RegionAlignmentPolicy",
+    "RegionMatch",
+    "RegionResolution",
     "ReserveDirection",
     "ReserveType",
     "__version__",
+    "align_regions",
+    "load_county_membership",
+    "normalize_county_fips",
 ]

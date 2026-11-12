@@ -2000,6 +2000,7 @@
           "op": "rename_columns",
           "column_mapping": {
             "class": "resource_class",
+            "cf": "capacity_factor",
             "cap_avail": "available_capacity",
             "supply_curve_cost_per_mw": "supply_curve_cost"
           }

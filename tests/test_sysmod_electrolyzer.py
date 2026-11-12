@@ -57,7 +57,7 @@ def test_electrolyzer_scope_full_flow(tmp_path: Path) -> None:
         tmp_path / "hour_map.csv",
         {
             "hour": [1, 2, 3],
-            "time_index": ["2024-01-01T00:00:00", "2024-01-01T01:00:00", "2024-01-01T02:00:00"],
+            "time_index": ["2018-01-01T00:00:00", "2018-01-01T01:00:00", "2018-01-01T02:00:00"],
             "season": ["winter", "winter", "winter"],
         },
     )
@@ -77,13 +77,16 @@ def test_electrolyzer_scope_full_flow(tmp_path: Path) -> None:
             "h2_price": [2.0, 3.0],
         },
     )
+    scalars_path = tmp_path / "scalars.csv"
+    scalars_path.write_text("h2_energy_intensity,50000,Btu/lb\nlb_per_tonne,2000,lb/tonne\n")
 
     _run_electrolyzer(
         system,
-        weather_year=2024,
+        weather_year=2018,
         hour_map_fpath=hour_map_path,
         electrolyzer_load_fpath=load_path,
         h2_fuel_price_fpath=price_path,
+        scalars_fpath=scalars_path,
     )
 
     demand = system.get_component(ReEDSDemand, "west_electrolyzer")
@@ -92,6 +95,10 @@ def test_electrolyzer_scope_full_flow(tmp_path: Path) -> None:
     assert system.has_time_series(demand) is True
     assert system.has_time_series(west_gen) is True
     assert system.has_time_series(east_gen) is False
+    prices = system.get_time_series(west_gen, name="fuel_price").data
+    assert len(prices) == 8760
+    assert prices[0] == pytest.approx(20.0)
+    assert prices[31 * 24] == pytest.approx(30.0)
 
 
 def test_electrolyzer_scope_weather_missing(tmp_path: Path, caplog) -> None:
@@ -166,7 +173,7 @@ def test_electrolyzer_scope_empty_price(caplog) -> None:
     _add_generator(system, west, "Hydrogen_GEN")
 
     electro_prices = pl.DataFrame({"region": [], "month": [], "h2_price": []})
-    electrolyzer._add_hydrogen_fuel_price(system, electro_prices, weather_year=2024)
+    electrolyzer._add_hydrogen_fuel_price(system, electro_prices, weather_year=2024, kg_per_mmbtu=1.0)
 
     assert "Hydrogen fuel price data is empty" in caplog.text
 

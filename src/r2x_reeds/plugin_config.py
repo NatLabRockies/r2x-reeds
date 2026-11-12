@@ -24,6 +24,7 @@ class GeneratorClassificationOverride(BaseModel):
         "storage",
         "pumped_storage",
         "imports",
+        "exports",
     ]
     is_dispatchable: bool | None = None
     parser_supported: bool | None = None
@@ -142,6 +143,10 @@ class ReEDSConfig(PluginConfig):
     excluded_techs : list[str], optional
         Technologies to exclude from the parsed system. When omitted, the list
         from ``defaults.json`` is used.
+    apply_cf_adjustment : bool, optional
+        Apply capacity factor adjustment (based on vintages/locations) to renewable generators.
+    apply_ilr_adjustment : bool, optional
+        Adjust PV capacity factor profiles based on the inverter loading ratio (increases effective capacity by treating CF profiles as based on DC nameplate).
 
     Examples
     --------
@@ -214,6 +219,33 @@ class ReEDSConfig(PluginConfig):
             ),
         ),
     ] = None
+    drop_gen_capacity_threshold: Annotated[
+        float,
+        Field(
+            default=0.0,
+            ge=0,
+            description=("Drop generators with installed capacity below this threshold in MW."),
+        ),
+    ] = 0.0
+    apply_cf_adjustment: Annotated[
+        bool,
+        Field(
+            default=False,
+            description=(
+                "Apply capacity factor adjustment (based on vintages/locations) to renewable generators."
+            ),
+        ),
+    ] = False
+    apply_ilr_adjustment: Annotated[
+        bool,
+        Field(
+            default=False,
+            description=(
+                "Adjust PV capacity factor profiles based on the inverter loading ratio "
+                "(increases effective capacity by treating CF profiles as based on DC nameplate)."
+            ),
+        ),
+    ] = False
 
     @field_validator("generator_classification_overrides")
     @classmethod

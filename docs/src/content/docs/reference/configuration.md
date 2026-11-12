@@ -13,6 +13,9 @@ title: Configuration Reference
 | `generator_capacity_source` | `Literal["standard", "degraded"]` | `"standard"` | Selects `online_capacity` or `online_capacity_degraded`; the chosen source does not fall back if missing |
 | `generator_classification_overrides` | `list[GeneratorClassificationOverride]` | `[]` | Optional exact technology-specific classification exceptions |
 | `excluded_techs` | `list[str] \| None` | `None` | `None` uses package exclusions; an explicit list, including `[]`, replaces them |
+| `drop_gen_capacity_threshold` | `float` | `0.0` | Drop generators below this installed-capacity threshold in MW |
+| `apply_cf_adjustment` | `bool` | `False` | Apply capacity-factor adjustments to renewable profiles |
+| `apply_ilr_adjustment` | `bool` | `False` | Scale PV capacity-factor profiles by inverter loading ratio |
 | `config_path_override` | `Path \| None` | `None` | Complete configuration directory override |
 
 A parsed `System` retains each configured solve year as a separate state.
@@ -49,6 +52,20 @@ reserve-provider exclusions. Generator classifications derive from the ReEDS
 technology-subset input. `ReEDSConfig.generator_classification_overrides`
 provides optional exact exceptions. An explicit `excluded_techs` list in
 `ReEDSConfig` overrides the package list, even when it is empty.
+
+### `file_mapping.json`
+
+### Renewable profile adjustments
+
+With both flags disabled, hourly `max_active_power` is the capacity-factor
+profile multiplied by generator capacity. `apply_cf_adjustment=True` also
+multiplies renewable profiles by `capacity_factor_adjustment`, and
+`apply_ilr_adjustment=True` multiplies PV profiles by `inverter_loading_ratio`.
+The adjustments use the capacity-weighted values attached to each aggregated
+renewable generator. The flags are independent; when both are enabled, both
+factors apply to PV profiles. Missing required adjustment values are reported
+as input errors. Neither flag changes installed capacity, and ILR-adjusted
+profiles are not clipped to generator capacity.
 
 ### `file_mapping.json`
 
@@ -107,6 +124,10 @@ fragment:
 For a persistent override, use a directory you control instead of the temporary
 one. Pass the configured `ReEDSConfig` to the parser as shown in the
 [parsing tutorial](/r2x-reeds/tutorials/parse-run/).
+By default, `electrolyzer`, `can-imports`, and `can-exports` are excluded from
+general generator parsing. To include one, provide an `excluded_techs` list
+that omits it. Excluding `can-exports` does not affect `add-exports`, which
+adds export energy to existing regional demand profiles.
 
 Set `generator_capacity_source` on `ReEDSConfig` to choose standard or degraded
 capacity. The `generator_rows` table is explicitly materialized after projection

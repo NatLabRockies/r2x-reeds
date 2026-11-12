@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Self, cast
 
 import polars as pl
+from infrasys.time_series_models import SingleTimeSeries
 from loguru import logger
 from pydantic import TypeAdapter
 from rust_ok import Err, Ok, Result, is_ok
@@ -15,6 +16,7 @@ from r2x_core.models import ParserInstruction
 from r2x_core.polars_adapter import PolarsTabularBackend
 from r2x_core.processors import substitute_placeholders
 
+from .models.components import ReEDSGenerator, ReEDSVariableGenerator
 from .plugin_config import ReEDSConfig, ReEDSDefaults
 from .upgrader.data_upgrader import run_reeds_upgrades
 
@@ -224,6 +226,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             )
         except (OSError, ValueError, pl.exceptions.PolarsError) as error:
             return Err(error)
+        try:
+            self._apply_generator_policies(system)
+        except ValueError as error:
+            return Err(error)
         if self.ctx.current_version is not None:
             system.data_format_version = self.ctx.current_version
         system.description = (
@@ -233,3 +239,56 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             f"weather years: {self.config.weather_year}"
         )
         return Ok(system)
+
+    def _apply_generator_policies(self, system: System) -> None:
+        """Apply configured capacity filtering and renewable profile adjustments."""
+        capacity_threshold = self.config.drop_gen_capacity_threshold
+        if capacity_threshold > 0:
+            generators = list(system.get_components(ReEDSGenerator))
+            dropped = 0
+            for generator in generators:
+                if generator.capacity < capacity_threshold:
+                    system.remove_component(generator)
+                    dropped += 1
+            logger.info(
+                "Dropped {} generators below the {} MW capacity threshold", dropped, capacity_threshold
+            )
+
+        if not (self.config.apply_cf_adjustment or self.config.apply_ilr_adjustment):
+            return
+
+        for generator in system.get_components(ReEDSVariableGenerator):
+            keys = system.list_time_series_keys(generator, name="max_active_power")
+            if not keys:
+                continue
+
+            cf_adjustment = generator.capacity_factor_adjustment
+            ilr_adjustment = generator.inverter_loading_ratio
+            technology = generator.technology.casefold()
+
+            for key in keys:
+                time_series = system.get_time_series_by_key(generator, key)
+                data = time_series.data.copy()
+                if self.config.apply_cf_adjustment:
+                    if cf_adjustment is None:
+                        raise ValueError(f"Missing CF adjustment for {generator.name}")
+                    data *= cf_adjustment
+                if self.config.apply_ilr_adjustment and "pv" in technology:
+                    if ilr_adjustment is None:
+                        raise ValueError(f"Missing ILR adjustment for {generator.name}")
+                    data *= ilr_adjustment
+                    if data.size and float(data.max()) > generator.capacity:
+                        logger.warning(
+                            "PV profile for tech {} in region {} exceeds generator capacity after ILR adjustment",
+                            generator.technology,
+                            generator.region.name,
+                        )
+
+                adjusted = SingleTimeSeries.from_array(
+                    data=data,
+                    name=time_series.name,
+                    initial_timestamp=time_series.initial_timestamp,
+                    resolution=time_series.resolution,
+                )
+                system.remove_time_series(generator, name=time_series.name, **key.features)
+                system.add_time_series(adjusted, generator, **key.features)

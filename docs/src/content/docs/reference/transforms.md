@@ -18,6 +18,7 @@ CLI pipeline profiles.
 - `break-gens`
 - `add-imports`
 - `add-optimal-siting`
+- `scale-distpv-capacity`
 
 ## Configuration Summary
 
@@ -35,6 +36,39 @@ Source definitions give each field type, default and required input.
 | `add-ccs-credit`        | `CCSCreditConfig`     | Apply CCS incentives                            |
 | `add-imports`           | `ImportsConfig`       | Add Canadian import time series                 |
 | `add-optimal-siting`    | `OptimalSitingConfig` | Apply loadsite increments to demand profiles    |
+| `scale-distpv-capacity` | `DistPVCapacityConfig` | Adjust distpv capacity for distribution losses |
+
+## DistPV Capacity Transform
+
+Module: `r2x_reeds.sysmod.distpv_capacity`
+
+Function: `scale_distpv_capacity(system, config)`
+
+Scales only the installed capacity (MW) of generators whose `technology` is
+exactly `distpv` by `1 / (1 - distloss)`. All other fields and time series,
+including already-scaled `max_active_power` profiles, remain unchanged.
+This is a capacity-only adjustment, not an additional energy adjustment.
+
+Configure a manual `distloss` fraction or `scalars_fpath` pointing to the
+headerless ReEDS `inputs_case/scalars.csv`. A manual value takes precedence,
+including zero. Losses must be finite and in `[0, 1)`; missing inputs, missing
+or duplicate `distloss` rows, and invalid values fail rather than being skipped.
+The scalar is national and has no solve-year or weather-year selection.
+
+Add `r2x-reeds.scale-distpv-capacity` once after parsing and before translation
+to the target model. Repeated application compounds the capacity change.
+Refresh the installed package metadata after adding this entry point so the
+CLI can discover it.
+
+```yaml
+config:
+  r2x-reeds.scale-distpv-capacity:
+    scalars_fpath: ${reeds_run}/inputs_case/scalars.csv
+    # Alternatively, set distloss: 0.05 as a manual override.
+```
+
+At `distloss: 0.05`, a 100 MW distpv generator becomes approximately
+105.263 MW, with no change to its hourly profile.
 
 ## Purchaser Load Transform
 
@@ -100,6 +134,17 @@ If these fields are omitted, `break-gens` keeps the original workflow and consid
 
 ## Configuration fields and source
 
+### DistPVCapacityConfig
+
+Module: `r2x_reeds.sysmod.distpv_capacity`.
+
+Package fields:
+
+- `distloss`: `float | None`, default `None`; finite distribution loss fraction in `[0, 1)`. Overrides the scalars file when provided, including zero.
+- `scalars_fpath`: `Path | str | None`, default `None`; path to the headerless ReEDS `inputs_case/scalars.csv` containing exactly one `distloss` row.
+
+Provide at least one of these fields. See [DistPV Capacity Transform](#distpv-capacity-transform) for behavior and an example.
+
 ### BreakGensConfig
 
 Module: `r2x_reeds.sysmod.break_gens`.
@@ -128,9 +173,9 @@ Package fields: `emission_cap`, `switches_fpath`, `emission_rates_fpath`, `co2_c
 
 Module: `r2x_reeds.sysmod.electrolyzer`.
 
-Package fields: `weather_year`, `electrolyzer_load_fpath`, `h2_fuel_price_fpath`, `hour_map_fpath`.
+Package fields are `weather_year`, `electrolyzer_load_fpath`, `h2_fuel_price_fpath`, `hour_map_fpath` and `scalars_fpath`.
 
-[Source and defaults](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/sysmod/electrolyzer.py).
+[Source and defaults](https://github.com/NatLabRockies/r2x-reeds/blob/7c16ba16779abf080614c58e655b96e604786f9c/src/r2x_reeds/sysmod/electrolyzer.py).
 
 ### PurchaserLoadConfig
 

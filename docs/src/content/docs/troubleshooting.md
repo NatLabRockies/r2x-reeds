@@ -138,9 +138,11 @@ check the actual components rather than relying on the pipeline exit code:
 >>> assert any(item.name == "p1_load_2032" for item in system.get_components(ReEDSDemand))
 ```
 
-Default generator exclusions include `can-imports`, `electrolyzer`, `smr` and
-`smr_ccs`. Import budgets need parsed import generators and their mapped inputs;
-purchaser demand needs its own production/site inputs. Use the exact configuration
+Default generator exclusions include `can-imports`, `can-exports`,
+`electrolyzer`, `smr` and `smr_ccs`. Import budgets need matching parsed import
+generators; Canadian export demand is added to existing regional
+`ReEDSDemand` profiles and does not use export generators. Purchaser demand
+needs its own production/site inputs. Use the exact configuration
 and per-modifier checks in [PCM handoff](/r2x-reeds/how-to/pcm-handoff/), including
 its explicit exclusion-list replacement. Never combine modern purchaser hydrogen
 and legacy electrolyzer demand for the same load. Verify the added component names,
@@ -176,7 +178,7 @@ Startup cost stays a **$/MW coefficient** through defaults and splitting. If a
 custom step multiplied it by the original block capacity, remove that conversion
 and rerun from the parser checkpoint; the target adapter must convert once using
 final unit capacity. Verify the coefficient and reconcile removed MW when splitting
-small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#1-add-operating-defaults-without-rescaling-startup-coefficients)
+small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#2-add-operating-defaults-without-rescaling-startup-coefficients)
 explains the unit boundary and override behavior.
 
 Current source reads solve-year fixed O&M from `cost_fom` and the operating-cost

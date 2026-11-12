@@ -2304,6 +2304,22 @@
         "output": "weighted_fom"
       },
       {
+        "operation": "multiply",
+        "columns": [
+          "capacity_factor_adjustment",
+          "capacity"
+        ],
+        "output": "weighted_cf_adjustment"
+      },
+      {
+        "operation": "multiply",
+        "columns": [
+          "inverter_loading_ratio",
+          "capacity"
+        ],
+        "output": "weighted_ilr_adjustment"
+      },
+      {
         "operation": "choose",
         "column": "capacity",
         "comparison": "greater_than",
@@ -2323,6 +2339,26 @@
           "value": 0.0
         },
         "output": "unknown_capacity"
+      },
+      {
+        "operation": "choose",
+        "column": "capacity_factor_adjustment",
+        "comparison": "is_null",
+        "then": "positive_capacity",
+        "otherwise": {
+          "value": 0.0
+        },
+        "output": "unknown_cf_adjustment_capacity"
+      },
+      {
+        "operation": "choose",
+        "column": "inverter_loading_ratio",
+        "comparison": "is_null",
+        "then": "positive_capacity",
+        "otherwise": {
+          "value": 0.0
+        },
+        "output": "unknown_ilr_adjustment_capacity"
       }
     ]
   },
@@ -2394,16 +2430,6 @@
             "output": "vom_cost"
           },
           {
-            "operation": "mean",
-            "column": "inverter_loading_ratio",
-            "output": "inverter_loading_ratio"
-          },
-          {
-            "operation": "mean",
-            "column": "capacity_factor_adjustment",
-            "output": "capacity_factor_adjustment"
-          },
-          {
             "operation": "first",
             "column": "ext",
             "output": "ext"
@@ -2417,6 +2443,26 @@
             "operation": "sum",
             "column": "unknown_capacity",
             "output": "unknown_capacity"
+          },
+          {
+            "operation": "sum",
+            "column": "weighted_cf_adjustment",
+            "output": "weighted_cf_adjustment"
+          },
+          {
+            "operation": "sum",
+            "column": "unknown_cf_adjustment_capacity",
+            "output": "unknown_cf_adjustment_capacity"
+          },
+          {
+            "operation": "sum",
+            "column": "weighted_ilr_adjustment",
+            "output": "weighted_ilr_adjustment"
+          },
+          {
+            "operation": "sum",
+            "column": "unknown_ilr_adjustment_capacity",
+            "output": "unknown_ilr_adjustment_capacity"
           }
         ]
       }
@@ -2455,6 +2501,66 @@
           "value": null
         },
         "output": "fom_cost"
+      },
+      {
+        "operation": "choose",
+        "column": "unknown_cf_adjustment_capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": {
+          "value": null
+        },
+        "otherwise": "weighted_cf_adjustment",
+        "output": "complete_weighted_cf_adjustment"
+      },
+      {
+        "operation": "divide",
+        "columns": [
+          "complete_weighted_cf_adjustment",
+          "capacity"
+        ],
+        "output": "cf_adjustment_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": "cf_adjustment_candidate",
+        "otherwise": {
+          "value": null
+        },
+        "output": "capacity_factor_adjustment"
+      },
+      {
+        "operation": "choose",
+        "column": "unknown_ilr_adjustment_capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": {
+          "value": null
+        },
+        "otherwise": "weighted_ilr_adjustment",
+        "output": "complete_weighted_ilr_adjustment"
+      },
+      {
+        "operation": "divide",
+        "columns": [
+          "complete_weighted_ilr_adjustment",
+          "capacity"
+        ],
+        "output": "ilr_adjustment_candidate"
+      },
+      {
+        "operation": "choose",
+        "column": "capacity",
+        "comparison": "greater_than",
+        "value": 0,
+        "then": "ilr_adjustment_candidate",
+        "otherwise": {
+          "value": null
+        },
+        "output": "inverter_loading_ratio"
       },
       {
         "operation": "concat_strings",

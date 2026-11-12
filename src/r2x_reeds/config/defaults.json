@@ -1,6 +1,7 @@
 {
   "excluded_techs": [
     "can-imports",
+    "can-exports",
     "electrolyzer",
     "smr",
     "smr_ccs"
@@ -34,6 +35,158 @@
       "TREE",
       "WECC"
     ]
+  },
+  "tech_categories": {
+    "solar": {
+      "prefixes": [
+        "upv",
+        "distpv",
+        "dupv",
+        "csp",
+        "pvb"
+      ],
+      "exact": []
+    },
+    "wind": {
+      "prefixes": [
+        "wind-ons",
+        "wind-ofs"
+      ],
+      "exact": []
+    },
+    "thermal": {
+      "prefixes": [
+        "coal",
+        "gas-cc",
+        "gas-ct",
+        "lfill-gas",
+        "nuclear",
+        "o-g-s",
+        "biopower",
+        "beccs",
+        "h2-ct",
+        "h2-cc"
+      ],
+      "exact": []
+    },
+    "hydro": {
+      "prefixes": [
+        "hyd"
+      ],
+      "exact": []
+    },
+    "hydro_dispatchable": {
+      "prefixes": [
+        "hydro-d"
+      ],
+      "exact": [
+        "hydD",
+        "hydSD",
+        "hydUD",
+        "hydNPD",
+        "hydED"
+      ]
+    },
+    "hydro_nondispatchable": {
+      "prefixes": [
+        "hydro-and"
+      ],
+      "exact": [
+        "hydND",
+        "hydSND",
+        "hydUND",
+        "hydNPND",
+        "hydEND"
+      ]
+    },
+    "pumped_storage": {
+      "prefixes": [
+        "pumped-hydro"
+      ],
+      "exact": []
+    },
+    "storage": {
+      "prefixes": [
+        "battery",
+        "caes"
+      ],
+      "exact": []
+    },
+    "electrolyzer": {
+      "prefixes": [
+        "electrolyzer"
+      ],
+      "exact": []
+    },
+    "hydrogen": {
+      "prefixes": [
+        "smr"
+      ],
+      "exact": [
+        "electrolyzer"
+      ]
+    },
+    "imports": {
+      "prefixes": [],
+      "exact": [
+        "can-imports"
+      ]
+    },
+    "exports": {
+      "prefixes": [],
+      "exact": [
+        "can-exports"
+      ]
+    },
+    "geothermal": {
+      "prefixes": [
+        "geothermal",
+        "geohydro",
+        "egs",
+        "rtes"
+      ],
+      "exact": []
+    },
+    "renewable": {
+      "prefixes": [
+        "upv",
+        "distpv",
+        "dupv",
+        "csp",
+        "pvb",
+        "wind-ons",
+        "wind-ofs",
+        "geothermal",
+        "geohydro",
+        "egs"
+      ],
+      "exact": []
+    },
+    "variable_renewable": {
+      "prefixes": [
+        "upv",
+        "wind-ons",
+        "wind-ofs"
+      ],
+      "exact": []
+    }
+  },
+  "category_class_mapping": {
+    "storage": "ReEDSStorage",
+    "pumped_storage": "ReEDSStorage",
+    "hydro": "ReEDSHydroGenerator",
+    "hydro_dispatchable": "ReEDSHydroGenerator",
+    "hydro_nondispatchable": "ReEDSHydroGenerator",
+    "electrolyzer": "ReEDSElectrolyzerDemand",
+    "thermal": "ReEDSThermalGenerator",
+    "solar": "ReEDSVariableGenerator",
+    "wind": "ReEDSVariableGenerator",
+    "geothermal": "ReEDSVariableGenerator",
+    "renewable": "ReEDSVariableGenerator",
+    "variable_renewable": "ReEDSVariableGenerator",
+    "hydrogen": "ReEDSConsumingTechnology",
+    "imports": "ReEDSGenerator",
+    "exports": "ReEDSGenerator"
   },
   "default_values": {
     "base_year": 2020,

@@ -1,3 +1,6 @@
+import tomllib
+from pathlib import Path
+
 import pytest
 
 pytestmark = [pytest.mark.unit]
@@ -28,3 +31,11 @@ def test_manifest_has_modifiers() -> None:
     # assert "r2x-reeds.add-pcm-defaults" in names
     # assert "r2x-reeds.break-gens" in names
     pass
+
+
+def test_exports_transform_is_declared_as_r2x_entry_point() -> None:
+    project_file = Path(__file__).parents[1] / "pyproject.toml"
+    project = tomllib.loads(project_file.read_text())
+
+    transforms = project["project"]["entry-points"]["r2x.transforms"]
+    assert transforms["add-exports"] == "r2x_reeds.sysmod.exports:add_exports"
