@@ -453,6 +453,18 @@
     }
   },
   {
+    "name": "generator_consumer_technology_keys",
+    "source": "generator_category_flag_rows",
+    "operations": [
+      {"operation": "filter", "column": "membership_flag", "comparison": "equals", "value": "consume"},
+      {"operation": "unique", "columns": ["technology_key"], "keep": "first"}
+    ],
+    "columns": {
+      "technology_key": "technology_key",
+      "consumer_flag": "membership_flag"
+    }
+  },
+  {
     "name": "generator_category_policy_rows",
     "operations": [
       {
@@ -763,7 +775,15 @@
         "how": "left",
         "on": ["technology_key"],
         "columns": ["component_family", "category", "is_dispatchable", "parser_supported"]
-      }
+      },
+      {
+        "operation": "join",
+        "source": "generator_consumer_technology_keys",
+        "how": "left",
+        "on": ["technology_key"],
+        "columns": ["consumer_flag"]
+      },
+      {"operation": "filter", "column": "consumer_flag", "comparison": "is_null"}
     ],
     "columns": {
       "technology": "technology",

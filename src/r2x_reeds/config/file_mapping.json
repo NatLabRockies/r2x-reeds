@@ -271,6 +271,14 @@
             "transreg": "transmission_region",
             "usda_region": "usda_region"
           }
+        },
+        {
+          "op": "with_columns",
+          "columns": {
+            "region_id": {
+              "lowercase": ["region_id"]
+            }
+          }
         }
       ],
       "kind": "tabular"
@@ -398,7 +406,7 @@
         "dtype": "float64",
         "rename": "cost_usd_per_mw_reverse"
       },
-      {"name": "tscbin", "dtype": "int64", "rename": "cost_bin"},
+      {"name": "tscbin", "dtype": "string", "rename": "cost_bin"},
       {"name": "binwidth_USD2004", "dtype": "float64", "rename": "binwidth_usd2004"}
     ]
   },

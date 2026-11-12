@@ -124,10 +124,14 @@ fragment:
 For a persistent override, use a directory you control instead of the temporary
 one. Pass the configured `ReEDSConfig` to the parser as shown in the
 [parsing tutorial](/r2x-reeds/tutorials/parse-run/).
-By default, `electrolyzer`, `can-imports`, and `can-exports` are excluded from
-general generator parsing. To include one, provide an `excluded_techs` list
-that omits it. Excluding `can-exports` does not affect `add-exports`, which
-adds export energy to existing regional demand profiles.
+The package excludes `can-imports`, `can-exports`, `electrolyzer`, `smr`, and
+`smr_ccs` from general generator parsing by default. An explicit
+`excluded_techs` list replaces that package list, so `excluded_techs: []` keeps
+all user-configurable exclusions empty. Technologies marked `consume` in the
+ReEDS technology subset table are still omitted from general generator
+classification because they are not generation components. Excluding
+`can-exports` does not affect `add-exports`, which adds export energy to
+existing regional demand profiles.
 
 Set `generator_capacity_source` on `ReEDSConfig` to choose standard or degraded
 capacity. The `generator_rows` table is explicitly materialized after projection

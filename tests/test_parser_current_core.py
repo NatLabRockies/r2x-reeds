@@ -345,6 +345,14 @@ def test_public_builder_maps_current_hierarchy_fields() -> None:
 
 
 def test_complete_run_uses_current_mapping_and_builds_regions(reeds_run_path: Path, tmp_path: Path) -> None:
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    hierarchy_path = run_path / "inputs_case" / "hierarchy.csv"
+    hierarchy = pl.read_csv(hierarchy_path)
+    region_column = "*r" if "*r" in hierarchy.columns else "r"
+    offshore_region = hierarchy.head(1).with_columns(pl.lit("oCT").alias(region_column))
+    hierarchy.vstack(offshore_region).write_csv(hierarchy_path)
+
     config_path = copy_package_config(tmp_path)
     configure_csv_sources(config_path)
     config = ReEDSConfig(
@@ -353,13 +361,15 @@ def test_complete_run_uses_current_mapping_and_builds_regions(reeds_run_path: Pa
         case_name="complete-run",
         config_path_override=config_path,
     )
-    context = PluginContext(config=config, store=DataStore(path=reeds_run_path))
+    context = PluginContext(config=config, store=DataStore(path=run_path))
 
     result = ReEDSParser.from_context(context).run()
 
     assert result.system is not None
     regions = {region.name: region for region in result.system.get_components(ReEDSRegion)}
-    assert len(regions) == 11
+    assert len(regions) == 12
+    assert "oct" in regions
+    assert "oCT" not in regions
     assert regions["p1"].transmission_region == "NorthernGrid"
     generators = list(result.system.get_components(ReEDSGenerator))
     assert generators
@@ -797,7 +807,7 @@ def test_fom_validation_precedes_materialized_generator_errors(
         build_generator_system(run_path, config=config)
 
 
-def test_public_parser_excludes_or_rejects_unsupported_consuming_technology(
+def test_public_parser_skips_consuming_technology_when_exclusions_are_empty(
     reeds_run_path: Path, tmp_path: Path
 ) -> None:
     run_path = tmp_path / "run"
@@ -818,8 +828,11 @@ def test_public_parser_excludes_or_rejects_unsupported_consuming_technology(
         "i,v,r,t,Value\nGas-CC,init-1,p1,2032,100\nelectrolyzer,new1,p1,2032,20\n",
         encoding="utf-8",
     )
-    with pytest.raises(PluginError):
-        build_generator_system(included_run_path, config=config.model_copy(update={"excluded_techs": []}))
+    included_system = build_generator_system(
+        included_run_path, config=config.model_copy(update={"excluded_techs": []})
+    )
+
+    assert [unit.technology for unit in included_system.get_components(ReEDSThermalGenerator)] == ["gas-cc"]
 
 
 @pytest.mark.parametrize(
@@ -944,7 +957,7 @@ def build_transmission_case(
     )
     (inputs_case / "transmission_cost_ac.csv").write_text(
         "r,rr,USD2004perMW_forward,USD2004perMW_reverse,tscbin,binwidth_USD2004\n"
-        "p1,p2,3000,2800,2,10\np1,p2,2000,1800,1,10\n",
+        "p1,p2,3000,2800,t1,10\np1,p2,2000,1800,t0,10\n",
         encoding="utf-8",
     )
     config_path = copy_package_config(tmp_path)

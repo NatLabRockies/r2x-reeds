@@ -43,7 +43,9 @@ def _add_profile(system: System, generator: ReEDSGenerator) -> None:
     system.add_time_series(series, generator, solve_year=2032)
 
 
-def test_profile_adjustments_scale_values_and_keep_capacity(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+def test_profile_adjustments_scale_values_and_keep_capacity(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     parser = _build_parser(tmp_path, apply_cf_adjustment=True, apply_ilr_adjustment=True)
     system = System(name="profile-adjustments")
     region = ReEDSRegion(name="p1")
