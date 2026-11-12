@@ -28,7 +28,8 @@ ReEDS run inputs, such as `meta.csv`, `inputs_case/` and `outputs/`. The parser
 loads its file mapping during preparation. See the
 [parsing tutorial](/r2x-reeds/tutorials/parse-run/) for context construction and
 the [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/main/src/r2x_reeds/plugin_config.py).
-Replace older `DataStore.from_plugin_config(...)` examples with this constructor.
+For direct parser setup, configure the store's upgrades from the plugin config:
+`store.configure_upgrades(plugin_config=reeds_config)`.
 The parser loads its configured readers itself. The removed
 `register_modeled_years_reader` function is no longer needed.
 

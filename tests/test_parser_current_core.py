@@ -38,6 +38,7 @@ from r2x_reeds.models.components import (
     ReEDSTransmissionLine,
     ReEDSVariableGenerator,
 )
+from tests.type_helpers import get_time_series, solve_year_key
 
 pytestmark = pytest.mark.polars
 
@@ -540,13 +541,14 @@ def test_public_parser_keeps_solve_year_generator_states_and_profiles_separate(
 
     assert result.system is not None
     system = result.system
-    thermal = sorted(system.get_components(ReEDSThermalGenerator), key=lambda item: item.solve_year)
+    thermal = sorted(system.get_components(ReEDSThermalGenerator), key=solve_year_key)
     assert [(item.solve_year, item.capacity, item.fom_cost) for item in thermal] == [
         (2032, 100.0, 20081.0),
         (2035, 250.0, 25081.0),
     ]
     variable = sorted(
-        system.get_components(ReEDSVariableGenerator), key=lambda item: (item.solve_year, item.technology)
+        system.get_components(ReEDSVariableGenerator),
+        key=lambda item: (solve_year_key(item), item.technology),
     )
     assert [(item.solve_year, item.technology, item.capacity) for item in variable] == [
         (2032, "upv_1", 10.0),
@@ -559,7 +561,7 @@ def test_public_parser_keeps_solve_year_generator_states_and_profiles_separate(
         ([0.0, 5.0], [5.0, 10.0], [0.0, 15.0], [10.0, 20.0]),
         strict=True,
     ):
-        profile = system.get_time_series(unit, name="max_active_power", solve_year=unit.solve_year)
+        profile = get_time_series(system, unit, name="max_active_power", solve_year=unit.solve_year)
         np.testing.assert_allclose(profile.data, expected_values)
         assert system.list_time_series_metadata(unit, name="max_active_power", solve_year=unit.solve_year)
     emissions = [
@@ -576,7 +578,7 @@ def test_public_parser_keeps_solve_year_generator_states_and_profiles_separate(
 
     demands = sorted(
         (item for item in system.get_components(ReEDSDemand) if item.region.name == "p1"),
-        key=lambda item: item.solve_year,
+        key=solve_year_key,
     )
     assert [(item.name, item.solve_year, item.max_active_power) for item in demands] == [
         ("p1_load_2032", 2032, 1200.0),
@@ -588,7 +590,8 @@ def test_public_parser_keeps_solve_year_generator_states_and_profiles_separate(
         strict=True,
     ):
         for weather_year, expected_profile in zip((2012, 2013), profiles, strict=True):
-            series = system.get_time_series(
+            series = get_time_series(
+                system,
                 demand,
                 name="max_active_power",
                 solve_year=demand.solve_year,
@@ -605,7 +608,8 @@ def test_public_parser_keeps_solve_year_generator_states_and_profiles_separate(
     for reserve_type, year_profiles in reserve_expectations.items():
         reserve = system.get_component(ReEDSReserve, f"{p1.transmission_region}_{reserve_type}")
         for year, expected_values in zip((2032, 2035), year_profiles, strict=True):
-            profile = system.get_time_series(
+            profile = get_time_series(
+                system,
                 reserve,
                 name="requirement",
                 solve_year=year,
@@ -615,7 +619,7 @@ def test_public_parser_keeps_solve_year_generator_states_and_profiles_separate(
             expected[:2] = expected_values
             np.testing.assert_allclose(profile, expected)
 
-    lines = sorted(system.get_components(ReEDSTransmissionLine), key=lambda item: item.solve_year)
+    lines = sorted(system.get_components(ReEDSTransmissionLine), key=solve_year_key)
     assert [
         (
             line.name,

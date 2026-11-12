@@ -16,7 +16,7 @@ maintainers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "r2x-core @ git+https://github.com/NatLabRockies/r2x-core.git@feat/csv-2",
+    "r2x-core @ git+https://github.com/NatLabRockies/r2x-core.git@main",
 ]
 keywords=["ReEDS"]
 classifiers = [

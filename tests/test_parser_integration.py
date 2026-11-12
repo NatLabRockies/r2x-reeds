@@ -6,6 +6,7 @@ These tests verify that the parser can build a example_system using real data fi
 import csv
 import shutil
 
+import h5py
 import numpy as np
 import polars as pl
 import pytest
@@ -112,6 +113,33 @@ def test_load_profiles_exposes_one_solve_year_column(data_store, reeds_config) -
     )
 
     assert load_profiles.columns.count("solve_year") == 1
+
+
+def test_load_profiles_reads_named_hdf5_year_index(tmp_path) -> None:
+    """Read ReEDS HDF5 files whose solve-year index is stored as index_year."""
+    inputs = tmp_path / "inputs_case"
+    inputs.mkdir()
+    with h5py.File(inputs / "load.h5", "w") as handle:
+        handle.create_dataset("columns", data=np.asarray(["p1"], dtype="S8"))
+        handle.create_dataset("data", data=np.asarray([[10.0], [20.0]], dtype=np.float32))
+        handle.create_dataset("index_year", data=np.asarray([2032, 2032], dtype=np.int64))
+        handle.create_dataset(
+            "index_datetime",
+            data=np.asarray(
+                ["2012-01-01T00:00:00", "2012-01-01T01:00:00"],
+                dtype="S19",
+            ),
+        )
+        handle.create_dataset("index_names", data=np.asarray(["year", "datetime"], dtype="S10"))
+
+    store = current_data_store(tmp_path)
+    load_profiles = read_source_frame(
+        store,
+        "load_profiles",
+        placeholders={"solve_year": 2032, "weather_year": 2012},
+    )
+
+    assert load_profiles.select("solve_year", "weather_year").unique().rows() == [(2032, 2012)]
 
 
 @pytest.fixture(scope="session")

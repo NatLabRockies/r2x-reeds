@@ -10,6 +10,7 @@ from infrasys import SingleTimeSeries, System
 
 from r2x_reeds.models.components import ReEDSDemand, ReEDSRegion
 from r2x_reeds.sysmod import optimal_siting
+from tests.type_helpers import get_time_series
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
@@ -90,11 +91,11 @@ def test_optimal_siting_scopes_yearless_inputs_to_selected_demands(tmp_path: Pat
     )
 
     np.testing.assert_array_equal(
-        system.get_time_series(demands[2032], name="max_active_power", solve_year=2032).data,
+        get_time_series(system, demands[2032], name="max_active_power", solve_year=2032).data,
         np.array([11.0, 22.0]),
     )
     np.testing.assert_array_equal(
-        system.get_time_series(demands[2035], name="max_active_power", solve_year=2035).data,
+        get_time_series(system, demands[2035], name="max_active_power", solve_year=2035).data,
         np.array([10.0, 20.0]),
     )
     assert system.list_time_series_keys(demands[2032])[0].features == {
@@ -134,9 +135,9 @@ def test_optimal_siting_applies_increments_with_solve_year_filter(tmp_path: Path
         solve_year=2032,
     )
 
-    p4_profile = system.get_time_series(demands["p4"], solve_year=2032).data
-    p5_profile = system.get_time_series(demands["p5"], solve_year=2032).data
-    p1_profile = system.get_time_series(demands["p1"], solve_year=2032).data
+    p4_profile = get_time_series(system, demands["p4"], solve_year=2032).data
+    p5_profile = get_time_series(system, demands["p5"], solve_year=2032).data
+    p1_profile = get_time_series(system, demands["p1"], solve_year=2032).data
 
     np.testing.assert_allclose(p4_profile, base_profile + 500.0, atol=1e-6)
     np.testing.assert_allclose(p5_profile, base_profile + 300.0, atol=1e-6)
@@ -149,7 +150,7 @@ def test_optimal_siting_skips_when_paths_missing(caplog) -> None:
     _run_optimal_siting(system)
 
     np.testing.assert_allclose(
-        system.get_time_series(demands["p4"], solve_year=2032).data, base_profile, atol=1e-6
+        get_time_series(system, demands["p4"], solve_year=2032).data, base_profile, atol=1e-6
     )
     assert "Missing loadsite_op_fpath or hour_map_myr_fpath" in caplog.text
 
@@ -360,11 +361,11 @@ def test_optimal_siting_updates_only_selected_year_and_preserves_series_features
         solve_year=2032,
     )
 
-    assert system.get_time_series(demands[2032], name="max_active_power", solve_year=2032).data.tolist() == [
+    assert get_time_series(system, demands[2032], name="max_active_power", solve_year=2032).data.tolist() == [
         105.0,
         115.0,
     ]
-    assert system.get_time_series(demands[2035], name="max_active_power", solve_year=2035).data.tolist() == [
+    assert get_time_series(system, demands[2035], name="max_active_power", solve_year=2035).data.tolist() == [
         1000.0,
         1100.0,
     ]

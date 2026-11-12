@@ -50,10 +50,10 @@ def test_reeds_config_default_scenario():
 
 def test_reeds_config_rejects_removed_or_unknown_settings() -> None:
     with pytest.raises(ValidationError, match="use_degraded_capacity"):
-        ReEDSConfig(solve_year=2030, weather_year=2012, use_degraded_capacity=True)
+        ReEDSConfig.model_validate({"solve_year": 2030, "weather_year": 2012, "use_degraded_capacity": True})
 
     with pytest.raises(ValidationError, match="asset_overrides"):
-        ReEDSConfig(solve_year=2030, weather_year=2012, asset_overrides={})
+        ReEDSConfig.model_validate({"solve_year": 2030, "weather_year": 2012, "asset_overrides": {}})
 
 
 def test_reeds_config_selects_generator_capacity_source() -> None:

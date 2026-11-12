@@ -15,6 +15,7 @@ from r2x_reeds.models.components import (
     ReEDSSteamMethaneReformingDemand,
 )
 from r2x_reeds.sysmod import purchaser_load
+from tests.type_helpers import get_time_series
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
@@ -176,12 +177,12 @@ def test_purchaser_load_scope_full_flow(tmp_path: Path) -> None:
     assert data_center_p4.capacity == pytest.approx(500.0)
     assert data_center_p5.capacity == pytest.approx(300.0)
 
-    electrolyzer_ts = system.get_time_series(electrolyzer_demand, solve_year=2032).data
+    electrolyzer_ts = get_time_series(system, electrolyzer_demand, solve_year=2032).data
     # Profile [50, 40, 30] scaled so annual total equals 360.
     np.testing.assert_allclose(electrolyzer_ts, np.array([150.0, 120.0, 90.0]), rtol=1e-5)
 
-    p4_ts = system.get_time_series(data_center_p4, solve_year=2032).data
-    p5_ts = system.get_time_series(data_center_p5, solve_year=2032).data
+    p4_ts = get_time_series(system, data_center_p4, solve_year=2032).data
+    p5_ts = get_time_series(system, data_center_p5, solve_year=2032).data
     np.testing.assert_allclose(p4_ts, np.array([500.0, 500.0, 500.0]), rtol=1e-5)
     np.testing.assert_allclose(p5_ts, np.array([300.0, 300.0, 300.0]), rtol=1e-5)
     assert system.list_time_series_keys(electrolyzer_demand)[0].features == {"solve_year": 2032}
@@ -224,7 +225,7 @@ def test_purchaser_load_attaches_selected_year_profile_only_to_matching_owner(tm
         hydrogen_production_load_fpath=profile_path,
     )
 
-    assert system.get_time_series(demands[2032], solve_year=2032).data.tolist() == [10.0, 20.0]
+    assert get_time_series(system, demands[2032], solve_year=2032).data.tolist() == [10.0, 20.0]
     assert system.has_time_series(demands[2035]) is False
     assert system.list_time_series_keys(demands[2032])[0].features == {"solve_year": 2032}
 
@@ -293,10 +294,10 @@ def test_purchaser_load_creates_smr_purchasers_with_profiles(tmp_path: Path) -> 
     assert smr_ccs.capacity == pytest.approx(25.0)
     assert smr_ccs.electricity_efficiency == pytest.approx(1.9)
     np.testing.assert_allclose(
-        system.get_time_series(smr, solve_year=2032).data, np.array([20.0, 40.0, 60.0])
+        get_time_series(system, smr, solve_year=2032).data, np.array([20.0, 40.0, 60.0])
     )
     np.testing.assert_allclose(
-        system.get_time_series(smr_ccs, solve_year=2032).data, np.array([10.0, 10.0, 20.0])
+        get_time_series(system, smr_ccs, solve_year=2032).data, np.array([10.0, 10.0, 20.0])
     )
 
 
@@ -374,7 +375,7 @@ def test_purchaser_load_skips_electrolyzer_creation_when_existing(tmp_path: Path
     # Pre-existing capacity must be unchanged (cap.csv row was skipped).
     assert electrolyzers[0].capacity == pytest.approx(200.0)
 
-    ts = system.get_time_series(electrolyzers[0], solve_year=2032).data
+    ts = get_time_series(system, electrolyzers[0], solve_year=2032).data
     np.testing.assert_allclose(ts, np.array([10.0, 20.0, 30.0]), rtol=1e-5)
 
 

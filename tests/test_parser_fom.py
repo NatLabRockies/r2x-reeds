@@ -76,7 +76,7 @@ def test_fom_sources_read_fractional_values_after_inference_window(tmp_path: Pat
     source = DataReader().read_data_files([data_file], folder_path=tmp_path)[source_name]
     rows = list(source.iter_rows())
 
-    assert float(rows[-1]["fom_cost"]) == pytest.approx(1.2861)
+    assert TypeAdapter(float).validate_python(rows[-1]["fom_cost"]) == pytest.approx(1.2861)
 
 
 def test_fom_characteristic_source_preserves_all_years(tmp_path: Path) -> None:

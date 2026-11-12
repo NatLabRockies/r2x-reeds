@@ -40,6 +40,39 @@ def test_resource_cost_projection_reads_real_candidate_and_selected_schemas(
 
 
 @pytest.mark.parametrize(
+    ("header", "row", "has_capacity_factor"),
+    [
+        (
+            "sc_point_gid,class,cap_avail,supply_curve_cost_per_mw",
+            "7422,2,45.6516,3303878.995",
+            False,
+        ),
+        (
+            "sc_point_gid,class,cap_avail,cf,supply_curve_cost_per_mw",
+            "7422,2,45.6516,0.42,3303878.995",
+            True,
+        ),
+    ],
+    ids=["without-cf", "with-cf"],
+)
+def test_offshore_candidate_mapping_accepts_optional_capacity_factor(
+    tmp_path: Path, header: str, row: str, has_capacity_factor: bool
+) -> None:
+    """Offshore candidate outputs can omit cf without losing other resource fields."""
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    (outputs / "df_sc_in_wind-ofs.csv").write_text(f"{header}\n{row}\n", encoding="utf-8")
+
+    configured_files = {item["name"]: item for item in package_file_mapping()}
+    data_file = TypeAdapter(DataFile).validate_python(configured_files["df_sc_in_wind-ofs"])
+    source = DataReader().read_data_files([data_file], folder_path=tmp_path)["df_sc_in_wind-ofs"]
+    result = next(iter(source.iter_rows()))
+
+    assert result["supply_curve_cost"] == 3303878.995
+    assert result.get("cf") == (0.42 if has_capacity_factor else None)
+
+
+@pytest.mark.parametrize(
     ("source_name", "has_capacity_factor"),
     [
         pytest.param("csp_supply_curve", False, id="csp-no-cf"),

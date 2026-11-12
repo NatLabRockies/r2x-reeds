@@ -4928,7 +4928,7 @@
           "dtype": "float64"
         },
         "capacity_factor": {
-          "optional_column": "capacity_factor",
+          "optional_column": "cf",
           "dtype": "float64"
         },
         "latitude": {

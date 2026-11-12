@@ -8,6 +8,7 @@ from infrasys import System
 
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import imports
+from tests.type_helpers import get_time_series
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
@@ -165,7 +166,7 @@ def test_imports_scope_selected_year_only_attaches_to_matching_generators(tmp_pa
     )
 
     assert system.has_time_series(generators[2032]) is False
-    assert system.get_time_series(generators[2035], name="hydro_budget", solve_year=2035).data.tolist() == [
+    assert get_time_series(system, generators[2035], name="hydro_budget", solve_year=2035).data.tolist() == [
         1.0,
         1.0,
     ]
