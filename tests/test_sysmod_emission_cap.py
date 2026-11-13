@@ -147,7 +147,7 @@ def test_emission_cap_missing_configured_file_preserves_error(tmp_path: Path) ->
 def test_precombustion_scope(switch_input) -> None:
     """Switch-controlled precombustion addition updates generator emission rates."""
     system, region = _build_system()
-    generator = _add_generator(system, region, "tech_2020_west", technology="tech")
+    generator = _add_generator(system, region, "tech_2020_west", technology="tech", vintage="2020")
     _attach_emission(system, generator)
 
     emit_rates = pl.DataFrame(
