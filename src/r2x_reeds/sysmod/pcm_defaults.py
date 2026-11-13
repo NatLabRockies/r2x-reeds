@@ -76,7 +76,7 @@ def add_pcm_defaults(
             if not isinstance(pcm_defaults, dict):
                 msg = "PCM defaults JSON must be an object or an array of named objects"
                 raise ValueError(msg)
-        except (OSError, TypeError, ValueError) as error:
+        except (OSError, KeyError, TypeError, ValueError) as error:
             logger.error("Failed to load PCM defaults: {}", error)
             return Err(error)
 

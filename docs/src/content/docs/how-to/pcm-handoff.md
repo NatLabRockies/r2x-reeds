@@ -328,6 +328,8 @@ supply its value explicitly or prepare a one-row input.
 `default_unit="tonne"` is the default. `switches_fpath` and
 `emission_rates_fpath` optionally enable precombustion additions; those inputs
 must match the helper's expected switch and generator/emission/rate schemas.
+Precombustion rows with `t` or `solve_year` apply only to the matching generator
+state. Yearless rows are shared across all otherwise matching solve-year states.
 Do not blindly pass an unnormalized raw emissions report.
 
 The stored constraint uses a metric scalar of 1000. Changing a unit label is not

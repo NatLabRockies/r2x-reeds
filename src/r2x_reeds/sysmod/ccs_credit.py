@@ -45,7 +45,7 @@ def _join_upgrade_links(co2_incentive: pl.DataFrame, upgrade_link: pl.DataFrame)
     unsupported = [
         column
         for column in dimensions
-        if column in upgrade_link.columns and column not in co2_incentive.columns
+        if column != "solve_year" and column in upgrade_link.columns and column not in co2_incentive.columns
     ]
     if unsupported:
         msg = f"CCS upgrade link keys are missing from incentives: {unsupported}"
@@ -189,11 +189,11 @@ def _apply_ccs_credit(
     # Some technologies on ReEDS are eligible for incentive but have not been upgraded yet.
     # Since the co2_incentive does not capture all the possible technologies, we get the
     # technologies before upgrading and if they exist in the system we apply the incentive.
-    incentive = _join_upgrade_links(co2_incentive, upgrade_link)
+    incentive_with_upgrade_links = _join_upgrade_links(co2_incentive, upgrade_link)
 
     # Get list of CCS technologies
-    ccs_techs = incentive["tech"].unique().to_list()
-    from_column = incentive["from"]
+    ccs_techs = co2_incentive["tech"].unique().to_list()
+    from_column = incentive_with_upgrade_links["from"]
     if from_column is not None:
         ccs_techs.extend(from_column.drop_nulls().unique().to_list())
     ccs_techs = list(set(ccs_techs))  # Remove duplicates
@@ -210,11 +210,15 @@ def _apply_ccs_credit(
             logger.debug(msg)
             continue
 
-        # Filter for upgrade path if it exists
-        direct_mask = _generator_key_filter(incentive, generator, technology_column="tech")
-        upgrade_mask = _generator_key_filter(incentive, generator, technology_column="from")
-
-        incentive_matches = incentive.filter(direct_mask | upgrade_mask)
+        direct_matches = co2_incentive.filter(
+            _generator_key_filter(co2_incentive, generator, technology_column="tech")
+        )
+        if direct_matches.is_empty():
+            incentive_matches = incentive_with_upgrade_links.filter(
+                _generator_key_filter(incentive_with_upgrade_links, generator, technology_column="from")
+            )
+        else:
+            incentive_matches = direct_matches
         if incentive_matches.is_empty():
             logger.debug("No incentive found for {}", generator.name)
             continue

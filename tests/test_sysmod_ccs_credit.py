@@ -54,7 +54,7 @@ def _run_ccs(system: System, **kwargs) -> System:
 def test_ccs_credit_scope_direct_match(tmp_path: Path) -> None:
     """Direct technology matches apply incentive times capture rate."""
     system, region = _build_system()
-    generator = _add_generator(system, region, "Coal_CCS_1", "coal_ccs")
+    generator = _add_generator(system, region, "Coal_CCS_1", "coal_ccs", solve_year=2035)
 
     co2_path = _write_csv(
         tmp_path / "co2.csv",
@@ -66,7 +66,13 @@ def test_ccs_credit_scope_direct_match(tmp_path: Path) -> None:
     )
     upgrade_path = _write_csv(
         tmp_path / "upgrade.csv",
-        {"from": ["coal_pre"], "to": ["coal_ccs"], "region": ["west"], "vintage": ["2020"]},
+        {
+            "from": ["coal_pre_a", "coal_pre_b"],
+            "to": ["coal_ccs", "coal_ccs"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "t": [2032, 2032],
+        },
     )
 
     _run_ccs(
@@ -77,6 +83,56 @@ def test_ccs_credit_scope_direct_match(tmp_path: Path) -> None:
     )
 
     assert generator.ext["UoS Charge"] == pytest.approx(-76.5)
+
+
+def test_ccs_credit_yearless_incentive_matches_year_specific_upgrade(
+    tmp_path: Path,
+) -> None:
+    system, region = _build_system()
+    generators = {
+        year: _add_generator(
+            system,
+            region,
+            f"Coal_Pre_{year}",
+            "coal_pre",
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    co2_path = _write_csv(
+        tmp_path / "co2.csv",
+        {"tech": ["coal_ccs"], "region": ["west"], "vintage": ["2020"], "incentive": [60.0]},
+    )
+    capture_path = _write_csv(
+        tmp_path / "capture.csv",
+        {
+            "tech": ["coal_pre", "coal_pre"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "t": [2032, 2035],
+            "capture_rate": [0.5, 0.25],
+        },
+    )
+    upgrade_path = _write_csv(
+        tmp_path / "upgrade.csv",
+        {
+            "from": ["coal_pre", "coal_pre"],
+            "to": ["coal_ccs", "coal_ccs"],
+            "region": ["west", "west"],
+            "vintage": ["2020", "2020"],
+            "t": [2032, 2035],
+        },
+    )
+
+    _run_ccs(
+        system,
+        co2_incentive_fpath=co2_path,
+        emission_capture_rate_fpath=capture_path,
+        upgrade_link_fpath=upgrade_path,
+    )
+
+    assert generators[2032].ext["UoS Charge"] == pytest.approx(-30.0)
+    assert generators[2035].ext["UoS Charge"] == pytest.approx(-15.0)
 
 
 def test_ccs_credit_matches_year_specific_upgrade_paths(tmp_path: Path) -> None:

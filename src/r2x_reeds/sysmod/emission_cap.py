@@ -113,6 +113,9 @@ def add_emission_cap(
 def _add_precombustion_if_enabled(system: System, switches: pl.DataFrame, emit_rates: pl.DataFrame) -> None:
     """Add precombustion emissions if enabled in switches.
 
+    Year-qualified rates apply only to the matching generator state. Yearless rates
+    are shared across all otherwise matching states.
+
     Parameters
     ----------
     system : System
@@ -150,22 +153,42 @@ def _add_precombustion_if_enabled(system: System, switches: pl.DataFrame, emit_r
             # Process emission rates for precombustion
             if emit_rates.is_empty():
                 return
-            emit_rates_processed = emit_rates.with_columns(
-                pl.concat_str(
-                    [pl.col("tech"), pl.col("tech_vintage"), pl.col("region")], separator="_"
-                ).alias("generator_name")
-            )
+            if "solve_year" not in emit_rates.columns and "t" in emit_rates.columns:
+                emit_rates = emit_rates.rename({"t": "solve_year"})
 
             # Filter for precombustion emissions
-            any_precombustion = emit_rates_processed["emission_source"].str.contains("precombustion")
-            emit_rates_precomb = emit_rates_processed.filter(any_precombustion)
+            any_precombustion = emit_rates["emission_source"].str.contains("precombustion")
+            emit_rates_precomb = emit_rates.filter(any_precombustion)
 
             if not emit_rates_precomb.is_empty():
                 logger.debug("Adding precombustion emission.")
-                generator_with_precombustion = emit_rates_precomb.select(
-                    "generator_name", "emission_type", "rate"
-                ).unique()
-                add_precombustion(system, generator_with_precombustion)
+                generators = list(system.get_components(ReEDSGenerator))
+                generator_rates = []
+                for rate in emit_rates_precomb.iter_rows(named=True):
+                    technology = str(rate["tech"])
+                    vintage_value = rate["tech_vintage"]
+                    vintage = str(vintage_value) if vintage_value is not None else None
+                    region = str(rate["region"])
+                    solve_year_value = rate.get("solve_year")
+                    solve_year = int(solve_year_value) if solve_year_value is not None else None
+
+                    generator_rates.extend(
+                        {
+                            "generator_name": generator.name,
+                            "emission_type": rate["emission_type"],
+                            "rate": rate["rate"],
+                        }
+                        for generator in generators
+                        if (
+                            generator.technology == technology
+                            and generator.vintage == vintage
+                            and generator.region.name == region
+                            and (solve_year is None or generator.solve_year == solve_year)
+                        )
+                    )
+
+                if generator_rates:
+                    add_precombustion(system, pl.DataFrame(generator_rates).unique())
     except Exception as e:
         logger.debug(f"Could not process precombustion emissions: {e}")
 
