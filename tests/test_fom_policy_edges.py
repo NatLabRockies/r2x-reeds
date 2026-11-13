@@ -87,8 +87,9 @@ def test_missing_required_upgrade_data_reports_a_parser_error(fom_run_path: Path
         assert isinstance(captured.value.__cause__, ConfiguredGroupNotFoundError)
         assert "unitspec_upgrades" in str(captured.value.__cause__)
     else:
-        assert isinstance(captured.value.__cause__, KeyError)
-        assert "column dataset 'i'" in str(captured.value.__cause__)
+        assert captured.value.__cause__ is not None
+        assert "unitspec_upgrades" in str(captured.value.__cause__)
+        assert "missing required datasets" in str(captured.value.__cause__)
 
 
 def test_cost_fom_must_cover_every_requested_solve_year(fom_run_path: Path) -> None:

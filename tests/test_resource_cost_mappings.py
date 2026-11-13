@@ -69,7 +69,7 @@ def test_offshore_candidate_mapping_accepts_optional_capacity_factor(
     result = next(iter(source.iter_rows()))
 
     assert result["supply_curve_cost"] == 3303878.995
-    assert result.get("cf") == (0.42 if has_capacity_factor else None)
+    assert result.get("capacity_factor") == (0.42 if has_capacity_factor else None)
 
 
 @pytest.mark.parametrize(

@@ -4,54 +4,44 @@ import polars as pl
 import pytest
 
 from r2x_reeds.models.components import ReEDSHydroGenerator
+from r2x_reeds.parser_utils import calculate_hydro_profiles_for_generator
 
 pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
-def test_prepare_hydro_datasets_normalizes_region_case(parser, monkeypatch):
-    hydro_cf = pl.DataFrame(
+def test_calculate_hydro_profiles_matches_region_case_insensitively(hydro_generator):
+    generator = hydro_generator.model_copy(
+        update={"region": hydro_generator.region.model_copy(update={"name": "AL"})}
+    )
+    hydro_data = pl.DataFrame(
         {
             "year": [2035] * 12,
             "technology": ["hyd"] * 12,
             "region": ["al"] * 12,
-            "month": list(range(1, 13)),
+            "month_num": list(range(1, 13)),
             "hydro_cf": [0.5] * 12,
-        }
-    ).lazy()
+        },
+        schema_overrides={"year": pl.Int64, "month_num": pl.Int64},
+    )
     capacity_adjustment = pl.DataFrame(
         {
             "technology": ["hyd"] * 12,
             "region": ["al"] * 12,
-            "month": list(range(1, 13)),
+            "month_num": list(range(1, 13)),
             "capacity_adjustment": [1.0] * 12,
-        }
-    ).lazy()
-    monkeypatch.setattr(
-        parser,
-        "read_data_file",
-        lambda name: hydro_cf if name == "hydro_cf" else capacity_adjustment,
-    )
-    monkeypatch.setattr(parser, "_hydro_cf_prepared", None)
-    monkeypatch.setattr(parser, "_hydro_capacity_adjustment_prepared", None)
-    monkeypatch.setattr(parser, "month_map", {})
-    monkeypatch.setattr(
-        parser,
-        "year_month_day_hours",
-        pl.DataFrame(
-            {
-                "year": [2035] * 12,
-                "month_num": pl.Series(range(1, 13), dtype=pl.Int16),
-                "days_in_month": [31] * 12,
-                "hours_in_month": [744] * 12,
-            }
-        ),
+        },
+        schema_overrides={"month_num": pl.Int64},
     )
 
-    result = parser._prepare_hydro_datasets()
+    results = calculate_hydro_profiles_for_generator(
+        generator,
+        hydro_data=hydro_data,
+        solve_years=[2035],
+        weather_year=2012,
+        hydro_capacity_adjustment=capacity_adjustment,
+    )
 
-    assert result.is_ok()
-    assert parser._hydro_cf_prepared["region"].unique().to_list() == ["AL"]
-    assert parser._hydro_capacity_adjustment_prepared["region"].unique().to_list() == ["AL"]
+    assert [result.name for result in results] == ["hydro_budget", "max_active_power"]
 
 
 def test_hydro_time_series(example_system):

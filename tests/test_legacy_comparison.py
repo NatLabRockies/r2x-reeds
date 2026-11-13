@@ -66,7 +66,7 @@ def legacy_component_names(legacy_system_data: dict[str, Any]) -> set[str]:
     return names
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def reeds_config() -> ReEDSConfig:
     """Create ReEDS configuration matching legacy system."""
     return ReEDSConfig(
@@ -75,13 +75,13 @@ def reeds_config() -> ReEDSConfig:
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def data_store(reeds_run_path: Path, reeds_config: ReEDSConfig) -> DataStore:
     """Create DataStore from file mapping."""
     return current_data_store(reeds_run_path)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def new_system(reeds_config: ReEDSConfig, data_store: DataStore) -> System:
     """Build system using new parser."""
     from r2x_core import PluginContext
