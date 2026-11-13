@@ -1,437 +1,648 @@
 [
   {
-    "source_type": "data_row",
-    "target_type": "ReEDSGenerator",
-    "version": 1,
-    "name": "base_generator",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "category",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "max_age": "maxage_years",
-      "vom_cost": "vom_price",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "heat_rate": "heat_rate",
-      "fuel_type": "fuel_type",
-      "fuel_price": "fuel_price",
-      "is_aggregated": "is_aggregated",
-      "resource_class": "resource_class",
-      "inverter_loading_ratio": "inverter_loading_ratio",
-      "capacity_factor_adjustment": "capacity_factor_adjustment",
-      "max_capacity_factor": "max_capacity_factor",
-      "supply_curve_cost": "supply_curve_cost",
-      "transmission_adder": "transmission_adder",
-      "vintage": "vintage"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region",
-      "storage_duration": "get_storage_duration",
-      "round_trip_efficiency": "get_round_trip_efficiency"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "is_aggregated": false,
-      "heat_rate": null,
-      "fuel_type": null,
-      "fuel_price": null,
-      "resource_class": null,
-      "inverter_loading_ratio": null,
-      "capacity_factor_adjustment": null,
-      "max_capacity_factor": null,
-      "supply_curve_cost": null,
-      "transmission_adder": null
+    "kind": "component",
+    "source": "hierarchy",
+    "component_type": "ReEDSRegion",
+    "fields": {
+      "name": "region_id"
     }
   },
   {
-    "source_type": "data_row",
-    "target_type": "ReEDSThermalGenerator",
-    "version": 1,
-    "name": "thermal_generator",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "technology",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "max_age": "max_age",
-      "vom_cost": "vom_cost",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "vintage": "vintage",
-      "heat_rate": "heat_rate",
-      "fuel_type": "fuel_type",
-      "fuel_price": "fuel_price",
-      "min_stable_level": "min_stable_level",
-      "startup_cost": "startup_cost",
-      "ramp_rate": "ramp_rate",
-      "min_up_time": "min_up_time",
-      "min_down_time": "min_down_time"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region",
-      "fuel_type": "get_fuel_type"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "fuel_type": null,
-      "fuel_price": null,
-      "min_stable_level": null,
-      "startup_cost": null,
-      "ramp_rate": null,
-      "min_up_time": null,
-      "min_down_time": null
+    "kind": "component",
+    "source": "reserve_region_rows",
+    "component_type": "ReEDSReserveRegion",
+    "fields": {
+      "name": "name"
     }
   },
   {
-    "source_type": "data_row",
-    "target_type": "ReEDSVariableGenerator",
-    "version": 1,
-    "name": "variable_generator",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "category",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "max_age": "max_age",
-      "vom_cost": "vom_cost",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "vintage": "vintage",
-      "resource_class": "resource_class",
-      "inverter_loading_ratio": "inverter_loading_ratio",
-      "capacity_factor_adjustment": "capacity_factor_adjustment",
-      "max_capacity_factor": "max_capacity_factor",
-      "supply_curve_cost": "supply_curve_cost",
-      "transmission_adder": "transmission_adder"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "resource_class": null,
-      "inverter_loading_ratio": null,
-      "capacity_factor_adjustment": null,
-      "max_capacity_factor": null,
-      "supply_curve_cost": null,
-      "transmission_adder": null
-    }
-  },
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSStorage",
-    "version": 1,
-    "name": "storage_generator",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "category",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "max_age": "max_age",
-      "vom_cost": "vom_cost",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "vintage": "vintage",
-      "storage_duration": "storage_duration",
-      "round_trip_efficiency": "round_trip_efficiency",
-      "energy_capacity": "energy_capacity",
-      "capital_cost_energy": "capital_cost_energy",
-      "fom_cost_energy": "fom_cost_energy"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "storage_duration": null,
-      "round_trip_efficiency": null,
-      "energy_capacity": null,
-      "capital_cost_energy": null,
-      "fom_cost_energy": null
-    }
-  },
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSHydroGenerator",
-    "version": 1,
-    "name": "hydro_generator",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "category",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "max_age": "max_age",
-      "vom_cost": "vom_cost",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "vintage": "vintage",
-      "ramp_rate": "ramp_rate"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region",
-      "is_dispatchable": "compute_is_dispatchable"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "ramp_rate": null
-    }
-  },
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSConsumingTechnology",
-    "version": 1,
-    "name": "consuming_technology",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "category",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "fuel_price": "fuel_price",
-      "heat_rate": "heat_rate",
-      "max_age": "max_age",
-      "vom_cost": "vom_cost",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "vintage": "vintage",
-      "electricity_efficiency": "electricity_efficiency",
-      "storage_transport_adder": "storage_transport_adder"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fuel_price": null,
-      "heat_rate": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "electricity_efficiency": 1.0,
-      "storage_transport_adder": null
-    }
-  },
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSElectrolyzerDemand",
-    "version": 1,
-    "name": "electrolyzer_demand",
-    "field_map": {
-      "technology": "technology",
-      "capacity": "capacity",
-      "category": "category",
-      "forced_outage_rate": "forced_outage_rate",
-      "planned_outage_rate": "planned_outage_rate",
-      "fuel_price": "fuel_price",
-      "heat_rate": "heat_rate",
-      "max_age": "max_age",
-      "vom_cost": "vom_cost",
-      "fom_cost": "fom_cost",
-      "capital_cost": "capital_cost",
-      "vintage": "vintage",
-      "electricity_efficiency": "electricity_efficiency",
-      "storage_transport_adder": "storage_transport_adder"
-    },
-    "getters": {
-      "name": "build_generator_name",
-      "region": "lookup_region"
-    },
-    "defaults": {
-      "category": null,
-      "forced_outage_rate": null,
-      "planned_outage_rate": null,
-      "max_age": null,
-      "vom_cost": null,
-      "fuel_price": null,
-      "heat_rate": null,
-      "fom_cost": null,
-      "capital_cost": null,
-      "vintage": null,
-      "electricity_efficiency": 1.0,
-      "storage_transport_adder": null
-    }
-  },
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSRegion",
-    "version": 1,
-    "name": "region",
-    "field_map": {
-      "category": "region_type",
-      "cc_region": "cc_region",
-      "cendiv": "cendiv",
-      "country": "country",
-      "h2ptc_region": "h2ptc_region",
-      "hurdle_region": "hurdle_region",
-      "interconnect": "interconnect",
-      "nerc_region": "nerc_region",
-      "state": "state",
-      "transmission_group": "transmission_group",
-      "transmission_region": "transmission_region",
-      "usda_region": "usda_region"
-    },
-    "getters": {
-      "description": "build_region_description",
-      "name": "build_region_name"
-    },
-    "defaults": {
-      "category": null,
-      "timezone": null,
-      "max_active_power": null
-    }
-  }
-  ,
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSDemand",
-    "version": 1,
-    "name": "load",
-    "field_map": {
-      "region": "region",
-      "max_active_power": "max_active_power"
-    },
-    "getters": {
-      "name": "build_load_name",
-      "region": "lookup_region"
-    },
-    "defaults": {
-      "max_active_power": null
-    }
-  },
-  {
-    "source_type": "data_row",
-    "target_type": "ReEDSReserve",
-    "version": 1,
-    "name": "reserve",
-    "field_map": {
-      "region": "region",
+    "kind": "component",
+    "source": "reserve_component_rows",
+    "component_type": "ReEDSReserve",
+    "fields": {
+      "name": "name",
+      "reserve_type": "reserve_type",
       "duration": "duration",
       "time_frame": "time_frame",
-      "vors": "vors"
+      "vors": "vors",
+      "direction": "direction",
+      "or_load_percentage": "or_load_percentage",
+      "or_wind_percentage": "or_wind_percentage",
+      "or_pv_percentage": "or_pv_percentage",
+      "spin_cost": "spin_cost",
+      "reg_cost": "reg_cost",
+      "flex_cost": "flex_cost"
     },
-    "getters": {
-      "name": "build_reserve_name",
-      "reserve_type": "resolve_reserve_type",
-      "direction": "resolve_reserve_direction",
-      "region": "lookup_reserve_region"
-    },
-    "defaults": {
-      "direction": null,
-      "time_frame": null,
-      "vors": null,
-      "duration": null
+    "references": {
+      "region": {
+        "component_type": "ReEDSReserveRegion",
+        "name_field": "region_name"
+      }
     }
   },
   {
-    "source_type": "data_row",
-    "target_type": "ReEDSEmission",
-    "version": 1,
-    "name": "emission",
-    "field_map": {
-      "rate": "rate"
+    "kind": "component",
+    "source": "load_peaks",
+    "component_type": "ReEDSDemand",
+    "fields": {
+      "name": "owner_name",
+      "max_active_power": "max_active_power"
     },
-    "getters": {
-      "type": "resolve_emission_type",
-      "source": "resolve_emission_source"
-    },
-    "defaults": {
-      "source": "COMBUSTION"
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
     }
   },
   {
-    "source_type": "data_row",
-    "target_type": "ReEDSInterface",
-    "version": 1,
-    "name": "transmission_interface",
-    "field_map": {
-      "category": "trtype"
+    "kind": "time_series",
+    "source": "load_profile_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "column",
+      "column": "datetime",
+      "resolution_seconds": 3600
     },
-    "getters": {
-      "name": "build_transmission_interface_name",
-      "from_region": "lookup_from_region",
-      "to_region": "lookup_to_region"
+    "metadata_columns": {
+      "solve_year": "solve_year",
+      "weather_year": "weather_year"
     },
-    "defaults": {
-      "category": null
+    "owners": [
+      {
+        "component_type": "ReEDSDemand",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "source": "transmission_interface_rows",
+    "component_type": "ReEDSInterface",
+    "fields": {
+      "name": "name",
+      "category": "category"
+    },
+    "references": {
+      "from_region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "from_region"
+      },
+      "to_region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "to_region"
+      }
     }
   },
-    {
-    "source_type": "data_row",
-    "target_type": "ReEDSTransmissionLine",
-    "version": 1,
-    "name": "transmission_line",
-    "field_map": {
-      "category": "trtype",
-      "line_type": "trtype",
+  {
+    "kind": "component",
+    "source": "transmission_line_rows",
+    "component_type": "ReEDSTransmissionLine",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "line_type": "line_type",
+      "solve_year": "solve_year",
+      "max_active_power": "max_active_power",
       "distance_miles": "distance_miles",
       "line_cost_per_mw_mile": "line_cost_per_mw_mile",
       "losses": "losses",
-      "hurdle_rate": "cost_hurdle_rate"
+      "hurdle_rate": "hurdle_rate"
     },
-    "getters": {
-      "name": "build_transmission_line_name",
-      "interface": "lookup_transmission_interface",
-      "max_active_power": "build_transmission_flow"
-    },
-    "defaults": {
-      "category": null,
-      "distance_miles": null,
-      "line_type": null,
-      "line_cost_per_mw_mile": null,
-      "losses": null,
-      "hurdle_rate": null,
-      "reverse_capacity": null
+    "references": {
+      "interface": {
+        "component_type": "ReEDSInterface",
+        "name_field": "interface_name"
+      }
     }
+  },
+  {
+    "kind": "component",
+    "source": "generator_thermal_rows",
+    "component_type": "ReEDSThermalGenerator",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "min_stable_level": "min_stable_level",
+      "ramp_rate": "ramp_rate",
+      "startup_cost": "startup_cost",
+      "ext": "ext"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "component",
+    "source": "generator_variable_aggregate_rows",
+    "component_type": "ReEDSVariableGenerator",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "inverter_loading_ratio": "inverter_loading_ratio",
+      "capacity_factor_adjustment": "capacity_factor_adjustment",
+      "ext": "ext"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "component",
+    "source": "generator_variable_rows",
+    "component_type": "ReEDSVariableGenerator",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "inverter_loading_ratio": "inverter_loading_ratio",
+      "capacity_factor_adjustment": "capacity_factor_adjustment",
+      "ext": "ext"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "component",
+    "source": "generator_hydro_rows",
+    "component_type": "ReEDSHydroGenerator",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "is_dispatchable": "is_dispatchable",
+      "ramp_rate": "ramp_rate",
+      "ext": "ext"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "component",
+    "source": "generator_storage_rows",
+    "component_type": "ReEDSStorage",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "storage_duration": "storage_duration",
+      "round_trip_efficiency": "round_trip_efficiency",
+      "capital_cost_energy": "capital_cost_energy",
+      "ext": "ext"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "component",
+    "source": "generator_import_rows",
+    "component_type": "ReEDSGenerator",
+    "fields": {
+      "name": "name",
+      "category": "category",
+      "technology": "technology",
+      "capacity": "capacity",
+      "vintage": "vintage",
+      "heat_rate": "heat_rate",
+      "fuel_type": "fuel_type",
+      "fuel_price": "fuel_price",
+      "forced_outage_rate": "forced_outage_rate",
+      "planned_outage_rate": "planned_outage_rate",
+      "max_age": "max_age",
+      "vom_cost": "vom_cost",
+      "fom_cost": "fom_cost",
+      "capital_cost": "capital_cost",
+      "ext": "ext"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "emission_matches_thermal_rows",
+    "attribute_type": "ReEDSEmission",
+    "fields": {
+      "type": "emission_type",
+      "source": "emission_source",
+      "rate": "rate",
+      "solve_year": "solve_year"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSThermalGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "emission_matches_variable_rows",
+    "attribute_type": "ReEDSEmission",
+    "fields": {
+      "type": "emission_type",
+      "source": "emission_source",
+      "rate": "rate",
+      "solve_year": "solve_year"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSVariableGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "emission_matches_hydro_rows",
+    "attribute_type": "ReEDSEmission",
+    "fields": {
+      "type": "emission_type",
+      "source": "emission_source",
+      "rate": "rate",
+      "solve_year": "solve_year"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSHydroGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "emission_matches_storage_rows",
+    "attribute_type": "ReEDSEmission",
+    "fields": {
+      "type": "emission_type",
+      "source": "emission_source",
+      "rate": "rate",
+      "solve_year": "solve_year"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSStorage",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "emission_matches_import_rows",
+    "attribute_type": "ReEDSEmission",
+    "fields": {
+      "type": "emission_type",
+      "source": "emission_source",
+      "rate": "rate",
+      "solve_year": "solve_year"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "source": "resource_site_rows",
+    "component_type": "ReEDSResourceSite",
+    "fields": {
+      "name": "name",
+      "technology": "technology",
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "capacity": "capacity",
+      "available_capacity": "available_capacity",
+      "capacity_factor": "capacity_factor",
+      "sc_gid": "sc_gid",
+      "bin": "bin",
+      "supply_curve_cost": "supply_curve_cost",
+      "existing_capacity": "existing_capacity",
+      "online_year": "online_year",
+      "retire_year": "retire_year"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "resource_site_geo",
+    "attribute_type": "GeographicInfo",
+    "fields": {
+      "geo_json": "geo_json"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSResourceSite",
+        "name_field": "name"
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "source": "resource_build_rows",
+    "component_type": "ReEDSResourceBuild",
+    "fields": {
+      "name": "name",
+      "technology": "technology",
+      "sc_point_gid": "sc_point_gid",
+      "resource_class": "resource_class",
+      "capacity": "capacity",
+      "available_capacity": "available_capacity",
+      "capacity_factor": "capacity_factor",
+      "sc_gid": "sc_gid",
+      "bin": "bin",
+      "supply_curve_cost": "supply_curve_cost",
+      "existing_capacity": "existing_capacity",
+      "online_year": "online_year",
+      "retire_year": "retire_year",
+      "year": "year",
+      "built_capacity": "built_capacity",
+      "investment_bool": "investment_bool"
+    },
+    "references": {
+      "region": {
+        "component_type": "ReEDSRegion",
+        "name_field": "region"
+      }
+    }
+  },
+  {
+    "kind": "supplemental_attribute",
+    "source": "resource_build_geo",
+    "attribute_type": "GeographicInfo",
+    "fields": {
+      "geo_json": "geo_json"
+    },
+    "owners": [
+      {
+        "component_type": "ReEDSResourceBuild",
+        "name_field": "name"
+      }
+    ]
+  },
+  {
+    "kind": "time_series",
+    "source": "hydro_budget_rows",
+    "name": "hydro_budget",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "metadata_columns": {
+      "solve_year": "solve_year"
+    },
+    "skip_if_empty": true,
+    "owners": [
+      {
+        "component_type": "ReEDSHydroGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "time_series",
+    "source": "hydro_nondispatchable_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "metadata_columns": {
+      "solve_year": "solve_year"
+    },
+    "skip_if_empty": true,
+    "owners": [
+      {
+        "component_type": "ReEDSHydroGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "time_series",
+    "source": "hydro_adjustment_profile_monthly",
+    "name": "max_active_power",
+    "values": "max_active_power",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "metadata_columns": {
+      "solve_year": "solve_year"
+    },
+    "skip_if_empty": true,
+    "owners": [
+      {
+        "component_type": "ReEDSHydroGenerator",
+        "name_field": "owner_name"
+      }
+    ]
+  },
+  {
+    "kind": "time_series",
+    "source": "renewable_profile_thermal_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
+    "owners": [{"component_type": "ReEDSThermalGenerator", "name_field": "owner_name"}]
+  },
+  {
+    "kind": "time_series",
+    "source": "renewable_profile_variable_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
+    "owners": [{"component_type": "ReEDSVariableGenerator", "name_field": "owner_name"}]
+  },
+  {
+    "kind": "time_series",
+    "source": "renewable_profile_hydro_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
+    "owners": [{"component_type": "ReEDSHydroGenerator", "name_field": "owner_name"}]
+  },
+  {
+    "kind": "time_series",
+    "source": "renewable_profile_storage_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
+    "owners": [{"component_type": "ReEDSStorage", "name_field": "owner_name"}]
+  },
+  {
+    "kind": "time_series",
+    "source": "renewable_profile_base_rows",
+    "name": "max_active_power",
+    "values": "value",
+    "time_axis": {
+      "kind": "regular",
+      "initial_timestamp": "{primary_weather_year}-01-01T00:00:00",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "skip_if_empty": true,
+    "metadata_columns": {"solve_year": "solve_year"},
+    "owners": [{"component_type": "ReEDSGenerator", "name_field": "owner_name"}]
+  },
+  {
+    "kind": "time_series",
+    "source": "reserve_requirement_rows",
+    "name": "requirement",
+    "values": "requirement",
+    "time_axis": {
+      "kind": "column",
+      "column": "datetime",
+      "resolution_seconds": 3600
+    },
+    "metadata": {
+      "weather_year": "{primary_weather_year}"
+    },
+    "metadata_columns": {
+      "solve_year": "solve_year"
+    },
+    "skip_if_empty": true,
+    "owners": [
+      {
+        "component_type": "ReEDSReserve",
+        "name_field": "name"
+      }
+    ]
   }
 ]

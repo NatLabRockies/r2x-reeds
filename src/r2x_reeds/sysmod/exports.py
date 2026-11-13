@@ -10,8 +10,9 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models.components import ReEDSDemand
+from r2x_reeds.sysmod.utils import read_tabular_frame
 
 
 class ExportsConfig(PluginConfig):
@@ -119,19 +120,12 @@ def add_exports(system: System, config: ExportsConfig) -> Result[System, str]:
         return Ok(system)
 
     try:
-        hour_map = DataStore.load_file(config.hour_map_fpath, name="hour_map")
-        hourly_fractions = DataStore.load_file(
+        hour_map = read_tabular_frame(config.hour_map_fpath, name="hour_map")
+        hourly_fractions = read_tabular_frame(
             config.canada_exports_h_frac_fpath,
             name="canada_exports_h_frac",
         )
-        annual_exports = DataStore.load_file(config.canada_exports_fpath, name="canada_exports")
-        if hour_map is None or hourly_fractions is None or annual_exports is None:
-            logger.warning("Exports input data could not be loaded. Skipping exports plugin.")
-            return Ok(system)
-
-        hour_map = hour_map.collect()
-        hourly_fractions = hourly_fractions.collect()
-        annual_exports = annual_exports.collect()
+        annual_exports = read_tabular_frame(config.canada_exports_fpath, name="canada_exports")
 
         if "*timestamp" in hour_map.columns:
             hour_map = hour_map.rename({"*timestamp": "time_index"})

@@ -1,4 +1,6 @@
 import csv
+import shutil
+from pathlib import Path
 
 import pytest
 
@@ -6,19 +8,22 @@ from r2x_core import DataStore, PluginContext, SemanticVersioningStrategy
 from r2x_reeds import ReEDSConfig
 from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader, run_reeds_upgrades
 from r2x_reeds.upgrader.helpers import LEGACY_VERSION
+from tests.fixtures.data_fixtures import current_data_store
 
 pytestmark = [pytest.mark.integration]
 
 
 @pytest.fixture
-def upgraded_system(reeds_run_upgrader, example_reeds_config, caplog):
+def upgraded_system(reeds_run_path, reeds_config, caplog, tmp_path):
 
-    from r2x_core import DataStore, PluginContext
+    from r2x_core import PluginContext
     from r2x_reeds.parser import ReEDSParser
 
-    store = DataStore.from_plugin_config(example_reeds_config, path=reeds_run_upgrader)
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    store = current_data_store(run_path)
 
-    ctx = PluginContext(config=example_reeds_config, store=store)
+    ctx = PluginContext(config=reeds_config, store=store)
     parser = ReEDSParser.from_context(ctx)
     result_ctx = parser.run()
     system = result_ctx.system
@@ -42,6 +47,7 @@ def test_reeds_upgrader_runs(reeds_run_upgrader):
     assert result.unwrap() == reeds_run_upgrader
 
 
+@pytest.mark.polars
 def test_upgraded_system(upgraded_system):
     from r2x_core import System
 
@@ -72,7 +78,7 @@ def test_upgrader_missing_meta_file(tmp_path):
     upgrader = ReEDSUpgrader(tmp_path)
     result = upgrader.upgrade()
     assert result.is_err()
-    assert "not found" in str(result.err())
+    assert isinstance(result.err(), FileNotFoundError)
 
 
 def test_upgrader_missing_version_value(tmp_path, monkeypatch):
@@ -88,6 +94,7 @@ def test_upgrader_missing_version_value(tmp_path, monkeypatch):
     upgrader = ReEDSUpgrader(tmp_path)
     result = upgrader.upgrade()
     assert result.is_err()
+    assert isinstance(result.err(), ValueError)
     assert "could not be determined" in str(result.err())
 
 
@@ -107,7 +114,7 @@ def test_run_reeds_upgrades_missing_meta_file(tmp_path):
         ctx=cast(PluginContext[ReEDSConfig], ctx),
     )
     assert result.is_err()
-    assert "not found" in str(result.err())
+    assert isinstance(result.err(), FileNotFoundError)
 
 
 def test_run_reeds_upgrades_missing_version_value(tmp_path, monkeypatch):
@@ -130,6 +137,7 @@ def test_run_reeds_upgrades_missing_version_value(tmp_path, monkeypatch):
         ctx=cast(PluginContext[ReEDSConfig], ctx),
     )
     assert result.is_err()
+    assert isinstance(result.err(), ValueError)
     assert "could not be determined" in str(result.err())
 
 
@@ -146,14 +154,24 @@ def test_run_reeds_upgrades_propagates_upgrade_error(tmp_path, monkeypatch):
     ctx = SimpleNamespace(
         current_version="2026.01.22", target_version=None, version_strategy=SemanticVersioningStrategy()
     )
-    monkeypatch.setattr(ReEDSUpgrader, "upgrade", lambda self, **kwargs: Err("boom"))
+    error = RuntimeError("boom")
+    monkeypatch.setattr(ReEDSUpgrader, "upgrade", lambda self, **kwargs: Err(error))
 
     result = run_reeds_upgrades(
         store=cast(DataStore, _Store()),
         ctx=cast(PluginContext[ReEDSConfig], ctx),
     )
     assert result.is_err()
-    assert "boom" in str(result.err())
+    assert result.err() is error
+
+
+def test_upgrader_returns_original_invalid_version_error(tmp_path: Path) -> None:
+    upgrader = ReEDSUpgrader(tmp_path)
+
+    result = upgrader.upgrade(current_version="not-a-version")
+
+    assert result.is_err()
+    assert isinstance(result.err(), ValueError)
 
 
 def test_upgrader_with_explicit_version(tmp_path):

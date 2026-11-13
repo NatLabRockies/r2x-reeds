@@ -58,7 +58,7 @@ def renewable_generator(sample_region):
         resource_class="class1",
         inverter_loading_ratio=1.3,
         max_capacity_factor=0.4,
-        vom_cost=0.0,
+        vom_cost=1.0,
         fom_cost=12000.0,
         capital_cost=800000.0,
     )
@@ -81,7 +81,7 @@ def storage_generator(sample_region):
         capital_cost_energy=391.0,
         fom_cost=9080.0,
         fom_cost_energy=9.77,
-        vom_cost=0.0,
+        vom_cost=1.0,
     )
 
 
@@ -98,7 +98,7 @@ def hydro_generator(sample_region):
         is_dispatchable=True,
         flow_range=MinMax(min=0.25, max=1.0),
         ramp_rate=1.0,
-        vom_cost=0.0,
+        vom_cost=1.0,
         fom_cost=18000.0,
     )
 
@@ -117,7 +117,7 @@ def consuming_technology(sample_region):
         heat_rate=10.1,
         fuel_price=13.2,
         fom_cost=27500.0,
-        vom_cost=0.0,
+        vom_cost=1.0,
         electricity_efficiency=51.45,
         storage_transport_adder=390000.0,
     )

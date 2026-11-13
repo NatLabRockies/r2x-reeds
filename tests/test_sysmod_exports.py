@@ -71,6 +71,16 @@ def _write_inputs(tmp_path: Path) -> dict[str, str]:
     }
 
 
+def _exports_config(
+    inputs: dict[str, str],
+    *,
+    weather_year: int | None,
+    solve_year: int | None = None,
+) -> ExportsConfig:
+    data: dict[str, object] = {**inputs, "weather_year": weather_year, "solve_year": solve_year}
+    return ExportsConfig.model_validate(data)
+
+
 def test_exports_select_year_and_region_and_expand_hourly_profile(tmp_path: Path) -> None:
     system, west_demand, east_demand = _build_system()
     inputs = _write_inputs(tmp_path)
@@ -124,7 +134,7 @@ def test_exports_require_solve_year_for_wide_input(tmp_path: Path) -> None:
     system, _, _ = _build_system()
     inputs = _write_inputs(tmp_path)
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012))
 
     assert result.is_err()
     assert "Solve year is required" in result.unwrap_err()
@@ -134,7 +144,7 @@ def test_exports_reject_missing_solve_year_column(tmp_path: Path) -> None:
     system, _, _ = _build_system()
     inputs = _write_inputs(tmp_path)
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2045, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2045))
 
     assert result.is_err()
     assert "does not contain a column for year 2045" in result.unwrap_err()
@@ -148,7 +158,7 @@ def test_exports_reject_duplicate_annual_region_rows(tmp_path: Path) -> None:
         {"r": ["west", "west"], "2040": [2000.0, 1000.0]},
     )
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "multiple rows for region west" in result.unwrap_err()
@@ -161,7 +171,7 @@ def test_exports_reject_duplicate_demand_components(tmp_path: Path) -> None:
     )
     inputs = _write_inputs(tmp_path)
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "Multiple demand components found for region west" in result.unwrap_err()
@@ -227,7 +237,7 @@ def test_exports_reject_different_load_and_export_profile_lengths(tmp_path: Path
     system.add_time_series(short_profile, west_demand)
     inputs = _write_inputs(tmp_path)
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "Load profile for region west has 3 hours" in result.unwrap_err()
@@ -241,7 +251,7 @@ def test_exports_reject_profile_hours_absent_from_hour_map(tmp_path: Path) -> No
         {"*h": ["h1", "h2", "unused"], "frac_weighted": [0.2, 0.3, 0.5]},
     )
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "hours absent from the hour map" in result.unwrap_err()
@@ -255,7 +265,7 @@ def test_exports_reject_negative_hourly_fraction(tmp_path: Path) -> None:
         {"*h": ["h1", "h2"], "frac_weighted": [1.25, -0.25]},
     )
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "negative or non-finite values" in result.unwrap_err()
@@ -269,7 +279,7 @@ def test_exports_reject_negative_annual_energy(tmp_path: Path) -> None:
         {"r": ["west"], "2040": [-1.0]},
     )
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "cannot be negative" in result.unwrap_err()
@@ -285,7 +295,7 @@ def test_exports_validation_error_does_not_partially_update_demands(tmp_path: Pa
         {"r": ["west", "east"], "2040": [2000.0, -1.0]},
     )
 
-    result = add_exports(system, ExportsConfig(weather_year=2012, solve_year=2040, **inputs))
+    result = add_exports(system, _exports_config(inputs, weather_year=2012, solve_year=2040))
 
     assert result.is_err()
     assert "Export energy for region east cannot be negative" in result.unwrap_err()

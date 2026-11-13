@@ -7,6 +7,8 @@ This package contains all data models for ReEDS components including:
 - Component models for regions, generators, transmission, etc.
 """
 
+from infrasys.location import GeographicInfo
+
 from .base import FromTo_ToFrom, MinMax, ReEDSComponent, UpDown
 from .components import (
     ReEDSConsumingTechnology,
@@ -40,6 +42,7 @@ __all__ = [
     "EmissionType",
     "FromTo_ToFrom",
     "FuelType",
+    "GeographicInfo",
     "MinMax",
     "Percentage",
     "ReEDSComponent",

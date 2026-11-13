@@ -16,6 +16,7 @@ from .enums import EmissionSource, EmissionType, ReserveDirection, ReserveType
 class ReEDSEmission(SupplementalAttribute):
     """ReEDS emission supplemental attribute."""
 
+    solve_year: Annotated[int | None, Field(description="Solve year for this emissions rate")] = None
     rate: Annotated[float, Unit("kg/MWh"), Field(description="Emission rate for emission type in kg/MWh")]
     type: EmissionType
     source: EmissionSource = EmissionSource.COMBUSTION
@@ -101,11 +102,14 @@ class ReEDSInterface(ReEDSComponent):
 
 
 class ReEDSGenerator(HasUnits, ReEDSComponent):
-    """Base generator component with fields common to all generation types."""
+    """Base generator state for one ReEDS solve year."""
 
+    solve_year: Annotated[int | None, Field(description="Solve year represented by this generator state")] = (
+        None
+    )
     region: Annotated[ReEDSRegion, Field(description="ReEDS region")]
     technology: Annotated[str, Field(description="ReEDS technology type")]
-    capacity: Annotated[PositiveFloat, Unit("MW"), Field(description="Installed capacity", ge=0)]
+    capacity: Annotated[NonNegativeFloat, Unit("MW"), Field(description="Installed capacity")]
     heat_rate: Annotated[PositiveFloat | None, Unit("MMBtu/MWh"), Field(description="Heat rate")] = None
     fuel_type: Annotated[str | None, Field(description="Fuel type")] = None
     fuel_price: Annotated[PositiveFloat | None, Unit("$/MMBtu"), Field(description="Fuel price")] = None
@@ -144,6 +148,7 @@ class ReEDSThermalGenerator(ReEDSGenerator):
         return ReEDSThermalGenerator(
             name="simple-bus",
             category="thermal",
+            solve_year=2030,
             region=ReEDSRegion.example(),
             technology="gas-cc",
             capacity=100,
@@ -195,8 +200,9 @@ class ReEDSHydroGenerator(ReEDSGenerator):
 
 
 class ReEDSConsumingTechnology(HasUnits, ReEDSComponent):
-    """Technologies that consume electricity to produce other products."""
+    """Consuming-technology state for one ReEDS solve year."""
 
+    solve_year: Annotated[int | None, Field(description="Solve year represented by this demand state")] = None
     region: Annotated[ReEDSRegion, Field(description="ReEDS region")]
     technology: Annotated[str, Field(description="Technology type")]
     capacity: Annotated[PositiveFloat, Unit("MW"), Field(description="Consumption capacity")]
@@ -274,11 +280,9 @@ class ReEDSH2Pipeline(HasUnits, ReEDSComponent):
 
 
 class ReEDSTransmissionLine(ReEDSComponent):
-    """ReEDS transmission line component.
+    """Transmission-line state for one ReEDS solve year."""
 
-    Represents a transmission line connection between two regions.
-    """
-
+    solve_year: Annotated[int | None, Field(description="Solve year represented by this line state")] = None
     interface: Annotated[ReEDSInterface, Field(description="Interface connecting two regions")]
     max_active_power: Annotated[FromTo_ToFrom, Field(description="Transfer capacity limit in MW")]
     losses: Annotated[
@@ -299,11 +303,9 @@ class ReEDSTransmissionLine(ReEDSComponent):
 
 
 class ReEDSDemand(ReEDSComponent):
-    """ReEDS electrical demand component.
+    """Electrical demand state for one ReEDS solve year."""
 
-    Represents load/demand in a region.
-    """
-
+    solve_year: Annotated[int | None, Field(description="Solve year represented by this demand state")] = None
     region: Annotated[ReEDSRegion, Field(description="ReEDS region")]
     max_active_power: Annotated[
         float | None,
@@ -371,13 +373,13 @@ class ReEDSResourceSite(HasUnits, ReEDSComponent):
 
 
 class ReEDSResourceBuild(HasUnits, ReEDSComponent):
-    """Selected/built reV resource result row component."""
+    """Selected/built reV resource result for one investment year."""
 
     technology: Annotated[str, Field(description="Technology type (e.g., 'upv', 'wind-ons')")]
     region: Annotated[ReEDSRegion, Field(description="ReEDS region")]
     sc_point_gid: Annotated[int, Field(description="Supply-curve site identifier")]
     resource_class: Annotated[str, Field(description="Resource class identifier")]
-    year: Annotated[int, Field(description="Model year")]
+    year: Annotated[int, Field(description="Investment year in the ReEDS resource build output")]
     built_capacity: Annotated[float, Unit("MW"), Field(description="Built capacity", ge=0)]
     investment_bool: Annotated[bool, Field(description="Investment indicator")]
     capacity: Annotated[float | None, Unit("MW"), Field(description="Site capacity")] = None
