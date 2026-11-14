@@ -128,7 +128,7 @@ Check parser profile scaling separately against source CF times capacity and
 the enabled CF/ILR multipliers, before applying the capacity-only transform.
 See the [transform contract](/r2x-reeds/reference/transforms/#distpv-capacity-transform).
 
-## 2. Add operating defaults without rescaling startup coefficients
+## 2. Add operating defaults without rescaling startup or ramp coefficients
 
 `add-pcm-defaults` accepts `pcm_defaults_dict` or `pcm_defaults_fpath`; the inline
 dictionary takes precedence. Lookup tries generator name, then technology, then
@@ -158,14 +158,26 @@ multiply it by the original aggregated capacity. A downstream exporter converts
 the coefficient using the final unit capacity; applying that conversion twice
 would inflate startup costs. For example, a final 100 MW unit with a 50 $/MW
 coefficient corresponds to a 5,000-dollar startup charge, converted once by the
-appropriate target layer. Current splitting preserves the coefficient on each new unit. `ramp_rate` defaults are treated differently by this implementation:
-PCM defaults multiplies them by capacity. Inspect its output and target-unit
-contract rather than assuming every numeric default follows startup-cost behavior.
+appropriate target layer. Current splitting preserves the coefficient on each new unit.
+
+`ramp_rate` on thermal and hydro generators is a **fraction of installed generator
+capacity per minute**, not an absolute MW/min value. Both parsed ReEDS inputs and
+PCM defaults retain this representation without capacity or hour/minute scaling.
+For example, a default of `0.05` remains `0.05` on a 320 MW generator and on each
+split unit. A target translator requiring MW/min multiplies by the final unit
+capacity exactly once: a 320 MW unit has a 16 MW/min ramp limit, and a 60 MW
+remainder has a 3 MW/min limit. Custom PCM ramp defaults must use fraction/min.
+
+Earlier versions multiplied PCM ramp defaults by capacity and labeled the model
+field fraction/hour. Rebuild affected saved systems from inputs rather than
+guessing whether an existing numeric value is fractional or absolute. Downstream
+translators must use the fraction/min contract; an hour-based conversion would
+make their ramp limits 60 times too small.
 
 **Check:** select matched thermal units and compare `startup_cost` before/after;
 then check the coefficient remains 50 after splitting. Review unmatched/missing
-fields explicitly. Re-running override-enabled defaults is not a universal
-idempotence guarantee for capacity-scaled fields.
+fields explicitly. Check that `ramp_rate` remains unchanged by splitting and that
+reapplying a ramp default does not compound capacity scaling.
 
 ## 3. Disaggregate generator blocks
 
