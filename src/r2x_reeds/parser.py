@@ -75,6 +75,7 @@ from .parser_utils import (
     get_rules_by_target,
     merge_lazy_frames,
     prepare_generator_inputs,
+    resolve_generator_ramp_rates,
     tech_matches_category,
 )
 from .plugin_config import ReEDSConfig
@@ -2461,20 +2462,20 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                     )
 
         ramprate_data = self.read_data_file("ramprate")
-        if ramprate_data is not None:
-            ramprate_df = ramprate_data.collect()
-            if not ramprate_df.is_empty():
-                ramprate_df = ramprate_df.filter(pl.col("ramp_rate").is_not_null())
-                logger.trace(
-                    "Joining ramp rate data ({} techs) into generator datasets",
-                    ramprate_df.height,
-                )
-                variable_df = variable_df.join(ramprate_df, on="technology", how="left")
-                non_variable_df = non_variable_df.join(ramprate_df, on="technology", how="left")
-            else:
-                logger.debug("Ramp rate data is empty, skipping join")
-        else:
-            logger.debug("No ramp rate data found, skipping join")
+        technologies = sorted(
+            set(variable_df["technology"].to_list()) | set(non_variable_df["technology"].to_list())
+        )
+        ramp_result = resolve_generator_ramp_rates(
+            technologies,
+            ramprate_data.collect() if ramprate_data is not None else None,
+            upgrade_links.collect(),
+            self._tech_categories,
+        )
+        if ramp_result.is_err():
+            return Err(ramp_result.unwrap_err())
+        ramp_rates = ramp_result.unwrap()
+        variable_df = variable_df.join(ramp_rates, on="technology", how="left")
+        non_variable_df = non_variable_df.join(ramp_rates, on="technology", how="left")
 
         # Fill missing thermal heat rates with the technology-vintage mean or global default.
         default_heat_rate = self._defaults.get("default_values", {}).get("default_heat_rate")
