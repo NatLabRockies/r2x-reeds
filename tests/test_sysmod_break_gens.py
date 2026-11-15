@@ -9,9 +9,16 @@ import pytest
 from infrasys import SingleTimeSeries
 
 from r2x_core import System
-from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator, ReEDSRegion
+from r2x_reeds.models.components import (
+    ReEDSEmission,
+    ReEDSGenerator,
+    ReEDSHydroGenerator,
+    ReEDSRegion,
+    ReEDSThermalGenerator,
+)
 from r2x_reeds.models.enums import EmissionType
 from r2x_reeds.sysmod.break_gens import BreakGensConfig, break_generators
+from r2x_reeds.sysmod.pcm_defaults import PCMDefaultsConfig, add_pcm_defaults
 
 pytestmark = [pytest.mark.integration]
 
@@ -129,6 +136,42 @@ def test_break_generators_drops_small_remainder(system_with_region) -> None:
     generators = list(system.get_components(ReEDSGenerator))
     assert {gen.name for gen in generators} == {"gen_01", "gen_02"}
     assert sorted(gen.capacity for gen in generators) == [50.0, 50.0]
+
+
+@pytest.mark.parametrize("hydro", [False, True], ids=["thermal", "hydro"])
+@pytest.mark.parametrize("pcm_first", [False, True], ids=["split-then-pcm", "pcm-then-split"])
+def test_break_generators_preserves_fractional_ramp_defaults(system_with_region, hydro, pcm_first):
+    system, region = system_with_region
+    if hydro:
+        original = ReEDSHydroGenerator(
+            name="gen",
+            region=region,
+            technology="hyded",
+            category="hyded",
+            capacity=700.0,
+            is_dispatchable=True,
+        )
+    else:
+        original = ReEDSThermalGenerator(
+            name="gen",
+            region=region,
+            technology="gas-cc",
+            category="gas-cc",
+            capacity=700.0,
+            heat_rate=9.0,
+            fuel_type="gas",
+        )
+    system.add_component(original)
+    config = PCMDefaultsConfig(pcm_defaults_dict={original.technology: {"ramp_rate": 0.05}})
+    if pcm_first:
+        add_pcm_defaults(system, config).unwrap()
+    _run_break(system, reference_units={original.technology: {"capacity_MW": 320.0}})
+    if not pcm_first:
+        add_pcm_defaults(system, config).unwrap()
+
+    generators = list(system.get_components(type(original)))
+    assert sorted(generator.capacity for generator in generators) == [60.0, 320.0, 320.0]
+    assert all(generator.ramp_rate == pytest.approx(0.05) for generator in generators)
 
 
 def test_break_generators_respects_non_break_list(system_with_region) -> None:
