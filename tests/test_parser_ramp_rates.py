@@ -83,18 +83,21 @@ def test_upgrade_inputs_and_water_switch_control_generator_ramp_rates(
     for technology, rate in [("gas-cc_h2-cc", 0.08), ("coalolduns_coal-ccs_mod", 0.02)]:
         matched = [generator for generator in generators if generator.technology == technology]
         assert matched, technology
-        assert all(isinstance(generator, ReEDSThermalGenerator) for generator in matched)
         expected = rate if not water_mode or water_switch else None
-        assert all(generator.ramp_rate == expected for generator in matched)
+        for generator in matched:
+            assert isinstance(generator, ReEDSThermalGenerator)
+            assert generator.ramp_rate == expected
 
     hydro = [generator for generator in generators if generator.technology == "hyded"]
     assert hydro
-    assert all(isinstance(generator, ReEDSHydroGenerator) for generator in hydro)
-    assert all(generator.ramp_rate == 1.0 for generator in hydro)
+    for generator in hydro:
+        assert isinstance(generator, ReEDSHydroGenerator)
+        assert generator.ramp_rate == 1.0
     nondispatchable = [generator for generator in generators if generator.technology == "hydnd"]
     assert nondispatchable
-    assert all(isinstance(generator, ReEDSHydroGenerator) for generator in nondispatchable)
-    assert all(generator.ramp_rate is None for generator in nondispatchable)
+    for generator in nondispatchable:
+        assert isinstance(generator, ReEDSHydroGenerator)
+        assert generator.ramp_rate is None
 
 
 @pytest.mark.parametrize("missing_file", [False, True])
@@ -120,7 +123,9 @@ def test_parser_preserves_missing_rates_and_pcm_only_fills_nulls(reeds_run_path,
     for technology, matched in selected.items():
         assert matched, technology
         expected = 0.08 if technology == "gas-cc" and not missing_file else None
-        assert all(generator.ramp_rate == expected for generator in matched)
+        for generator in matched:
+            assert isinstance(generator, ReEDSThermalGenerator | ReEDSHydroGenerator)
+            assert generator.ramp_rate == expected
     add_pcm_defaults(
         result.system,
         PCMDefaultsConfig(
@@ -137,4 +142,6 @@ def test_parser_preserves_missing_rates_and_pcm_only_fills_nulls(reeds_run_path,
         ("gas-ct", 0.1),
         ("hyded", None),
     ]:
-        assert all(generator.ramp_rate == expected for generator in selected[technology])
+        for generator in selected[technology]:
+            assert isinstance(generator, ReEDSThermalGenerator | ReEDSHydroGenerator)
+            assert generator.ramp_rate == expected
