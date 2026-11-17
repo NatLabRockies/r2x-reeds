@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import calendar
 import importlib
+import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -92,6 +93,83 @@ def tech_matches_category(tech: str, category_name: str, tech_categories: dict[s
         return True
 
     return any(tech_value.startswith(prefix) for prefix in prefixes)
+
+
+def resolve_generator_ramp_rates(
+    technologies: Sequence[str],
+    ramp_data: pl.DataFrame | None,
+    upgrade_links: pl.DataFrame,
+    technology_categories: dict[str, Any],
+) -> Result[pl.DataFrame, str]:
+    """Resolve explicit ramp rates, dispatchable hydro, and upgrade destinations."""
+    rates: dict[str, float | None] = {}
+    destinations: dict[str, str] = {}
+
+    def label(value: Any, source: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Invalid technology label {value!r} in {source}")
+        return value.casefold()
+
+    try:
+        if ramp_data is not None:
+            for row in ramp_data.iter_rows(named=True):
+                technology = label(row["technology"], "ramprate")
+                value = row["ramp_rate"]
+                if value is not None and (isinstance(value, bool) or not math.isfinite(value) or value < 0.0):
+                    raise ValueError(f"Invalid ramp rate {value!r} for {row['technology']!r}")
+                if technology in rates and rates[technology] != value:
+                    raise ValueError(f"Conflicting ramp rates for {row['technology']!r}")
+                rates[technology] = value
+
+        for row in upgrade_links.iter_rows(named=True):
+            technology = label(row["technology"], "upgrade links")
+            target = label(row["target_technology"], "upgrade links")
+            if technology in destinations and destinations[technology] != target:
+                raise ValueError(f"Ambiguous upgrade destinations for {row['technology']!r}")
+            destinations[technology] = target
+
+        resolved: dict[str, float | None] = {}
+        visiting: list[str] = []
+
+        def resolve(technology: str) -> float | None:
+            if technology in resolved:
+                return resolved[technology]
+            if technology in visiting:
+                raise ValueError(f"Cyclic ramp upgrade mapping: {' -> '.join([*visiting, technology])}")
+            visiting.append(technology)
+            if technology in destinations:
+                value = resolve(destinations[technology])
+            elif tech_matches_category(technology, "hydro_dispatchable", technology_categories):
+                value = rates.get("hydro")
+            else:
+                value = rates.get(technology)
+            visiting.pop()
+            resolved[technology] = value
+            return value
+
+        for technology in destinations:
+            resolve(technology)
+
+        values: list[float | None] = []
+        for original in technologies:
+            technology = label(original, "generator datasets")
+            if any(
+                tech_matches_category(technology, category, technology_categories)
+                for category in ("thermal", "hydro")
+            ):
+                values.append(resolve(technology))
+            else:
+                values.append(rates.get(technology))
+    except ValueError as exc:
+        logger.error("Failed to resolve generator ramp rates: {}", exc)
+        return Err(str(exc))
+
+    return Ok(
+        pl.DataFrame(
+            {"technology": list(technologies), "ramp_rate": values},
+            schema={"technology": pl.String, "ramp_rate": pl.Float64},
+        )
+    )
 
 
 def get_technology_category(

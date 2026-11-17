@@ -1347,10 +1347,10 @@
     "name": "ramprate",
     "fpath": "inputs_case/ramprate.csv",
     "info": {
-      "description": "Ramp rate by technology",
+      "description": "Ramp rate by technology as a fraction of installed generator capacity per minute",
       "is_input": true,
       "is_optional": true,
-      "units": "fraction/hour"
+      "units": "fraction/min"
     },
     "reader": {
       "kwargs": {

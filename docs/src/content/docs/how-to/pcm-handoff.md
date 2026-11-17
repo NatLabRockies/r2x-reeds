@@ -128,7 +128,7 @@ Check parser profile scaling separately against source CF times capacity and
 the enabled CF/ILR multipliers, before applying the capacity-only transform.
 See the [transform contract](/r2x-reeds/reference/transforms/#distpv-capacity-transform).
 
-## 2. Add operating defaults without rescaling startup coefficients
+## 2. Add operating defaults without rescaling startup or ramp coefficients
 
 `add-pcm-defaults` accepts `pcm_defaults_dict` or `pcm_defaults_fpath`; the inline
 dictionary takes precedence. Lookup tries generator name, then technology, then
@@ -158,14 +158,74 @@ multiply it by the original aggregated capacity. A downstream exporter converts
 the coefficient using the final unit capacity; applying that conversion twice
 would inflate startup costs. For example, a final 100 MW unit with a 50 $/MW
 coefficient corresponds to a 5,000-dollar startup charge, converted once by the
-appropriate target layer. Current splitting preserves the coefficient on each new unit. `ramp_rate` defaults are treated differently by this implementation:
-PCM defaults multiplies them by capacity. Inspect its output and target-unit
-contract rather than assuming every numeric default follows startup-cost behavior.
+appropriate target layer. Current splitting preserves the coefficient on each new unit.
+
+`ramp_rate` on thermal and hydro generators is a **fraction of installed generator
+capacity per minute**, not an absolute MW/min value. Both parsed ReEDS inputs and
+PCM defaults retain this representation without capacity or hour/minute scaling.
+For example, a default of `0.05` remains `0.05` on a 320 MW generator and on each
+split unit. A target translator requiring MW/min multiplies by the final unit
+capacity exactly once: a 320 MW unit has a 16 MW/min ramp limit, and a 60 MW
+remainder has a 3 MW/min limit. Custom PCM ramp defaults must use fraction/min.
+
+### How the parser resolves ramp rates
+
+The parser reads fractional rates from `inputs_case/ramprate.csv`. Technology
+lookup is case-insensitive. For thermal and hydro generators, it applies the
+following explicit relationships before PCM defaults:
+
+- **Upgrades:** follow the destination technology in `inputs_case/upgrade_link.csv`,
+  including multi-step relationships. The destination's resolved rate takes
+  precedence over an entry for the upgraded technology itself. Names containing
+  underscores do not imply a relationship.
+- **Water-specific upgrades:** also include relationships from
+  `inputs_case/upgradelink_water.csv` when `GSw_WaterMain=1` in
+  `inputs_case/switches.csv`. This switch controls cooling/water technology
+  distinctions, not whether hydropower inherits a rate.
+- **Dispatchable hydro:** use the generic `Hydro` rate, even when a
+  technology-specific input rate exists. This matches the inspected ReEDS
+  assignment to dispatchable hydro; it is not an exact-rate-first fallback.
+- **Other technologies:** use their exact input rate. In particular,
+  nondispatchable hydro does not inherit generic `Hydro`.
+
+For example, with explicit destination relationships and illustrative input rates:
+
+| Generator technology | Rate source | Result, fraction/min |
+| --- | --- | --- |
+| `gas-cc_h2-cc` | Explicit destination `h2-cc`, with rate `0.08` | `0.08` |
+| `hydED` | Generic `Hydro`, with rate `1.0` | `1.0` |
+| `hydND`, with no exact input rate | No generic inheritance | `None` |
+
+An unavailable resolved rate remains `None`, not zero. This includes missing
+destination or generic-hydro rates; the parser does not guess another rate.
+Explicit zero is a valid rate, and values greater than one are allowed.
+Conflicting duplicate rates, ambiguous upgrade destinations, cyclic relationships,
+invalid labels, and negative or nonfinite rates fail explicitly.
+
+After parsing, `add-pcm-defaults` can fill null `ramp_rate` fields. With
+`pcm_defaults_override=False`, populated rates are retained; `True` can
+intentionally replace them. Inspect both stages to distinguish inherited source
+rates from operating defaults.
+
+ReEDS uses this ramp parameter to limit operating-reserve contributions. A
+downstream PLEXOS translator uses it for dispatch ramp limits. Matching the input
+parameter does not make those two modeling uses equivalent. Missing-rate policies
+in a target translator are separate from parser resolution and PCM defaults.
+See [ramp-rate troubleshooting](/r2x-reeds/troubleshooting/#ramp-rates-are-missing-or-unexpected)
+for an inspection sequence.
+
+### Compatibility and checks
+
+Earlier versions multiplied PCM ramp defaults by capacity and labeled the model
+field fraction/hour. Rebuild affected saved systems from inputs rather than
+guessing whether an existing numeric value is fractional or absolute. Downstream
+translators must use the fraction/min contract; an hour-based conversion would
+make their ramp limits 60 times too small.
 
 **Check:** select matched thermal units and compare `startup_cost` before/after;
 then check the coefficient remains 50 after splitting. Review unmatched/missing
-fields explicitly. Re-running override-enabled defaults is not a universal
-idempotence guarantee for capacity-scaled fields.
+fields explicitly. Check that `ramp_rate` remains unchanged by splitting and that
+reapplying a ramp default does not compound capacity scaling.
 
 ## 3. Disaggregate generator blocks
 
