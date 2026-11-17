@@ -133,7 +133,7 @@ class ReEDSThermalGenerator(ReEDSGenerator):
     fuel_price: Annotated[PositiveFloat | None, Unit("$/MMBtu"), Field(description="Fuel price")] = None
     min_stable_level: Annotated[UnitFloat | None, Field(description="Min load fraction")] = None
     ramp_rate: Annotated[
-        PositiveFloat | None,
+        NonNegativeFloat | None,
         Unit("fraction/min"),
         Field(description="Ramp rate as a fraction of installed generator capacity per minute"),
     ] = None
