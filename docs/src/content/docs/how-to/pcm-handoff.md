@@ -211,7 +211,7 @@ ReEDS uses this ramp parameter to limit operating-reserve contributions. A
 downstream PLEXOS translator uses it for dispatch ramp limits. Matching the input
 parameter does not make those two modeling uses equivalent. Missing-rate policies
 in a target translator are separate from parser resolution and PCM defaults.
-See [ramp-rate troubleshooting](../troubleshooting.md#ramp-rates-are-missing-or-unexpected)
+See [ramp-rate troubleshooting](/r2x-reeds/troubleshooting/#ramp-rates-are-missing-or-unexpected)
 for an inspection sequence.
 
 ### Compatibility and checks
