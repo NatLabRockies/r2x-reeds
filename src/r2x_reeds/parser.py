@@ -76,6 +76,7 @@ from .parser_utils import (
     merge_lazy_frames,
     prepare_generator_inputs,
     resolve_generator_ramp_rates,
+    resolve_psh_storage_durations,
     tech_matches_category,
 )
 from .plugin_config import ReEDSConfig
@@ -84,6 +85,8 @@ from .upgrader.data_upgrader import run_reeds_upgrades
 
 OUTPUTS_H5_DATASET_KEYS: dict[str, str] = {
     "online_capacity": "cap_ivrt",
+    "psh_energy_capacity": "cap_energy_ivrt",
+    "psh_reference_capacity": "cap_ivrt",
     "hydrogen_production_capacity": "cap",
     "hydrogen_production_annual_load": "prod_load_ann",
     "hydrogen_production_load": "prod_load",
@@ -2370,10 +2373,39 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         self._resource_supply_curve_datasets = tuple(self._defaults.get("resource_supply_curve_datasets", []))
         return Ok(None)
 
+    def _prepare_psh_storage_durations(self, capacity_data: pl.LazyFrame) -> Result[pl.LazyFrame | None, str]:
+        """Resolve included positive-capacity PSH before optional duration joins."""
+        if not self.config.use_psh_energy_capacity_duration:
+            return Ok(None)
+        psh = capacity_data.filter(
+            pl.col("technology").map_elements(
+                lambda tech: tech_matches_category(tech, "pumped_storage", self._tech_categories),
+                return_dtype=pl.Boolean,
+            )
+            & ~pl.col("technology").is_in(self._excluded_techs)
+            & (pl.col("capacity") > 0)
+            & (pl.col("capacity") >= self.config.drop_gen_capacity_threshold)
+        ).collect()
+        if psh.is_empty():
+            return Ok(None)
+        result = resolve_psh_storage_durations(
+            psh,
+            self.read_data_file("psh_energy_capacity"),
+            self.read_data_file("psh_reference_capacity"),
+        )
+        if result.is_err():
+            return Err(str(result.unwrap_err()))
+        return Ok(result.unwrap())
+
     def _prepare_generator_datasets(self) -> Result[None, str]:
         """Load and preprocess generator-related datasets."""
         logger.trace("Preparing generator datasets with excluded techs: {}", self._excluded_techs)
         capacity_data = self.read_data_file("online_capacity")
+        if capacity_data is None:
+            return Err("No capacity data found")
+        psh_duration_result = self._prepare_psh_storage_durations(capacity_data)
+        if psh_duration_result.is_err():
+            return Err(psh_duration_result.unwrap_err())
         upgrade_links = self.read_data_file("fom_upgrade_links")
         switches = self.read_data_file("fom_switches").collect()
         switch_values = dict(switches.iter_rows())
@@ -2422,6 +2454,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "maxage": self.read_data_file("maxage"),
                 "storage_duration": self.read_data_file("storage_duration"),
                 "storage_efficiency": self.read_data_file("storage_efficiency"),
+                "psh_storage_duration": psh_duration_result.unwrap(),
                 "storage_duration_out": self.read_data_file("storage_duration_out"),
                 "consume_characteristics": self.read_data_file("consume_characteristics"),
                 "capacity_factor_adjustment": self.read_data_file("renewable_cf_adjustment"),

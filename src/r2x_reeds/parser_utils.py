@@ -293,6 +293,92 @@ def get_generator_class(
     return Err(TypeError(f"Technology model {tech} not found on {models_path} for categories {categories}"))
 
 
+def resolve_psh_storage_durations(
+    capacity: pl.DataFrame,
+    energy: pl.LazyFrame | None,
+    reference: pl.LazyFrame | None,
+) -> Result[pl.LazyFrame, ValidationError]:
+    """Derive hours for included PSH from reported MWh and matching cap_ivrt MW."""
+    keys = ["technology", "vintage", "region", "year"]
+    missing = {*keys, "capacity"}.difference(capacity.columns)
+    if missing:
+        return Err(ValidationError(f"PSH online capacity is missing columns: {sorted(missing)}"))
+    selected = capacity.select(*keys, "capacity").with_columns(pl.col("year").cast(pl.Int64))
+    invalid = selected.filter(
+        pl.any_horizontal(pl.col(keys).is_null())
+        | ~pl.col("capacity").is_finite()
+        | (pl.col("capacity") <= 0)
+        | pl.col("capacity").is_null()
+    )
+    if not invalid.is_empty():
+        return Err(ValidationError(f"Invalid PSH online capacity or keys: {invalid.head(10).to_dicts()}"))
+    if selected.select(keys).is_duplicated().any():
+        return Err(ValidationError(f"Duplicate PSH online capacity keys: {selected.head(10).to_dicts()}"))
+
+    for frame, dataset, value in (
+        (energy, "cap_energy_ivrt", "psh_energy_capacity"),
+        (reference, "cap_ivrt", "reference_capacity"),
+    ):
+        if frame is None:
+            return Err(
+                ValidationError(
+                    f"Required PSH dataset '{dataset}' is missing from outputs/outputs.h5 "
+                    f"and outputs/{dataset}.csv; no technology-duration fallback is applied"
+                )
+            )
+        missing = {*keys, value}.difference(frame.collect_schema().names())
+        if missing:
+            return Err(ValidationError(f"PSH dataset '{dataset}' is missing columns: {sorted(missing)}"))
+        matched = (
+            frame.select(*keys, value)
+            .with_columns(pl.col("year").cast(pl.Int64), pl.col(value).cast(pl.Float64, strict=False))
+            .join(selected.select(keys).lazy(), on=keys, how="semi")
+            .collect()
+        )
+        duplicates = matched.filter(matched.select(keys).is_duplicated())
+        if not duplicates.is_empty():
+            return Err(
+                ValidationError(f"Duplicate PSH keys in '{dataset}': {duplicates.head(10).to_dicts()}")
+            )
+        invalid = matched.filter(pl.col(value).is_null() | ~pl.col(value).is_finite() | (pl.col(value) <= 0))
+        if not invalid.is_empty():
+            return Err(ValidationError(f"Invalid PSH values in '{dataset}': {invalid.head(10).to_dicts()}"))
+        selected = selected.join(matched, on=keys, how="left", validate="1:1")
+        missing_rows = selected.filter(pl.col(value).is_null())
+        if not missing_rows.is_empty():
+            return Err(
+                ValidationError(
+                    f"Missing PSH rows in '{dataset}': {missing_rows.select(keys).head(10).to_dicts()}; "
+                    "no technology-duration fallback is applied"
+                )
+            )
+
+    mismatched = selected.filter(
+        (pl.col("capacity") - pl.col("reference_capacity")).abs()
+        > (pl.lit(1e-6) + 1e-6 * pl.col("reference_capacity").abs())
+    )
+    if not mismatched.is_empty():
+        return Err(
+            ValidationError(
+                "PSH selected power does not match the cap_ivrt reference power basis "
+                f"(MW, rtol=1e-6, atol=1e-6): {mismatched.head(10).to_dicts()}"
+            )
+        )
+    durations = selected.select(
+        *keys, (pl.col("psh_energy_capacity") / pl.col("reference_capacity")).alias("psh_storage_duration")
+    )
+    invalid = durations.filter(
+        ~pl.col("psh_storage_duration").is_finite() | (pl.col("psh_storage_duration") <= 0)
+    )
+    if not invalid.is_empty():
+        return Err(ValidationError(f"Invalid derived PSH duration: {invalid.head(10).to_dicts()}"))
+    logger.info(
+        "Resolved {} PSH durations from cap_energy_ivrt MWh / cap_ivrt MW; no duration fallback",
+        durations.height,
+    )
+    return Ok(durations.lazy())
+
+
 def _prepare_generator_dataset(
     capacity_data: pl.LazyFrame | None,
     optional_data: Mapping[str, pl.LazyFrame | None],
@@ -327,8 +413,10 @@ def _prepare_generator_dataset(
         return Err(ValidationError("No capacity data found"))
 
     df = capacity_data
+    filter_missing_storage_duration = False
 
     join_overrides: dict[str, list[str]] = {
+        "psh_storage_duration": ["technology", "vintage", "region", "year"],
         "storage_duration_out": ["technology", "vintage", "region", "year"],
         "consume_characteristics": ["technology", "year"],
     }
@@ -402,20 +490,36 @@ def _prepare_generator_dataset(
                         .otherwise(pl.col("storage_duration"))
                         .alias("storage_duration")
                     ).drop("storage_duration_out_value")
-                    storage_mask = pl.col("technology").map_elements(
-                        lambda tech, _tc=technology_categories: tech_matches_category(
-                            str(tech), "storage", _tc
-                        ),
-                        return_dtype=pl.Boolean,
-                    )
-                    df = df.filter(
-                        ~(
-                            storage_mask
-                            & (pl.col("storage_duration").is_null() | pl.col("storage_duration").is_nan())
-                        )
-                    )
+                    filter_missing_storage_duration = True
         except Exception as e:
             return Err(ValidationError(f"Failed to join {name} data: {e}"))
+
+    if "psh_storage_duration" in df.collect_schema().names():
+        psh_mask = pl.col("technology").map_elements(
+            lambda tech: tech_matches_category(str(tech), "pumped_storage", technology_categories),
+            return_dtype=pl.Boolean,
+        )
+        baseline = (
+            pl.col("storage_duration")
+            if "storage_duration" in df.collect_schema().names()
+            else pl.lit(None, dtype=pl.Float64)
+        )
+        df = df.with_columns(
+            pl.when(psh_mask)
+            .then(pl.col("psh_storage_duration"))
+            .otherwise(baseline)
+            .alias("storage_duration")
+        ).drop("psh_storage_duration")
+
+    # Resolve PSH before the existing missing-duration filter can remove storage rows.
+    if filter_missing_storage_duration:
+        storage_mask = pl.col("technology").map_elements(
+            lambda tech: tech_matches_category(str(tech), "storage", technology_categories),
+            return_dtype=pl.Boolean,
+        )
+        df = df.filter(
+            ~(storage_mask & (pl.col("storage_duration").is_null() | pl.col("storage_duration").is_nan()))
+        )
 
     if optional_data.get("cost_fom") is not None:
         # Resolve rates before renewable aggregation so capacity * FOM remains annual cost.

@@ -101,6 +101,16 @@ class ReEDSConfig(PluginConfig):
             ),
         ),
     ] = False
+    use_psh_energy_capacity_duration: Annotated[
+        bool,
+        Field(
+            default=False,
+            description=(
+                "Derive pumped-storage hydro duration from cap_energy_ivrt MWh / cap_ivrt MW. "
+                "When enabled, missing or invalid required PSH reports fail explicitly."
+            ),
+        ),
+    ] = False
     drop_gen_capacity_threshold: Annotated[
         float,
         Field(

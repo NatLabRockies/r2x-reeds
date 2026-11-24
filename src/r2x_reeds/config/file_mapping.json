@@ -1441,6 +1441,52 @@
     }
   },
   {
+    "name": "psh_energy_capacity",
+    "fpath": "outputs/outputs.h5",
+    "info": {
+      "description": "Reported storage energy capacity; required for included positive-capacity PSH",
+      "is_input": false,
+      "is_optional": true,
+      "units": "MWh"
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_mapping": {
+        "i": "technology",
+        "v": "vintage",
+        "r": "region",
+        "t": "year",
+        "value": "psh_energy_capacity"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "psh_reference_capacity",
+    "fpath": "outputs/outputs.h5",
+    "info": {
+      "description": "Reference cap_ivrt power basis for PSH duration, independent of use_degraded_capacity",
+      "is_input": false,
+      "is_optional": true,
+      "units": "MW"
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_mapping": {
+        "i": "technology",
+        "v": "vintage",
+        "r": "region",
+        "t": "year",
+        "value": "reference_capacity"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
     "name": "storage_duration_out",
     "fpath": "outputs/outputs.h5",
     "info": {
