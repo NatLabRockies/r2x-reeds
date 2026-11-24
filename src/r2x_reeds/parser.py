@@ -2409,11 +2409,21 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         upgrade_links = self.read_data_file("fom_upgrade_links")
         switches = self.read_data_file("fom_switches").collect()
         switch_values = dict(switches.iter_rows())
+        cooling_links: pl.LazyFrame | None = None
         if switch_values.get("gsw_watermain") == "1":
             water_links = self.read_data_file("fom_water_upgrade_links")
             if water_links is None:
                 return Err("Required FOM dataset 'fom_water_upgrade_links' is unavailable")
             upgrade_links = pl.concat([upgrade_links, water_links])
+            cooling_frames: list[pl.LazyFrame] = []
+            for dataset_name in ("cooling_technology_links", "cooling_upgrade_technology_links"):
+                links = self.read_data_file(dataset_name)
+                if links is None:
+                    return Err(
+                        f"Required cooling dataset '{dataset_name}' is unavailable with GSw_WaterMain=1"
+                    )
+                cooling_frames.append(links)
+            cooling_links = pl.concat(cooling_frames)
         fuel_price = self.read_data_file("fuel_price")
         biofuel = self.read_data_file("biofuel_price")
         fuel_map = self.read_data_file("fuel_tech_map")
@@ -2503,6 +2513,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             ramprate_data.collect() if ramprate_data is not None else None,
             upgrade_links.collect(),
             self._tech_categories,
+            cooling_links=cooling_links.collect() if cooling_links is not None else None,
         )
         if ramp_result.is_err():
             return Err(ramp_result.unwrap_err())

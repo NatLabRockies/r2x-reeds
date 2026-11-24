@@ -69,6 +69,13 @@ def test_upgrade_inputs_and_water_switch_control_generator_ramp_rates(
     relationships = "Gas-CC_H2-CC,Gas-CC,H2-CC\nCoalOldUns_Coal-CCS_mod,CoalOldUns,coal-ccs_mod\n"
     (inputs / "upgrade_link.csv").write_text(header + ("" if water_mode else relationships))
     (inputs / "upgradelink_water.csv").write_text(header + (relationships if water_mode else ""))
+    if water_switch:
+        (inputs / "i_coolingtech_watersource_link.csv").write_text(
+            "*i,ii,ctt,wst\ngas-CC_r_fsa,gas-CC,r,fsa\n"
+        )
+        (inputs / "i_coolingtech_watersource_upgrades_link.csv").write_text(
+            "*i,ii,ctt,wst\ngas-CC_r_fsa_H2-CC,Gas-CC_H2-CC,r,fsa\n"
+        )
     (inputs / "ramprate.csv").write_text("H2-CC,0.08\ncoal-ccs_mod,0.02\nHydro,1.0\n")
     with (run_path / "outputs" / "cap_ivrt.csv").open("a") as file:
         file.write("Gas-CC_H2-CC,new1,p1,2032,100\n")

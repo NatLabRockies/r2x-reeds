@@ -100,10 +100,13 @@ def resolve_generator_ramp_rates(
     ramp_data: pl.DataFrame | None,
     upgrade_links: pl.DataFrame,
     technology_categories: dict[str, Any],
+    *,
+    cooling_links: pl.DataFrame | None = None,
 ) -> Result[pl.DataFrame, str]:
-    """Resolve explicit ramp rates, dispatchable hydro, and upgrade destinations."""
+    """Resolve ramp rates through upgrade destinations and cooling base technologies."""
     rates: dict[str, float | None] = {}
     destinations: dict[str, str] = {}
+    cooling_bases: dict[str, str] = {}
 
     def label(value: Any, source: str) -> str:
         if not isinstance(value, str) or not value.strip():
@@ -128,6 +131,14 @@ def resolve_generator_ramp_rates(
                 raise ValueError(f"Ambiguous upgrade destinations for {row['technology']!r}")
             destinations[technology] = target
 
+        if cooling_links is not None:
+            for row in cooling_links.iter_rows(named=True):
+                technology = label(row["technology"], "cooling links")
+                base = label(row["base_technology"], "cooling links")
+                if technology in cooling_bases and cooling_bases[technology] != base:
+                    raise ValueError(f"Ambiguous cooling base technologies for {row['technology']!r}")
+                cooling_bases[technology] = base
+
         resolved: dict[str, float | None] = {}
         visiting: list[str] = []
 
@@ -135,10 +146,12 @@ def resolve_generator_ramp_rates(
             if technology in resolved:
                 return resolved[technology]
             if technology in visiting:
-                raise ValueError(f"Cyclic ramp upgrade mapping: {' -> '.join([*visiting, technology])}")
+                raise ValueError(f"Cyclic ramp technology mapping: {' -> '.join([*visiting, technology])}")
             visiting.append(technology)
             if technology in destinations:
                 value = resolve(destinations[technology])
+            elif technology in cooling_bases:
+                value = resolve(cooling_bases[technology])
             elif tech_matches_category(technology, "hydro_dispatchable", technology_categories):
                 value = rates.get("hydro")
             else:
@@ -148,6 +161,8 @@ def resolve_generator_ramp_rates(
             return value
 
         for technology in destinations:
+            resolve(technology)
+        for technology in cooling_bases:
             resolve(technology)
 
         values: list[float | None] = []

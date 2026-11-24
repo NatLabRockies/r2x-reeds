@@ -22,6 +22,84 @@ def upgrade_links(rows=()):
     return pl.DataFrame(rows, schema={"technology": pl.String, "target_technology": pl.String}, orient="row")
 
 
+def cooling_links(rows=()):
+    return pl.DataFrame(rows, schema={"technology": pl.String, "base_technology": pl.String}, orient="row")
+
+
+@pytest.mark.parametrize(
+    "technology,destination,base,expected",
+    [
+        ("gas-CC_r_fsa", None, "gas-CC", 0.05),
+        ("gas-CC_r_fsa_H2-CC", "H2-CC", None, 0.08),
+        (
+            "CoalOldUns_r_fsa_coal-CCS_mod_r_fsa",
+            "coal-CCS_mod_r_fsa",
+            "coal-CCS_mod",
+            0.02,
+        ),
+        (
+            "gas-CC_r_fsa_Gas-CC-CCS_mod_r_fsa",
+            "Gas-CC-CCS_mod_r_fsa",
+            "Gas-CC-CCS_mod",
+            0.05,
+        ),
+    ],
+)
+def test_cooling_and_upgrade_relationships_resolve_base_rates(
+    technology_categories, technology, destination, base, expected
+):
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data([(technology, 0.9), (base or destination, expected)]),
+        upgrade_links([(technology, destination)] if destination else []),
+        technology_categories,
+        cooling_links=cooling_links([(destination or technology, base)] if base else []),
+    ).unwrap()
+
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": expected}]
+
+
+@pytest.mark.parametrize(
+    "technology,destination,base",
+    [
+        ("Gas-CC_H_1x1_r_fsa", None, "Gas-CC_H_1x1"),
+        (
+            "Gas-CC_H_1x1_r_fsa_Gas-CC_H_1x1-CCS_mod_r_fsa",
+            "Gas-CC_H_1x1-CCS_mod_r_fsa",
+            "Gas-CC_H_1x1-CCS_mod",
+        ),
+    ],
+)
+def test_cooling_lookup_is_case_insensitive_and_preserves_technology_labels(
+    technology_categories, technology, destination, base
+):
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data([(base.swapcase(), 0.05)]),
+        upgrade_links([(technology.swapcase(), destination.swapcase())] if destination else []),
+        technology_categories,
+        cooling_links=cooling_links([((destination or technology).swapcase(), base.swapcase())]),
+    ).unwrap()
+
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": 0.05}]
+
+
+@pytest.mark.parametrize(
+    "technology",
+    ["Gas-CC_H_1x1_r_fsa", "Gas-CC_H_1x1_r_fsa_H2-CC"],
+)
+def test_cooling_names_do_not_imply_relationships(technology_categories, technology):
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data([("Gas-CC", 0.04), ("Gas-CC_H_1x1", 0.05), ("H2-CC", 0.08)]),
+        upgrade_links(),
+        technology_categories,
+        cooling_links=cooling_links(),
+    ).unwrap()
+
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": None}]
+
+
 @pytest.mark.parametrize(
     "technology,destination,expected",
     [

@@ -806,6 +806,74 @@
     }
   },
   {
+    "name": "cooling_technology_links",
+    "fpath": "inputs_case/i_coolingtech_watersource_link.csv",
+    "info": {
+      "description": "Cooling-specific technologies and their base technologies",
+      "is_input": true,
+      "is_optional": true
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "base_technology",
+          "cooling_type",
+          "water_source"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "base_technology": "string",
+        "cooling_type": "string",
+        "water_source": "string"
+      },
+      "select_columns": [
+        "technology",
+        "base_technology",
+        "cooling_type",
+        "water_source"
+      ]
+    }
+  },
+  {
+    "name": "cooling_upgrade_technology_links",
+    "fpath": "inputs_case/i_coolingtech_watersource_upgrades_link.csv",
+    "info": {
+      "description": "Cooling-specific upgrade technologies and their base technologies",
+      "is_input": true,
+      "is_optional": true
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "base_technology",
+          "cooling_type",
+          "water_source"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "base_technology": "string",
+        "cooling_type": "string",
+        "water_source": "string"
+      },
+      "select_columns": [
+        "technology",
+        "base_technology",
+        "cooling_type",
+        "water_source"
+      ]
+    }
+  },
+  {
     "name": "fom_unitspec_upgrades",
     "fpath": "inputs_case/inputs.h5",
     "info": {

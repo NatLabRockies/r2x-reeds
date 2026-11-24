@@ -182,6 +182,14 @@ following explicit relationships before PCM defaults:
   `inputs_case/upgradelink_water.csv` when `GSw_WaterMain=1` in
   `inputs_case/switches.csv`. This switch controls cooling/water technology
   distinctions, not whether hydropower inherits a rate.
+- **Cooling-specific technologies:** when `GSw_WaterMain=1`, both
+  `inputs_case/i_coolingtech_watersource_link.csv` and
+  `inputs_case/i_coolingtech_watersource_upgrades_link.csv` are required.
+  Their explicit relationships map cooling-specific names to base technologies;
+  no underscore splitting is used. Upgrade destinations take precedence over
+  cooling-base relationships and can themselves resolve through a cooling map.
+  For example, `CoalOldUns_r_fsa_coal-CCS_mod_r_fsa` follows its upgrade
+  destination `coal-CCS_mod_r_fsa`, then its base `coal-CCS_mod`.
 - **Dispatchable hydro:** use the generic `Hydro` rate, even when a
   technology-specific input rate exists. This matches the inspected ReEDS
   assignment to dispatchable hydro; it is not an exact-rate-first fallback.
