@@ -1117,6 +1117,46 @@
     }
   },
   {
+    "name": "cooling_technology_links",
+    "relative_fpath": "inputs_case/i_coolingtech_watersource_link.csv",
+    "info": {
+      "description": "Cooling-specific technologies and their base technologies",
+      "requirement": "optional"
+    },
+    "columns": [
+      {"name": "*i", "dtype": "string", "rename": "technology"},
+      {"name": "ii", "dtype": "string", "rename": "base_technology"},
+      {"name": "ctt", "dtype": "string", "rename": "cooling_type"},
+      {"name": "wst", "dtype": "string", "rename": "water_source"}
+    ],
+    "proc_spec": {
+      "steps": [
+        {"op": "lowercase"}
+      ],
+      "kind": "tabular"
+    }
+  },
+  {
+    "name": "cooling_upgrade_technology_links",
+    "relative_fpath": "inputs_case/i_coolingtech_watersource_upgrades_link.csv",
+    "info": {
+      "description": "Cooling-specific upgrade technologies and their base technologies",
+      "requirement": "optional"
+    },
+    "columns": [
+      {"name": "*i", "dtype": "string", "rename": "technology"},
+      {"name": "ii", "dtype": "string", "rename": "base_technology"},
+      {"name": "ctt", "dtype": "string", "rename": "cooling_type"},
+      {"name": "wst", "dtype": "string", "rename": "water_source"}
+    ],
+    "proc_spec": {
+      "steps": [
+        {"op": "lowercase"}
+      ],
+      "kind": "tabular"
+    }
+  },
+  {
     "name": "fom_unitspec_upgrades",
     "relative_fpath": "inputs_case/inputs.h5",
     "info": {
@@ -2148,9 +2188,9 @@
     "name": "ramprate",
     "relative_fpath": "inputs_case/ramprate.csv",
     "info": {
-      "description": "Ramp rate by technology",
+      "description": "Ramp rate by technology as a fraction of installed capacity per minute",
       "requirement": "optional",
-      "units": "fraction/hour"
+      "units": "fraction/min"
     },
     "reader": {
       "options": {
@@ -2284,6 +2324,92 @@
       ],
       "kind": "tabular"
     }
+  },
+  {
+    "name": "psh_energy_capacity_h5",
+    "relative_fpath": "outputs/outputs.h5",
+    "info": {
+      "description": "Reported pumped-storage energy capacity",
+      "requirement": "optional",
+      "units": "MWh"
+    },
+    "columns": [
+      {"name": "i", "dtype": "string", "rename": "technology"},
+      {"name": "v", "dtype": "string", "rename": "vintage"},
+      {"name": "r", "dtype": "string", "rename": "region"},
+      {"name": "t", "dtype": "int64", "rename": "year"},
+      {"name": "Value", "dtype": "float64", "rename": "psh_energy_capacity"}
+    ],
+    "reader": {
+      "format": "hdf5",
+      "options": {
+        "group_key": "cap_energy_ivrt",
+        "columns_key": "columns",
+        "columns_as_datasets": true
+      }
+    },
+    "proc_spec": {"steps": [{"op": "lowercase"}], "kind": "tabular"}
+  },
+  {
+    "name": "psh_energy_capacity_csv",
+    "relative_fpath": "outputs/cap_energy_ivrt.csv",
+    "info": {
+      "description": "Reported pumped-storage energy capacity",
+      "requirement": "optional",
+      "units": "MWh"
+    },
+    "columns": [
+      {"name": "i", "dtype": "string", "rename": "technology"},
+      {"name": "v", "dtype": "string", "rename": "vintage"},
+      {"name": "r", "dtype": "string", "rename": "region"},
+      {"name": "t", "dtype": "int64", "rename": "year"},
+      {"name": "Value", "dtype": "float64", "rename": "psh_energy_capacity"}
+    ],
+    "reader": {"options": {"has_header": true}},
+    "proc_spec": {"steps": [{"op": "lowercase"}], "kind": "tabular"}
+  },
+  {
+    "name": "psh_reference_capacity_h5",
+    "relative_fpath": "outputs/outputs.h5",
+    "info": {
+      "description": "Reference cap_ivrt power basis for PSH duration",
+      "requirement": "optional",
+      "units": "MW"
+    },
+    "columns": [
+      {"name": "i", "dtype": "string", "rename": "technology"},
+      {"name": "v", "dtype": "string", "rename": "vintage"},
+      {"name": "r", "dtype": "string", "rename": "region"},
+      {"name": "t", "dtype": "int64", "rename": "year"},
+      {"name": "Value", "dtype": "float64", "rename": "reference_capacity"}
+    ],
+    "reader": {
+      "format": "hdf5",
+      "options": {
+        "group_key": "cap_ivrt",
+        "columns_key": "columns",
+        "columns_as_datasets": true
+      }
+    },
+    "proc_spec": {"steps": [{"op": "lowercase"}], "kind": "tabular"}
+  },
+  {
+    "name": "psh_reference_capacity_csv",
+    "relative_fpath": "outputs/cap_ivrt.csv",
+    "info": {
+      "description": "Reference cap_ivrt power basis for PSH duration",
+      "requirement": "optional",
+      "units": "MW"
+    },
+    "columns": [
+      {"name": "i", "dtype": "string", "rename": "technology"},
+      {"name": "v", "dtype": "string", "rename": "vintage"},
+      {"name": "r", "dtype": "string", "rename": "region"},
+      {"name": "t", "dtype": "int64", "rename": "year"},
+      {"name": "Value", "dtype": "float64", "rename": "reference_capacity"}
+    ],
+    "reader": {"options": {"has_header": true}},
+    "proc_spec": {"steps": [{"op": "lowercase"}], "kind": "tabular"}
   },
   {
     "name": "cost_capital",

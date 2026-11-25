@@ -13,6 +13,7 @@ title: Configuration Reference
 | `generator_capacity_source` | `Literal["standard", "degraded"]` | `"standard"` | Selects `online_capacity` or `online_capacity_degraded`; the chosen source does not fall back if missing |
 | `generator_classification_overrides` | `list[GeneratorClassificationOverride]` | `[]` | Optional exact technology-specific classification exceptions |
 | `excluded_techs` | `list[str] \| None` | `None` | `None` uses package exclusions; an explicit list, including `[]`, replaces them |
+| `use_psh_energy_capacity_duration` | `bool` | `False` | Derive PSH hours from reported energy and reference power capacity |
 | `drop_gen_capacity_threshold` | `float` | `0.0` | Drop generators below this installed-capacity threshold in MW |
 | `apply_cf_adjustment` | `bool` | `False` | Apply capacity-factor adjustments to renewable profiles |
 | `apply_ilr_adjustment` | `bool` | `False` | Scale PV capacity-factor profiles by inverter loading ratio |
@@ -55,7 +56,12 @@ provides optional exact exceptions. An explicit `excluded_techs` list in
 
 ### `file_mapping.json`
 
-### Renewable profile adjustments
+This asset declares physical ReEDS inputs, inline tables, and validation sources.
+Physical declarations own native paths, column types, and input-boundary
+renaming or filtering. Prepared-source declarations validate assembled tables.
+`table_mapping.json` handles transformations and ordered source precedence.
+
+#### Renewable profile adjustments
 
 With both flags disabled, hourly `max_active_power` is the capacity-factor
 profile multiplied by generator capacity. `apply_cf_adjustment=True` also
@@ -67,23 +73,30 @@ factors apply to PV profiles. Missing required adjustment values are reported
 as input errors. Neither flag changes installed capacity, and ILR-adjusted
 profiles are not clipped to generator capacity.
 
-### `file_mapping.json`
+#### Pumped-storage hydro duration
 
-This asset is a JSON list of core `DataFile` declarations. A declaration can
-name a physical input, typed inline table, ordered source selection, or a
-prepared source. Physical declarations own native paths, column types, and
-input-boundary renaming or filtering. Prepared-source declarations include
-validation of assembled tables. `table_mapping.json` expresses generator
-classification, owner naming, and load and reserve assembly with generic
-operations and ReEDS policy data.
+Set `use_psh_energy_capacity_duration: true` to derive pumped-storage duration
+from reported `cap_energy_ivrt` (MWh) divided by matching `cap_ivrt` (MW). Matching
+uses technology, vintage, region, and solve year. The derived duration overrides
+the technology-level duration; battery and other storage duration handling is
+unchanged. With the option disabled (the default), these reports are not required.
+
+When enabled, both reports are required for included, positive-capacity PSH after
+technology exclusions and the configured capacity threshold. Missing reports or
+matching rows, duplicate keys, and null, nonpositive, or nonfinite values fail
+explicitly. There is no technology-duration fallback. The reference denominator
+is `cap_ivrt`, even when `generator_capacity_source="degraded"`; selected power
+must match that reference within `rtol=1e-6` and `atol=1e-6 MW`.
+The table mapping selects the HDF5 or CSV report, and the parser resolves
+duration before generator splitting while leaving `energy_capacity` unset.
 
 Physical inputs retain their availability semantics. A missing optional file is
 absent; a present empty file is still present; malformed present data is an
-error. A source selector can choose the first present input or the first
-nonempty input. These differ intentionally for defaults and market data. A
-conditional `required_when` rule makes selected optional inputs required when a
-previously declared policy table matches. See the core guides for [DataFile and
-reader configuration](https://natlabrockies.github.io/r2x-core/how-tos/configure-data-files/)
+error. Ordered source precedence uses table operations such as `first_present`
+and `first_nonempty`; these differ intentionally for defaults and market data.
+A conditional `required_when` rule makes selected optional inputs required when
+a previously declared policy table matches. See the core guides for [DataFile
+and reader configuration](https://natlabrockies.github.io/r2x-core/how-tos/configure-data-files/)
 and [ordered table processing](https://natlabrockies.github.io/r2x-core/references/processors/).
 
 The load table mapping uses the same physical source for peak components and

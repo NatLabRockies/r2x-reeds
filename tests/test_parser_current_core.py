@@ -381,6 +381,72 @@ def test_complete_run_uses_current_mapping_and_builds_regions(reeds_run_path: Pa
     assert all(unit.fom_cost == 20081.0 for unit in gas)
 
 
+def test_disabled_psh_duration_does_not_read_optional_energy_report(
+    reeds_run_path: Path, tmp_path: Path
+) -> None:
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    (run_path / "outputs" / "cap_energy_ivrt.csv").write_text("malformed report\n", encoding="utf-8")
+    config_path = copy_package_config(tmp_path)
+    configure_csv_sources(config_path)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="disabled-psh",
+        config_path_override=config_path,
+    )
+
+    result = ReEDSParser.from_context(
+        PluginContext(config=config, store=DataStore(path=run_path))
+    ).run()
+
+    assert result.system is not None
+    storage = list(result.system.get_components(ReEDSStorage))
+    psh = [unit for unit in storage if unit.technology.startswith("pumped-hydro")]
+    assert psh
+    assert all(unit.storage_duration == 12.0 for unit in psh)
+
+
+def test_psh_duration_uses_selected_energy_and_reference_sources(
+    reeds_run_path: Path, tmp_path: Path
+) -> None:
+    run_path = tmp_path / "run"
+    shutil.copytree(reeds_run_path, run_path)
+    config_path = copy_package_config(tmp_path)
+    configure_csv_sources(config_path, include_all=True)
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        case_name="psh-report",
+        config_path_override=config_path,
+        use_psh_energy_capacity_duration=True,
+    )
+    result = ReEDSParser.from_context(
+        PluginContext(config=config, store=DataStore(path=run_path))
+    ).run()
+    assert result.system is not None
+    generators = list(result.system.get_components(ReEDSStorage))
+    psh = [unit for unit in generators if unit.technology.startswith("pumped-hydro")]
+    assert psh
+
+    keys = ["i", "v", "r", "t"]
+    energy = pl.read_csv(run_path / "outputs" / "cap_energy_ivrt.csv")
+    reference = pl.read_csv(run_path / "outputs" / "cap_ivrt.csv")
+    expected = {
+        (row["i"].casefold(), row["v"].casefold(), row["r"].casefold(), row["t"]):
+        row["Value"] / row["reference_capacity"]
+        for row in energy.join(reference.rename({"Value": "reference_capacity"}), on=keys).to_dicts()
+    }
+    for generator in psh:
+        key = (
+            generator.technology,
+            generator.vintage.casefold(),
+            generator.region.name.casefold(),
+            generator.solve_year,
+        )
+        assert generator.storage_duration == pytest.approx(expected[key])
+
+
 def test_public_parser_aggregates_variable_capacity_and_preserves_unknown_fom(
     reeds_run_path: Path, tmp_path: Path
 ) -> None:

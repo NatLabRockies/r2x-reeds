@@ -1,5 +1,6 @@
 """Data path fixtures with override capability."""
 
+import csv
 import json
 import shutil
 import zipfile
@@ -121,6 +122,22 @@ def reeds_run_path(
         "tech-subset-table",
     ):
         shutil.copyfile(fixed_om_inputs / f"{name}.csv", run_path / "inputs_case" / f"{name}.csv")
+
+    # The legacy test archive predates cap_energy_ivrt; supply synthetic PSH results.
+    with (run_path / "outputs" / "storage_duration.csv").open() as source:
+        durations = {row["i"]: float(row["value"]) for row in csv.DictReader(source)}
+    with (
+        (run_path / "outputs" / "cap_ivrt.csv").open() as source,
+        (run_path / "outputs" / "cap_energy_ivrt.csv").open("w", newline="") as destination,
+    ):
+        reader = csv.DictReader(source)
+        writer = csv.DictWriter(destination, fieldnames=["i", "v", "r", "t", "Value"])
+        writer.writeheader()
+        for row in reader:
+            if row["i"].startswith("pumped-hydro"):
+                row["Value"] = str(float(row["Value"]) * durations[row["i"]])
+                writer.writerow(row)
+
     logger.debug("Unpacked test data to: {}", run_path)
     return run_path
 

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Self, cast
+from collections.abc import Mapping
+from typing import Any, Self, cast
 
 import polars as pl
 from infrasys.time_series_models import SingleTimeSeries
@@ -10,13 +11,27 @@ from loguru import logger
 from pydantic import TypeAdapter
 from rust_ok import Err, Ok, Result, is_ok
 
-from r2x_core import DataReader, Plugin, PluginContext, System, build_system_from_sources
+from r2x_core import (
+    DataReader,
+    DecodedSource,
+    Plugin,
+    PluginContext,
+    SourceAvailability,
+    System,
+    TabularSource,
+    build_system_from_sources,
+)
 from r2x_core.exceptions import ReaderError
 from r2x_core.models import ParserInstruction
 from r2x_core.polars_adapter import PolarsTabularBackend
 from r2x_core.processors import substitute_placeholders
 
 from .models.components import ReEDSGenerator, ReEDSVariableGenerator
+from .parser_utils import (
+    resolve_generator_ramp_rates,
+    resolve_psh_storage_durations,
+    tech_matches_category,
+)
 from .plugin_config import ReEDSConfig, ReEDSDefaults
 from .upgrader.data_upgrader import run_reeds_upgrades
 
@@ -79,6 +94,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Initialize parser-owned configuration state."""
         self._generator_defaults: ReEDSDefaults | None = None
         self._instructions: list[ParserInstruction] | None = None
+        self._technology_categories: dict[str, Any] = {}
 
     @classmethod
     def from_context(cls, ctx: PluginContext[ReEDSConfig]) -> Self:
@@ -95,6 +111,10 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         if not isinstance(defaults, dict):
             msg = "ReEDS defaults configuration must be a JSON object"
             return Err(ValueError(msg))
+        technology_categories = defaults.get("tech_categories")
+        if not isinstance(technology_categories, dict):
+            msg = "ReEDS defaults must define technology categories"
+            return Err(ValueError(msg))
         try:
             substituted_rules = substitute_placeholders(
                 assets.get("parser_rules"),
@@ -106,6 +126,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             self._generator_defaults = ReEDSDefaults.model_validate(defaults)
         except ValueError as error:
             return Err(error)
+        self._technology_categories = technology_categories
         self._instructions = instructions
         return Ok(None)
 
@@ -130,6 +151,36 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         """Read declared sources and build their typed outputs."""
         logger.info("Building ReEDS hierarchy")
         configured_files = tuple(self.store.data_files.values())
+        initial_sources: dict[str, DecodedSource] = {}
+        if not self.config.use_psh_energy_capacity_duration:
+            configured_files = tuple(
+                data_file
+                for data_file in configured_files
+                if not data_file.name.startswith(("psh_energy_capacity", "psh_reference_capacity"))
+            )
+            psh_source_schemas = {
+                "psh_energy_capacity": {
+                    "technology": pl.String,
+                    "vintage": pl.String,
+                    "region": pl.String,
+                    "year": pl.Int64,
+                    "psh_energy_capacity": pl.Float64,
+                },
+                "psh_reference_capacity": {
+                    "technology": pl.String,
+                    "vintage": pl.String,
+                    "region": pl.String,
+                    "year": pl.Int64,
+                    "reference_capacity": pl.Float64,
+                },
+            }
+            for name, schema in psh_source_schemas.items():
+                for source_format in ("h5", "csv"):
+                    initial_sources[f"{name}_{source_format}"] = TabularSource(
+                        pl.DataFrame(schema=schema).lazy(),
+                        PolarsTabularBackend(),
+                        availability=SourceAvailability.ABSENT,
+                    )
         defaults = self._generator_defaults
         instructions = self._instructions
         classification_overrides = self.config.generator_classification_overrides
@@ -206,6 +257,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 mapping_path=table_mapping_path,
                 backend=PolarsTabularBackend(),
                 placeholders=placeholders,
+                initial_sources=initial_sources,
             )
         except FileNotFoundError as error:
             if error.filename != str(table_mapping_path):
@@ -215,6 +267,11 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             guided_error.__cause__ = error
             return Err(guided_error)
         except (OSError, ReaderError, KeyError, TypeError, ValueError, pl.exceptions.PolarsError) as error:
+            return Err(error)
+
+        try:
+            sources = self._prepare_generator_input_policies(sources)
+        except (TypeError, ValueError, pl.exceptions.PolarsError) as error:
             return Err(error)
 
         try:
@@ -239,6 +296,171 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             f"weather years: {self.config.weather_year}"
         )
         return Ok(system)
+
+    def _prepare_generator_input_policies(
+        self, sources: Mapping[str, DecodedSource]
+    ) -> dict[str, DecodedSource]:
+        """Resolve generator rates and optional PSH duration before component assembly."""
+        updated_sources = dict(sources)
+        backend = PolarsTabularBackend()
+
+        def table(name: str, *, required: bool = False) -> pl.DataFrame | None:
+            source = updated_sources.get(name)
+            if source is None:
+                if required:
+                    raise ValueError(f"Required assembled source {name!r} is unavailable")
+                return None
+            if not isinstance(source, TabularSource):
+                raise TypeError(f"Generator source {name!r} is not tabular")
+            if source.availability is SourceAvailability.ABSENT:
+                if required:
+                    raise ValueError(f"Required assembled source {name!r} is absent")
+                return None
+            if isinstance(source.data, pl.LazyFrame):
+                return source.data.collect()
+            if isinstance(source.data, pl.DataFrame):
+                return source.data
+            raise TypeError(f"Generator source {name!r} has unsupported data {type(source.data).__name__}")
+
+        def replace_table(name: str, frame: pl.DataFrame) -> None:
+            source = updated_sources.get(name)
+            if not isinstance(source, TabularSource):
+                raise ValueError(f"Required assembled source {name!r} is not tabular")
+            updated_sources[name] = backend.source_with_frame(source, frame.lazy())
+
+        generator_rows = table("generator_rows", required=True)
+        assert generator_rows is not None
+        required_columns = {"technology", "component_family", "capacity", "year"}
+        missing_columns = required_columns.difference(generator_rows.columns)
+        if missing_columns:
+            raise ValueError(f"Generator rows are missing policy columns: {sorted(missing_columns)}")
+
+        ramp_data = table("ramprate")
+        upgrade_links = table("fom_upgrade_links", required=True)
+        switches = table("fom_switches", required=True)
+        assert upgrade_links is not None and switches is not None
+        switch_column = "parameter" if "parameter" in switches.columns else "switch"
+        if switch_column not in switches.columns or "value" not in switches.columns:
+            raise ValueError("FOM switches must contain a switch name and value")
+        water_switch = switches.filter(
+            pl.col(switch_column).cast(pl.String).str.to_lowercase() == "gsw_watermain"
+        )
+        water_enabled = not water_switch.is_empty() and str(water_switch["value"][0]).strip() == "1"
+
+        cooling_links: pl.DataFrame | None = None
+        if water_enabled:
+            water_links = table("fom_water_upgrade_links", required=True)
+            cooling_frames = [
+                table("cooling_technology_links"),
+                table("cooling_upgrade_technology_links"),
+            ]
+            assert water_links is not None
+            # Standard upgrade identities take precedence over water-specific rows.
+            standard_technologies = upgrade_links["technology"].to_list()
+            water_links = water_links.filter(~pl.col("technology").is_in(standard_technologies))
+            upgrade_links = pl.concat([upgrade_links, water_links], how="diagonal")
+            available_cooling_frames = [frame for frame in cooling_frames if frame is not None]
+            if available_cooling_frames:
+                cooling_links = pl.concat(available_cooling_frames, how="diagonal")
+
+        technologies = generator_rows["technology"].drop_nulls().unique().to_list()
+        thermal_technologies = (
+            generator_rows.filter(pl.col("component_family") == "thermal")["technology"]
+            .drop_nulls()
+            .unique()
+            .to_list()
+        )
+        hydro_rows = generator_rows.filter(pl.col("component_family") == "hydro")
+        hydro_technologies = hydro_rows["technology"].drop_nulls().unique().to_list()
+        dispatchable_hydro = (
+            hydro_rows.filter(pl.col("is_dispatchable") == True)["technology"]  # noqa: E712
+            .drop_nulls()
+            .unique()
+            .to_list()
+            if "is_dispatchable" in hydro_rows.columns
+            else []
+        )
+        categories = {
+            "thermal": {"exact": thermal_technologies},
+            "hydro": {"exact": hydro_technologies},
+            "hydro_dispatchable": {"exact": dispatchable_hydro},
+        }
+        ramp_result = resolve_generator_ramp_rates(
+            technologies,
+            ramp_data,
+            upgrade_links,
+            categories,
+            cooling_links=cooling_links,
+        )
+        if ramp_result.is_err():
+            raise ValueError(str(ramp_result.unwrap_err()))
+        resolved_rates = ramp_result.unwrap()
+        for source_name in ("generator_thermal_rows", "generator_hydro_rows"):
+            rows = table(source_name, required=True)
+            assert rows is not None
+            if rows.is_empty():
+                continue
+            rows = rows.join(
+                resolved_rates.rename({"ramp_rate": "__resolved_ramp_rate"}),
+                on="technology",
+                how="left",
+                validate="m:1",
+            ).with_columns(pl.col("__resolved_ramp_rate").alias("ramp_rate")).drop("__resolved_ramp_rate")
+            replace_table(source_name, rows)
+
+        if not self.config.use_psh_energy_capacity_duration:
+            return updated_sources
+        category_column = (
+            pl.col("category").cast(pl.String).str.to_lowercase() == "pumped_storage"
+            if "category" in generator_rows.columns
+            else pl.lit(False)
+        )
+        category_column = category_column | pl.col("technology").map_elements(
+            lambda technology: tech_matches_category(
+                technology, "pumped_storage", self._technology_categories
+            ),
+            return_dtype=pl.Boolean,
+        )
+        psh_capacity = generator_rows.filter(
+            category_column
+            & (pl.col("capacity") > 0)
+            & (pl.col("capacity") >= self.config.drop_gen_capacity_threshold)
+        ).select("technology", "vintage", "region", "year", "capacity")
+        if psh_capacity.is_empty():
+            return updated_sources
+
+        energy = table("psh_energy_capacity")
+        reference = table("psh_reference_capacity")
+        duration_result = resolve_psh_storage_durations(
+            psh_capacity,
+            energy.lazy() if energy is not None else None,
+            reference.lazy() if reference is not None else None,
+        )
+        if duration_result.is_err():
+            raise ValueError(str(duration_result.unwrap_err()))
+        durations = duration_result.unwrap().collect().rename({"psh_storage_duration": "__psh_duration"})
+
+        storage_rows = table("generator_rows", required=True)
+        assert storage_rows is not None
+        storage_rows = storage_rows.join(
+            durations,
+            on=["technology", "vintage", "region", "year"],
+            how="left",
+            validate="m:1",
+        ).with_columns(
+            pl.coalesce(["__psh_duration", "storage_duration"]).alias("storage_duration")
+        )
+        storage_rows = storage_rows.filter(
+            (pl.col("component_family") == "storage") & pl.col("storage_duration").is_not_null()
+        )
+        output = table("generator_storage_rows", required=True)
+        assert output is not None
+        output_columns = output.columns
+        if "solve_year" in output_columns and "year" not in output_columns:
+            storage_rows = storage_rows.rename({"year": "solve_year"})
+        storage_rows = storage_rows.select(output_columns)
+        replace_table("generator_storage_rows", storage_rows)
+        return updated_sources
 
     def _apply_generator_policies(self, system: System) -> None:
         """Apply configured capacity filtering and renewable profile adjustments."""

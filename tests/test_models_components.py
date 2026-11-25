@@ -5,6 +5,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from r2x_core import System
+from r2x_core.units import UnitSpec
 from r2x_reeds import ReEDSResourceBuild, ReEDSResourceClass, ReEDSResourceSite
 from r2x_reeds.models import (
     ReEDSResourceBuild as ModelsReEDSResourceBuild,
@@ -153,6 +155,31 @@ def test_thermal_generator_valid(thermal_generator):
     assert thermal_generator.fuel_type == "naturalgas"
     assert thermal_generator.ramp_rate == 0.5
     assert thermal_generator.startup_cost == 50.0
+
+
+@pytest.mark.parametrize("fixture_name", ["thermal_generator", "hydro_generator"])
+@pytest.mark.parametrize("ramp_rate", [None, 0.05, 1.0, 3.0])
+def test_generator_ramp_rate_units_and_json_round_trip(request, fixture_name, ramp_rate, tmp_path):
+    generator = request.getfixturevalue(fixture_name)
+    generator.ramp_rate = ramp_rate
+    specs = [
+        metadata
+        for metadata in type(generator).model_fields["ramp_rate"].metadata
+        if isinstance(metadata, UnitSpec)
+    ]
+    assert len(specs) == 1
+    assert specs[0].unit == "fraction/min"
+    assert specs[0].base is None
+
+    system = System(name="ramp-round-trip", auto_add_composed_components=True)
+    system.add_component(generator)
+    path = tmp_path / "system.json"
+    system.to_json(path)
+    restored_system = System.from_json(path)
+    restored = restored_system.get_component(type(generator), generator.name)
+
+    assert restored.ramp_rate == ramp_rate
+    assert restored.capacity == generator.capacity
 
 
 def test_renewable_generator_valid(renewable_generator):

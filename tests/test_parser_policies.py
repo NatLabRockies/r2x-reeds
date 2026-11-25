@@ -4,10 +4,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+import polars as pl
 import pytest
 from infrasys.time_series_models import SingleTimeSeries
 
-from r2x_core import DataStore, PluginContext, System
+from r2x_core import DataStore, PluginContext, System, TabularSource
+from r2x_core.polars_adapter import PolarsTabularBackend
 from r2x_reeds import ReEDSConfig, ReEDSParser
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion, ReEDSVariableGenerator
 from tests.type_helpers import get_time_series
@@ -41,6 +43,197 @@ def _add_profile(system: System, generator: ReEDSGenerator) -> None:
         resolution=timedelta(hours=1),
     )
     system.add_time_series(series, generator, solve_year=2032)
+
+
+def _policy_source(frame: pl.DataFrame) -> TabularSource:
+    return TabularSource(frame.lazy(), PolarsTabularBackend())
+
+
+def _build_input_policy_parser(tmp_path: Path, *, use_psh: bool = False) -> ReEDSParser:
+    config = ReEDSConfig(
+        solve_year=2032,
+        weather_year=2012,
+        use_psh_energy_capacity_duration=use_psh,
+    )
+    parser = ReEDSParser.from_context(
+        PluginContext(config=config, store=DataStore(path=tmp_path))
+    )
+    assert parser.on_validate().is_ok()
+    return parser
+
+
+def _generator_input_sources(*, storage_duration: float | None = None) -> dict[str, TabularSource]:
+    generators = pl.DataFrame(
+        {
+            "name": ["gas-cc_h2-cc_p1_2032", "hyded_p1_2032", "pumped-hydro_1_p1_2032"],
+            "category": ["gas-cc_h2-cc", "hydro", "pumped_storage"],
+            "technology": ["gas-cc_h2-cc", "hyded", "pumped-hydro_1"],
+            "component_family": ["thermal", "hydro", "storage"],
+            "capacity": [100.0, 100.0, 100.0],
+            "vintage": ["new", "new", "new"],
+            "region": ["p1", "p1", "p1"],
+            "year": [2032, 2032, 2032],
+            "is_dispatchable": [None, True, None],
+            "storage_duration": [None, None, storage_duration],
+        }
+    )
+    empty_links = pl.DataFrame(
+        schema={"technology": pl.String, "target_technology": pl.String}
+    )
+    return {
+        "generator_rows": _policy_source(generators),
+        "generator_thermal_rows": _policy_source(
+            generators.filter(pl.col("component_family") == "thermal").select(
+                "technology", "storage_duration"
+            ).with_columns(pl.lit(None, dtype=pl.Float64).alias("ramp_rate"))
+        ),
+        "generator_hydro_rows": _policy_source(
+            generators.filter(pl.col("component_family") == "hydro").select(
+                "technology", "storage_duration"
+            ).with_columns(pl.lit(None, dtype=pl.Float64).alias("ramp_rate"))
+        ),
+        "generator_storage_rows": _policy_source(
+            pl.DataFrame(
+                schema={
+                    "name": pl.String,
+                    "category": pl.String,
+                    "technology": pl.String,
+                    "capacity": pl.Float64,
+                    "vintage": pl.String,
+                    "solve_year": pl.Int64,
+                    "region": pl.String,
+                    "storage_duration": pl.Float64,
+                }
+            )
+        ),
+        "fom_upgrade_links": _policy_source(empty_links),
+        "fom_switches": _policy_source(
+            pl.DataFrame({"parameter": ["gsw_watermain"], "value": ["0"]})
+        ),
+        "ramprate": _policy_source(
+            pl.DataFrame(
+                {"technology": ["h2-cc", "hydro"], "ramp_rate": [0.08, 1.0]}
+            )
+        ),
+    }
+
+
+def test_generator_ramp_policy_resolves_upgrade_and_dispatchable_hydro(
+    tmp_path: Path,
+) -> None:
+    parser = _build_input_policy_parser(tmp_path)
+    sources = _generator_input_sources()
+    sources["fom_upgrade_links"] = _policy_source(
+        pl.DataFrame(
+            {
+                "technology": ["gas-cc_h2-cc"],
+                "target_technology": ["h2-cc"],
+            }
+        )
+    )
+
+    updated = parser._prepare_generator_input_policies(sources)
+
+    thermal = updated["generator_thermal_rows"].data.collect()
+    hydro = updated["generator_hydro_rows"].data.collect()
+    assert thermal["ramp_rate"].to_list() == [0.08]
+    assert hydro["ramp_rate"].to_list() == [1.0]
+
+
+def test_water_switch_enables_cooling_ramp_resolution(tmp_path: Path) -> None:
+    parser = _build_input_policy_parser(tmp_path)
+    sources = _generator_input_sources()
+    generator_rows = sources["generator_rows"].data.collect().with_columns(
+        pl.when(pl.col("component_family") == "thermal")
+        .then(pl.lit("gas-cc_r_fsa_h2-cc"))
+        .otherwise(pl.col("technology"))
+        .alias("technology")
+    )
+    thermal_rows = sources["generator_thermal_rows"].data.collect().with_columns(
+        pl.lit("gas-cc_r_fsa_h2-cc").alias("technology")
+    )
+    sources["generator_rows"] = _policy_source(generator_rows)
+    sources["generator_thermal_rows"] = _policy_source(thermal_rows)
+    sources["fom_switches"] = _policy_source(
+        pl.DataFrame({"parameter": ["gsw_watermain"], "value": ["1"]})
+    )
+    sources["fom_water_upgrade_links"] = _policy_source(
+        pl.DataFrame(
+            {
+                "technology": ["gas-cc_r_fsa_h2-cc"],
+                "target_technology": ["gas-cc_r_fsa"],
+            }
+        )
+    )
+    cooling_schema = {
+        "technology": pl.String,
+        "base_technology": pl.String,
+        "cooling_type": pl.String,
+        "water_source": pl.String,
+    }
+    sources["cooling_technology_links"] = _policy_source(
+        pl.DataFrame(
+            {
+                "technology": ["gas-cc_r_fsa"],
+                "base_technology": ["gas-cc"],
+                "cooling_type": ["r"],
+                "water_source": ["fsa"],
+            }
+        )
+    )
+    sources["cooling_upgrade_technology_links"] = _policy_source(
+        pl.DataFrame(schema=cooling_schema)
+    )
+    sources["ramprate"] = _policy_source(
+        pl.DataFrame(
+            {
+                "technology": ["gas-cc", "gas-cc_r_fsa", "gas-cc_r_fsa_h2-cc"],
+                "ramp_rate": [0.05, 0.8, 0.9],
+            }
+        )
+    )
+
+    updated = parser._prepare_generator_input_policies(sources)
+
+    thermal = updated["generator_thermal_rows"].data.collect()
+    assert thermal["ramp_rate"].to_list() == [0.05]
+
+
+def test_psh_report_duration_restores_storage_row_missing_baseline_duration(
+    tmp_path: Path,
+) -> None:
+    parser = _build_input_policy_parser(tmp_path, use_psh=True)
+    sources = _generator_input_sources()
+    keys = {
+        "technology": ["pumped-hydro_1"],
+        "vintage": ["new"],
+        "region": ["p1"],
+        "year": [2032],
+    }
+    sources["psh_energy_capacity"] = _policy_source(
+        pl.DataFrame({**keys, "psh_energy_capacity": [1970.0]})
+    )
+    sources["psh_reference_capacity"] = _policy_source(
+        pl.DataFrame({**keys, "reference_capacity": [100.0]})
+    )
+
+    updated = parser._prepare_generator_input_policies(sources)
+
+    storage = updated["generator_storage_rows"].data.collect()
+    assert storage["technology"].to_list() == ["pumped-hydro_1"]
+    assert storage["solve_year"].to_list() == [2032]
+    assert storage["storage_duration"].to_list() == [pytest.approx(19.7)]
+
+
+def test_disabled_psh_policy_does_not_require_optional_report_sources(
+    tmp_path: Path,
+) -> None:
+    parser = _build_input_policy_parser(tmp_path, use_psh=False)
+
+    updated = parser._prepare_generator_input_policies(_generator_input_sources(storage_duration=12.0))
+
+    assert "psh_energy_capacity" not in updated
+    assert "psh_reference_capacity" not in updated
 
 
 def test_profile_adjustments_scale_values_and_keep_capacity(

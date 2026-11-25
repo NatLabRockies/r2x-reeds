@@ -152,8 +152,8 @@ def test_pcm_defaults_scope_no_match(caplog) -> None:
     assert "Could not find a matching category" in caplog.text
 
 
-def test_pcm_defaults_scope_multiplication_runs() -> None:
-    """Multiplication logic for complex values executes without raising."""
+def test_pcm_defaults_ignores_unknown_fields() -> None:
+    """Unknown fields do not change the generator or its metadata."""
     system, generator = _build_generator()
     defaults = {
         "coal": {
@@ -166,22 +166,39 @@ def test_pcm_defaults_scope_multiplication_runs() -> None:
     assert generator.ext == {}
 
 
-def test_pcm_defaults_ramp_rate_is_multiplied_thermal() -> None:
-    """ramp_rate on a thermal generator is scaled by capacity, not applied as-is."""
-    system, generator = _build_thermal_generator()
+@pytest.mark.parametrize("builder", [_build_thermal_generator, _build_hydro_generator])
+@pytest.mark.parametrize("capacity", [60.0, 100.0, 320.0])
+@pytest.mark.parametrize(
+    ("ramp_rate", "override", "expected"),
+    [(None, False, 0.05), (None, True, 0.05), (0.08, False, 0.08), (0.08, True, 0.05)],
+)
+def test_pcm_defaults_preserve_fractional_ramp_rate(builder, capacity, ramp_rate, override, expected):
+    system, generator = builder()
+    generator.capacity = capacity
+    generator.ramp_rate = ramp_rate
 
-    _run_pcm_defaults(system, pcm_defaults_dict={"coal": {"ramp_rate": 0.01}})
+    for _ in range(2):
+        _run_pcm_defaults(
+            system,
+            pcm_defaults_dict={generator.technology: {"ramp_rate": 0.05}},
+            pcm_defaults_override=override,
+        )
+        assert generator.ramp_rate == pytest.approx(expected)
+        assert generator.capacity == capacity
 
-    assert generator.ramp_rate == pytest.approx(100.0 * 0.01)
 
+@pytest.mark.parametrize("builder", [_build_thermal_generator, _build_hydro_generator])
+@pytest.mark.parametrize("list_format", [False, True], ids=["mapping", "list"])
+def test_pcm_ramp_defaults_from_file_remain_fractional(builder, list_format, tmp_path):
+    system, generator = builder()
+    entry = {"ramp_rate": 0.05}
+    defaults = [{"name": generator.technology, **entry}] if list_format else {generator.technology: entry}
+    path = tmp_path / "pcm_defaults.json"
+    path.write_text(json.dumps(defaults))
 
-def test_pcm_defaults_ramp_rate_is_multiplied_hydro() -> None:
-    """ramp_rate on a hydro generator is scaled by capacity, not applied as-is."""
-    system, generator = _build_hydro_generator()
+    _run_pcm_defaults(system, pcm_defaults_fpath=path)
 
-    _run_pcm_defaults(system, pcm_defaults_dict={"hydro": {"ramp_rate": 0.3}})
-
-    assert generator.ramp_rate == pytest.approx(100.0 * 0.3)
+    assert generator.ramp_rate == pytest.approx(0.05)
 
 
 @pytest.mark.parametrize("capacity", [100.0, 320.0])

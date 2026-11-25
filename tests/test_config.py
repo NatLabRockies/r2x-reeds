@@ -93,6 +93,20 @@ def test_packaged_file_mapping_validates_with_deferred_capacity_source() -> None
     assert selected.source == "{generator_capacity_source_name}"
 
 
+def test_reeds_config_psh_energy_capacity_duration_defaults_to_false():
+    config = ReEDSConfig(solve_year=2030, weather_year=2012)
+    assert config.use_psh_energy_capacity_duration is False
+
+
+def test_reeds_config_can_select_degraded_capacity():
+    config = ReEDSConfig(
+        solve_year=2030,
+        weather_year=2012,
+        generator_capacity_source="degraded",
+    )
+    assert config.generator_capacity_source == "degraded"
+
+
 def test_reeds_config_generator_capacity_threshold_defaults_to_zero():
     config = ReEDSConfig(solve_year=2030, weather_year=2012)
     assert config.drop_gen_capacity_threshold == 0.0

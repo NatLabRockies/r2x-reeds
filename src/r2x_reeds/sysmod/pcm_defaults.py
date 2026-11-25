@@ -54,6 +54,8 @@ def add_pcm_defaults(
     The current implementation of this plugin matches the ReEDSGenerator category field.
     Startup costs remain in dollars per MW through defaults and generator splitting.
     Exporters convert this coefficient using the final generator capacity.
+    Ramp rates remain fractions of installed generator capacity per minute.
+    Defaults are assigned without capacity scaling; translators convert to target units.
     """
     logger.info("Augmenting generators attributes with PCM defaults.")
 
@@ -79,9 +81,6 @@ def add_pcm_defaults(
         except (OSError, KeyError, TypeError, ValueError) as error:
             logger.error("Failed to load PCM defaults: {}", error)
             return Err(error)
-
-    # Fields that need to be multiplied by generator capacity
-    needs_multiplication = {"ramp_rate"}
 
     # Fields that should be processed first (for dependency ordering)
     fields_weight = {"capacity": 1}  # Updated from active_power_limits
@@ -119,14 +118,6 @@ def add_pcm_defaults(
             if _check_if_null(value):
                 continue
 
-            if field in needs_multiplication:
-                base_capacity = component.capacity
-                if base_capacity is not None:
-                    value = _multiply_value(base_capacity, value)
-                else:
-                    logger.warning("Cannot multiply {} for {} - no capacity defined", field, component.name)
-                    continue
-
             try:
                 setattr(component, field, value)
                 logger.trace("Set {} = {} for {}", field, value, component.name)
@@ -135,13 +126,6 @@ def add_pcm_defaults(
 
     logger.info("Finished augmenting generators with PCM defaults")
     return Ok(system)
-
-
-def _multiply_value(base: float, val):
-    """Multiply a value or dictionary of values by a base amount."""
-    if isinstance(val, dict):
-        return {k: base * v for k, v in val.items()}
-    return base * val
 
 
 def _check_if_null(val):

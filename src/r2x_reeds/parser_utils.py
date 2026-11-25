@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import calendar
 import importlib
+import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -92,6 +93,98 @@ def tech_matches_category(tech: str, category_name: str, tech_categories: dict[s
         return True
 
     return any(tech_value.startswith(prefix) for prefix in prefixes)
+
+
+def resolve_generator_ramp_rates(
+    technologies: Sequence[str],
+    ramp_data: pl.DataFrame | None,
+    upgrade_links: pl.DataFrame,
+    technology_categories: dict[str, Any],
+    *,
+    cooling_links: pl.DataFrame | None = None,
+) -> Result[pl.DataFrame, str]:
+    """Resolve ramp rates through upgrade destinations and cooling base technologies."""
+    rates: dict[str, float | None] = {}
+    destinations: dict[str, str] = {}
+    cooling_bases: dict[str, str] = {}
+
+    def label(value: Any, source: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Invalid technology label {value!r} in {source}")
+        return value.casefold()
+
+    try:
+        if ramp_data is not None:
+            for row in ramp_data.iter_rows(named=True):
+                technology = label(row["technology"], "ramprate")
+                value = row["ramp_rate"]
+                if value is not None and (isinstance(value, bool) or not math.isfinite(value) or value < 0.0):
+                    raise ValueError(f"Invalid ramp rate {value!r} for {row['technology']!r}")
+                if technology in rates and rates[technology] != value:
+                    raise ValueError(f"Conflicting ramp rates for {row['technology']!r}")
+                rates[technology] = value
+
+        for row in upgrade_links.iter_rows(named=True):
+            technology = label(row["technology"], "upgrade links")
+            target = label(row["target_technology"], "upgrade links")
+            if technology in destinations and destinations[technology] != target:
+                raise ValueError(f"Ambiguous upgrade destinations for {row['technology']!r}")
+            destinations[technology] = target
+
+        if cooling_links is not None:
+            for row in cooling_links.iter_rows(named=True):
+                technology = label(row["technology"], "cooling links")
+                base = label(row["base_technology"], "cooling links")
+                if technology in cooling_bases and cooling_bases[technology] != base:
+                    raise ValueError(f"Ambiguous cooling base technologies for {row['technology']!r}")
+                cooling_bases[technology] = base
+
+        resolved: dict[str, float | None] = {}
+        visiting: list[str] = []
+
+        def resolve(technology: str) -> float | None:
+            if technology in resolved:
+                return resolved[technology]
+            if technology in visiting:
+                raise ValueError(f"Cyclic ramp technology mapping: {' -> '.join([*visiting, technology])}")
+            visiting.append(technology)
+            if technology in destinations:
+                value = resolve(destinations[technology])
+            elif technology in cooling_bases:
+                value = resolve(cooling_bases[technology])
+            elif tech_matches_category(technology, "hydro_dispatchable", technology_categories):
+                value = rates.get("hydro")
+            else:
+                value = rates.get(technology)
+            visiting.pop()
+            resolved[technology] = value
+            return value
+
+        for technology in destinations:
+            resolve(technology)
+        for technology in cooling_bases:
+            resolve(technology)
+
+        values: list[float | None] = []
+        for original in technologies:
+            technology = label(original, "generator datasets")
+            if any(
+                tech_matches_category(technology, category, technology_categories)
+                for category in ("thermal", "hydro")
+            ):
+                values.append(resolve(technology))
+            else:
+                values.append(rates.get(technology))
+    except ValueError as exc:
+        logger.error("Failed to resolve generator ramp rates: {}", exc)
+        return Err(str(exc))
+
+    return Ok(
+        pl.DataFrame(
+            {"technology": list(technologies), "ramp_rate": values},
+            schema={"technology": pl.String, "ramp_rate": pl.Float64},
+        )
+    )
 
 
 def get_technology_category(
@@ -215,6 +308,92 @@ def get_generator_class(
     return Err(TypeError(f"Technology model {tech} not found on {models_path} for categories {categories}"))
 
 
+def resolve_psh_storage_durations(
+    capacity: pl.DataFrame,
+    energy: pl.LazyFrame | None,
+    reference: pl.LazyFrame | None,
+) -> Result[pl.LazyFrame, ValidationError]:
+    """Derive hours for included PSH from reported MWh and matching cap_ivrt MW."""
+    keys = ["technology", "vintage", "region", "year"]
+    missing = {*keys, "capacity"}.difference(capacity.columns)
+    if missing:
+        return Err(ValidationError(f"PSH online capacity is missing columns: {sorted(missing)}"))
+    selected = capacity.select(*keys, "capacity").with_columns(pl.col("year").cast(pl.Int64))
+    invalid = selected.filter(
+        pl.any_horizontal(pl.col(keys).is_null())
+        | ~pl.col("capacity").is_finite()
+        | (pl.col("capacity") <= 0)
+        | pl.col("capacity").is_null()
+    )
+    if not invalid.is_empty():
+        return Err(ValidationError(f"Invalid PSH online capacity or keys: {invalid.head(10).to_dicts()}"))
+    if selected.select(keys).is_duplicated().any():
+        return Err(ValidationError(f"Duplicate PSH online capacity keys: {selected.head(10).to_dicts()}"))
+
+    for frame, dataset, value in (
+        (energy, "cap_energy_ivrt", "psh_energy_capacity"),
+        (reference, "cap_ivrt", "reference_capacity"),
+    ):
+        if frame is None:
+            return Err(
+                ValidationError(
+                    f"Required PSH dataset '{dataset}' is missing from outputs/outputs.h5 "
+                    f"and outputs/{dataset}.csv; no technology-duration fallback is applied"
+                )
+            )
+        missing = {*keys, value}.difference(frame.collect_schema().names())
+        if missing:
+            return Err(ValidationError(f"PSH dataset '{dataset}' is missing columns: {sorted(missing)}"))
+        matched = (
+            frame.select(*keys, value)
+            .with_columns(pl.col("year").cast(pl.Int64), pl.col(value).cast(pl.Float64, strict=False))
+            .join(selected.select(keys).lazy(), on=keys, how="semi")
+            .collect()
+        )
+        duplicates = matched.filter(matched.select(keys).is_duplicated())
+        if not duplicates.is_empty():
+            return Err(
+                ValidationError(f"Duplicate PSH keys in '{dataset}': {duplicates.head(10).to_dicts()}")
+            )
+        invalid = matched.filter(pl.col(value).is_null() | ~pl.col(value).is_finite() | (pl.col(value) <= 0))
+        if not invalid.is_empty():
+            return Err(ValidationError(f"Invalid PSH values in '{dataset}': {invalid.head(10).to_dicts()}"))
+        selected = selected.join(matched, on=keys, how="left", validate="1:1")
+        missing_rows = selected.filter(pl.col(value).is_null())
+        if not missing_rows.is_empty():
+            return Err(
+                ValidationError(
+                    f"Missing PSH rows in '{dataset}': {missing_rows.select(keys).head(10).to_dicts()}; "
+                    "no technology-duration fallback is applied"
+                )
+            )
+
+    mismatched = selected.filter(
+        (pl.col("capacity") - pl.col("reference_capacity")).abs()
+        > (pl.lit(1e-6) + 1e-6 * pl.col("reference_capacity").abs())
+    )
+    if not mismatched.is_empty():
+        return Err(
+            ValidationError(
+                "PSH selected power does not match the cap_ivrt reference power basis "
+                f"(MW, rtol=1e-6, atol=1e-6): {mismatched.head(10).to_dicts()}"
+            )
+        )
+    durations = selected.select(
+        *keys, (pl.col("psh_energy_capacity") / pl.col("reference_capacity")).alias("psh_storage_duration")
+    )
+    invalid = durations.filter(
+        ~pl.col("psh_storage_duration").is_finite() | (pl.col("psh_storage_duration") <= 0)
+    )
+    if not invalid.is_empty():
+        return Err(ValidationError(f"Invalid derived PSH duration: {invalid.head(10).to_dicts()}"))
+    logger.info(
+        "Resolved {} PSH durations from cap_energy_ivrt MWh / cap_ivrt MW; no duration fallback",
+        durations.height,
+    )
+    return Ok(durations.lazy())
+
+
 def _prepare_generator_dataset(
     capacity_data: pl.LazyFrame | None,
     optional_data: Mapping[str, pl.LazyFrame | None],
@@ -249,8 +428,10 @@ def _prepare_generator_dataset(
         return Err(ValidationError("No capacity data found"))
 
     df = capacity_data
+    filter_missing_storage_duration = False
 
     join_overrides: dict[str, list[str]] = {
+        "psh_storage_duration": ["technology", "vintage", "region", "year"],
         "storage_duration_out": ["technology", "vintage", "region", "year"],
         "consume_characteristics": ["technology", "year"],
     }
@@ -324,20 +505,36 @@ def _prepare_generator_dataset(
                         .otherwise(pl.col("storage_duration"))
                         .alias("storage_duration")
                     ).drop("storage_duration_out_value")
-                    storage_mask = pl.col("technology").map_elements(
-                        lambda tech, _tc=technology_categories: tech_matches_category(
-                            str(tech), "storage", _tc
-                        ),
-                        return_dtype=pl.Boolean,
-                    )
-                    df = df.filter(
-                        ~(
-                            storage_mask
-                            & (pl.col("storage_duration").is_null() | pl.col("storage_duration").is_nan())
-                        )
-                    )
+                    filter_missing_storage_duration = True
         except Exception as e:
             return Err(ValidationError(f"Failed to join {name} data: {e}"))
+
+    if "psh_storage_duration" in df.collect_schema().names():
+        psh_mask = pl.col("technology").map_elements(
+            lambda tech: tech_matches_category(str(tech), "pumped_storage", technology_categories),
+            return_dtype=pl.Boolean,
+        )
+        baseline = (
+            pl.col("storage_duration")
+            if "storage_duration" in df.collect_schema().names()
+            else pl.lit(None, dtype=pl.Float64)
+        )
+        df = df.with_columns(
+            pl.when(psh_mask)
+            .then(pl.col("psh_storage_duration"))
+            .otherwise(baseline)
+            .alias("storage_duration")
+        ).drop("psh_storage_duration")
+
+    # Resolve PSH before the existing missing-duration filter can remove storage rows.
+    if filter_missing_storage_duration:
+        storage_mask = pl.col("technology").map_elements(
+            lambda tech: tech_matches_category(str(tech), "storage", technology_categories),
+            return_dtype=pl.Boolean,
+        )
+        df = df.filter(
+            ~(storage_mask & (pl.col("storage_duration").is_null() | pl.col("storage_duration").is_nan()))
+        )
 
     if optional_data.get("cost_fom") is not None:
         # Resolve rates before renewable aggregation so capacity * FOM remains annual cost.

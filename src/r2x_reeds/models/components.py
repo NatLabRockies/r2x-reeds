@@ -136,7 +136,11 @@ class ReEDSThermalGenerator(ReEDSGenerator):
     fuel_type: Annotated[str, Field(description="Fuel type")]
     fuel_price: Annotated[PositiveFloat | None, Unit("$/MMBtu"), Field(description="Fuel price")] = None
     min_stable_level: Annotated[UnitFloat | None, Field(description="Min load fraction")] = None
-    ramp_rate: Annotated[PositiveFloat | None, Unit("fraction/hour"), Field(description="Ramp rate")] = None
+    ramp_rate: Annotated[
+        NonNegativeFloat | None,
+        Unit("fraction/min"),
+        Field(description="Ramp rate as a fraction of installed generator capacity per minute"),
+    ] = None
     capacity_factor_range: MinMax | None = None
     startup_cost: Annotated[PositiveFloat | None, Unit("$/MW"), Field(description="Startup cost")] = None
     min_up_time: Annotated[PositiveFloat | None, Unit("hours"), Field(description="Min up time")] = None
@@ -196,7 +200,11 @@ class ReEDSHydroGenerator(ReEDSGenerator):
 
     is_dispatchable: Annotated[bool, Field(description="Whether hydro is dispatchable")]
     flow_range: Annotated[MinMax | None, Unit("MW"), Field(description="Flow range")] = None
-    ramp_rate: Annotated[PositiveFloat | None, Unit("fraction/hour"), Field(description="Ramp rate")] = None
+    ramp_rate: Annotated[
+        PositiveFloat | None,
+        Unit("fraction/min"),
+        Field(description="Ramp rate as a fraction of installed generator capacity per minute"),
+    ] = None
 
 
 class ReEDSConsumingTechnology(HasUnits, ReEDSComponent):
