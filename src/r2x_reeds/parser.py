@@ -400,12 +400,16 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             assert rows is not None
             if rows.is_empty():
                 continue
-            rows = rows.join(
-                resolved_rates.rename({"ramp_rate": "__resolved_ramp_rate"}),
-                on="technology",
-                how="left",
-                validate="m:1",
-            ).with_columns(pl.col("__resolved_ramp_rate").alias("ramp_rate")).drop("__resolved_ramp_rate")
+            rows = (
+                rows.join(
+                    resolved_rates.rename({"ramp_rate": "__resolved_ramp_rate"}),
+                    on="technology",
+                    how="left",
+                    validate="m:1",
+                )
+                .with_columns(pl.col("__resolved_ramp_rate").alias("ramp_rate"))
+                .drop("__resolved_ramp_rate")
+            )
             replace_table(source_name, rows)
 
         if not self.config.use_psh_energy_capacity_duration:
@@ -447,9 +451,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
             on=["technology", "vintage", "region", "year"],
             how="left",
             validate="m:1",
-        ).with_columns(
-            pl.coalesce(["__psh_duration", "storage_duration"]).alias("storage_duration")
-        )
+        ).with_columns(pl.coalesce(["__psh_duration", "storage_duration"]).alias("storage_duration"))
         storage_rows = storage_rows.filter(
             (pl.col("component_family") == "storage") & pl.col("storage_duration").is_not_null()
         )

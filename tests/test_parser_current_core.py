@@ -396,9 +396,7 @@ def test_disabled_psh_duration_does_not_read_optional_energy_report(
         config_path_override=config_path,
     )
 
-    result = ReEDSParser.from_context(
-        PluginContext(config=config, store=DataStore(path=run_path))
-    ).run()
+    result = ReEDSParser.from_context(PluginContext(config=config, store=DataStore(path=run_path))).run()
 
     assert result.system is not None
     storage = list(result.system.get_components(ReEDSStorage))
@@ -421,9 +419,7 @@ def test_psh_duration_uses_selected_energy_and_reference_sources(
         config_path_override=config_path,
         use_psh_energy_capacity_duration=True,
     )
-    result = ReEDSParser.from_context(
-        PluginContext(config=config, store=DataStore(path=run_path))
-    ).run()
+    result = ReEDSParser.from_context(PluginContext(config=config, store=DataStore(path=run_path))).run()
     assert result.system is not None
     generators = list(result.system.get_components(ReEDSStorage))
     psh = [unit for unit in generators if unit.technology.startswith("pumped-hydro")]
@@ -433,11 +429,12 @@ def test_psh_duration_uses_selected_energy_and_reference_sources(
     energy = pl.read_csv(run_path / "outputs" / "cap_energy_ivrt.csv")
     reference = pl.read_csv(run_path / "outputs" / "cap_ivrt.csv")
     expected = {
-        (row["i"].casefold(), row["v"].casefold(), row["r"].casefold(), row["t"]):
-        row["Value"] / row["reference_capacity"]
+        (row["i"].casefold(), row["v"].casefold(), row["r"].casefold(), row["t"]): row["Value"]
+        / row["reference_capacity"]
         for row in energy.join(reference.rename({"Value": "reference_capacity"}), on=keys).to_dicts()
     }
     for generator in psh:
+        assert generator.vintage is not None
         key = (
             generator.technology,
             generator.vintage.casefold(),

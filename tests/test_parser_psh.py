@@ -125,7 +125,9 @@ def test_psh_requires_both_reports(psh_frames, source):
 def test_psh_requires_exact_report_key_matches(psh_frames, key):
     capacity, energy, reference = psh_frames
     replacement = 2040 if key == "year" else "other"
-    result = resolve_psh_storage_durations(capacity, energy.with_columns(pl.lit(replacement).alias(key)), reference)
+    result = resolve_psh_storage_durations(
+        capacity, energy.with_columns(pl.lit(replacement).alias(key)), reference
+    )
     assert result.is_err()
     assert "Missing PSH rows in 'cap_energy_ivrt'" in str(result.unwrap_err())
 
