@@ -173,6 +173,12 @@ with the system after defaults and generator splitting:
    `GSw_WaterMain=1` in `inputs_case/switches.csv`. Otherwise those additional
    relationships are not included. This is a cooling/water switch, not a
    hydropower switch.
+   For cooling-qualified thermal/hydro names, also check
+   `inputs_case/i_coolingtech_watersource_link.csv` and
+   `inputs_case/i_coolingtech_watersource_upgrades_link.csv`; both files are
+   required when the switch is on. The destination may itself need a cooling
+   mapping before its base ramp rate can be found. Missing resolved rates stay
+   `None`, even if the original technology has its own rate.
 4. For hydro, check the technology classification. Dispatchable hydro uses
    generic `Hydro`, overriding any specific rate; nondispatchable hydro uses
    only its exact input rate. A missing resolved rate remains `None`.

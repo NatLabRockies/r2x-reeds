@@ -205,10 +205,14 @@ For example, with explicit destination relationships and illustrative input rate
 | `hydND`, with no exact input rate | No generic inheritance | `None` |
 
 An unavailable resolved rate remains `None`, not zero. This includes missing
-destination or generic-hydro rates; the parser does not guess another rate.
+destination, cooling-base, or generic-hydro rates; the parser does not guess
+another rate or fall back to an upgraded/cooling-specific technology's own entry
+when its inherited rate is missing.
 Explicit zero is a valid rate, and values greater than one are allowed.
-Conflicting duplicate rates, ambiguous upgrade destinations, cyclic relationships,
-invalid labels, and negative or nonfinite rates fail explicitly.
+Conflicting duplicate rates, ambiguous upgrade destinations or cooling bases,
+cyclic relationships (including mixed cooling/upgrade chains), invalid labels,
+and negative or nonfinite rates fail explicitly. Identical case-insensitive
+duplicate mappings are allowed.
 
 After parsing, `add-pcm-defaults` can fill null `ramp_rate` fields. With
 `pcm_defaults_override=False`, populated rates are retained; `True` can

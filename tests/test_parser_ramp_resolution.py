@@ -186,6 +186,40 @@ def test_missing_rates_remain_nullable_float64(technology_categories, data):
     assert result["ramp_rate"].to_list() == [None] * 4
 
 
+@pytest.mark.parametrize(
+    "base_rows,expected", [([], None), ([("gas-cc", None)], None), ([("gas-cc", 0.0)], 0.0)]
+)
+@pytest.mark.parametrize("upgraded", [False, True])
+def test_cooling_base_missing_rates_and_zero_do_not_fall_back(
+    technology_categories, base_rows, expected, upgraded
+):
+    destination = "gas-cc_r_fsa"
+    technology = "gas-cc_r_fsa_upgrade" if upgraded else destination
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data([("gas-cc_r_fsa_upgrade", 0.9), (destination, 0.8), *base_rows]),
+        upgrade_links([(technology, destination)] if upgraded else []),
+        technology_categories,
+        cooling_links=cooling_links([(destination, "gas-cc")]),
+    ).unwrap()
+
+    assert result.schema == {"technology": pl.String, "ramp_rate": pl.Float64}
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": expected}]
+
+
+def test_missing_cooling_map_does_not_infer_destination_base(technology_categories):
+    technology = "CoalOldUns_r_fsa_coal-CCS_mod_r_fsa"
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data([(technology, 0.9), ("coalolduns", 0.03), ("coal-ccs_mod", 0.02)]),
+        upgrade_links([(technology, "coal-CCS_mod_r_fsa")]),
+        technology_categories,
+        cooling_links=cooling_links(),
+    ).unwrap()
+
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": None}]
+
+
 def test_underscore_names_do_not_imply_upgrade_relationships(technology_categories):
     result = resolve_generator_ramp_rates(
         ["gas-cc_h2-cc"],
@@ -206,6 +240,90 @@ def test_identical_duplicate_rates_and_destinations_are_allowed(technology_categ
     ).unwrap()
 
     assert result["ramp_rate"].to_list() == [0.08]
+
+
+def test_identical_duplicate_cooling_bases_are_allowed(technology_categories):
+    result = resolve_generator_ramp_rates(
+        ["gas-cc_r_fsa"],
+        ramp_data([("gas-cc", 0.05)]),
+        upgrade_links(),
+        technology_categories,
+        cooling_links=cooling_links([("gas-cc_r_fsa", "gas-cc"), ("GAS-CC_R_FSA", "GAS-CC")]),
+    ).unwrap()
+
+    assert result["ramp_rate"].to_list() == [0.05]
+
+
+@pytest.mark.parametrize(
+    "cooling_rows,upgrade_rows,message",
+    [
+        (
+            [("gas-cc_r_fsa", "gas-cc"), ("GAS-CC_R_FSA", "h2-cc")],
+            [],
+            "Ambiguous cooling base technologies",
+        ),
+        ([("gas-cc_r_fsa", "gas-cc_r_fsa")], [], "Cyclic"),
+        (
+            [("gas-cc_r_fsa", "gas-cc"), ("gas-cc", "gas-cc_r_fsa")],
+            [],
+            "Cyclic",
+        ),
+        (
+            [("gas-cc_r_fsa", "gas-cc_h2-cc")],
+            [("gas-cc_h2-cc", "gas-cc_r_fsa")],
+            "Cyclic",
+        ),
+    ],
+)
+def test_invalid_cooling_relationships_fail_even_outside_active_technologies(
+    technology_categories, cooling_rows, upgrade_rows, message, caplog
+):
+    result = resolve_generator_ramp_rates(
+        ["gas-ct"],
+        ramp_data([("gas-ct", 0.08)]),
+        upgrade_links(upgrade_rows),
+        technology_categories,
+        cooling_links=cooling_links(cooling_rows),
+    )
+
+    assert result.is_err()
+    error = result.unwrap_err()
+    assert message in error
+    assert "gas-cc_r_fsa" in error.casefold()
+    assert error in caplog.text
+    if message == "Cyclic":
+        assert " -> " in error
+        assert all(technology.casefold() in error for technology, _ in cooling_rows + upgrade_rows)
+
+
+def test_upgrade_destination_precedes_cooling_base(technology_categories):
+    technology = "gas-CC_r_fsa_H2-CC"
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data([(technology, 0.9), ("gas-cc", 0.05), ("h2-cc", 0.08)]),
+        upgrade_links([(technology, "h2-cc")]),
+        technology_categories,
+        cooling_links=cooling_links([(technology, "gas-cc")]),
+    ).unwrap()
+
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": 0.08}]
+
+
+@pytest.mark.parametrize("exact_rate", [None, 0.12])
+def test_nonthermal_nonhydro_technologies_do_not_inherit_cooling_rates(technology_categories, exact_rate):
+    technology = "csp1_1_r_fsa"
+    rows = [("csp1_1", 0.05)]
+    if exact_rate is not None:
+        rows.append((technology, exact_rate))
+    result = resolve_generator_ramp_rates(
+        [technology],
+        ramp_data(rows),
+        upgrade_links(),
+        technology_categories,
+        cooling_links=cooling_links([(technology, "csp1_1")]),
+    ).unwrap()
+
+    assert result.to_dicts() == [{"technology": technology, "ramp_rate": exact_rate}]
 
 
 @pytest.mark.parametrize(
