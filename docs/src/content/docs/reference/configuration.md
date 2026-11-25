@@ -12,6 +12,7 @@ title: Configuration Reference
 | `scenario`                     | `str`                 | `"base"` | Scenario label                                                 |
 | `excluded_techs`               | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
 | `use_degraded_capacity`        | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
+| `use_psh_energy_capacity_duration` | `bool`             | `False`  | Derive PSH hours from reported energy and power capacity        |
 | `drop_gen_capacity_threshold`  | `float`               | `0.0`    | Drop generators below this installed capacity in MW            |
 | `apply_cf_adjustment`          | `bool`                | `False`  | Apply renewable capacity-factor adjustment to hourly profiles  |
 | `apply_ilr_adjustment`         | `bool`                | `False`  | Scale PV hourly profiles by their inverter loading ratio       |
@@ -35,6 +36,7 @@ Key fields:
 - `case_name`: optional string
 - `scenario`: optional string, default `base`
 - `use_degraded_capacity`: bool, default `False`; choose degradation-adjusted `cap_deg_ivrt` instead of `cap_ivrt` for online capacity.
+- `use_psh_energy_capacity_duration`: bool, default `False`; opt into reported-energy-based PSH duration with strict source validation.
 - `drop_gen_capacity_threshold`: float, default `0.0`; omit generators with installed capacity strictly below this value in MW.
 - `apply_cf_adjustment`: bool, default `False`; multiply renewable profiles by generators' `capacity_factor_adjustment` values.
 - `apply_ilr_adjustment`: bool, default `False`; multiply PV profiles by generators' `inverter_loading_ratio` values to account for DC-based capacity factors.
@@ -68,6 +70,62 @@ remains controlled separately by `use_degraded_capacity`. The parser warns if an
 ILR-adjusted PV profile exceeds generator capacity; it does not clip the profile.
 Leave an adjustment disabled if the source profile already includes that factor
 to avoid applying it twice.
+
+### Pumped-storage hydro duration
+
+Set `use_psh_energy_capacity_duration: true` in the parser configuration to enable
+reported-energy-based PSH duration:
+
+```yaml
+use_psh_energy_capacity_duration: true
+```
+
+The default is `False`: the parser preserves the original duration workflow,
+does not read or require the PSH energy/reference reports for this feature,
+and does not perform its power-basis validation or duration override. This
+allows runs without `cap_energy_ivrt` to retain their existing duration sources
+(which can include a generic 12-hour PSH duration). Existing parser requirements
+still apply; disabling the feature does not guarantee compatibility with all
+older runs.
+
+When enabled, for included, positive-capacity technologies in the `pumped_storage` category,
+the parser derives `storage_duration` in hours from reported
+`cap_energy_ivrt` (MWh) divided by matching `cap_ivrt` (MW). Matching requires
+technology, vintage, region, and selected solve year; no weather-year alignment
+or hourly expansion is involved. The derived duration replaces the
+technology-level duration, including a generic 12-hour value. Battery and other
+non-PSH storage duration handling is unchanged.
+
+The parser preserves the existing baseline-first, detailed-duration-second
+logic, then applies the PSH override after the optional joins using the
+configured `pumped_storage` technology category. Moving the PSH dataset within
+the optional-data dictionary does not change this precedence. The temporary
+`psh_storage_duration` column is removed after resolution. Existing missing-duration
+filtering runs afterward so it cannot discard PSH before the override.
+
+The `psh_energy_capacity` and `psh_reference_capacity` mappings read the
+`cap_energy_ivrt` and `cap_ivrt` groups in `outputs/outputs.h5`, respectively,
+with fallback to `outputs/cap_energy_ivrt.csv` and `outputs/cap_ivrt.csv`.
+With the feature enabled, these reports are required when PSH survives technology exclusions and the
+configured capacity threshold. Missing reports or matching rows, duplicate
+matching keys, and null, nonpositive, or nonfinite values fail explicitly.
+There is no automatic technology-duration fallback or reconstruction for older
+ReEDS runs when the feature is enabled.
+The upgrader does not generate a missing energy-capacity report.
+
+`use_degraded_capacity=True` still selects `cap_deg_ivrt` for generator power.
+With the feature enabled, PSH duration uses `cap_ivrt` as its reference denominator. Selected PSH
+power must match that reference with `rtol=1e-6` and `atol=1e-6 MW`; otherwise
+parsing fails instead of silently mixing power bases. In the inspected ReEDS
+report equations, PSH `cap_ivrt` equals `cap_deg_ivrt`. The energy report reflects
+the assumptions used by the source run, not necessarily newer detailed PSH data.
+
+The parser leaves optional `energy_capacity` unset and resolves duration before
+`break-gens`. Splitting copies duration and changes power, so each child's
+implied energy is its own MW times hours. Total implied energy is conserved when
+all power is retained; any deliberately discarded remainder also discards its
+corresponding energy. Explicit energy capacities supplied by other workflows
+are outside this change and are not proportionally allocated by the splitter.
 
 ## Parser Configuration Assets
 

@@ -148,7 +148,7 @@ Startup cost stays a **$/MW coefficient** through defaults and splitting. If a
 custom step multiplied it by the original block capacity, remove that conversion
 and rerun from the parser checkpoint; the target adapter must convert once using
 final unit capacity. Verify the coefficient and reconcile removed MW when splitting
-small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#2-add-operating-defaults-without-rescaling-startup-coefficients)
+small remainders. The [PCM guide](/r2x-reeds/how-to/pcm-handoff/#2-add-operating-defaults-without-rescaling-startup-or-ramp-coefficients)
 explains the unit boundary and override behavior.
 
 Current source reads solve-year fixed O&M from `cost_fom` and the operating-cost
@@ -156,6 +156,49 @@ input tables. Missing required data raises a dataset error. Published older
 versions can differ, so record the installed package and source revision.
 Do not treat a missing `fom_cost` as zero. Check mapped reports, selected year and
 [configuration](/r2x-reeds/reference/configuration/) before interpreting retirement rankings.
+
+## Ramp rates are missing or unexpected
+
+Inspect the parsed system before applying operating defaults, then compare it
+with the system after defaults and generator splitting:
+
+1. Check `inputs_case/ramprate.csv`. Rates are fractions of installed capacity
+   **per minute**, not MW/min or fractions/hour. An explicit zero differs from
+   a missing rate; neither zero nor a rate greater than one implies a unit error.
+2. For upgrades, check the explicit destination in `inputs_case/upgrade_link.csv`
+   and any further destination relationships. The resolved destination rate takes
+   precedence over the upgraded technology's own entry. Do not infer mappings
+   from underscores or similar names.
+3. If the relationship is in `inputs_case/upgradelink_water.csv`, check that
+   `GSw_WaterMain=1` in `inputs_case/switches.csv`. Otherwise those additional
+   relationships are not included. This is a cooling/water switch, not a
+   hydropower switch.
+   For cooling-qualified thermal/hydro names, also check
+   `inputs_case/i_coolingtech_watersource_link.csv` and
+   `inputs_case/i_coolingtech_watersource_upgrades_link.csv`; both files are
+   required when the switch is on. The destination may itself need a cooling
+   mapping before its base ramp rate can be found. Missing resolved rates stay
+   `None`, even if the original technology has its own rate.
+4. For hydro, check the technology classification. Dispatchable hydro uses
+   generic `Hydro`, overriding any specific rate; nondispatchable hydro uses
+   only its exact input rate. A missing resolved rate remains `None`.
+5. Check `add-pcm-defaults` inputs and `pcm_defaults_override`. With override
+   disabled, only null fields are filled; with it enabled, populated source
+   rates may be replaced. A remaining `None` is not a zero ramp limit.
+6. Confirm splitting preserves the fractional rate. MW/min conversion belongs
+   in the target translator and uses final unit capacity exactly once. For
+   PLEXOS, `0.05` fraction/min on a 320 MW unit becomes 16 MW/min.
+
+The parser rejects conflicting duplicate rates, ambiguous destinations, cycles,
+invalid technology labels, and negative/nonfinite rates. Investigate the named
+input or relationship rather than suppressing the error or inserting zero.
+
+Older saved systems may contain capacity-scaled PCM ramp values. Rebuild them
+from inputs using the corrected implementation rather than guessing their units.
+Record the package versions and source revisions used. The
+[PCM handoff guide](/r2x-reeds/how-to/pcm-handoff/#how-the-parser-resolves-ramp-rates)
+describes the resolution rules and the distinction between ReEDS reserve
+capability and target-model dispatch ramp limits.
 
 ## Reload fails, or a loaded component has no expected profile
 

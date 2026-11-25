@@ -93,7 +93,16 @@ def test_prepare_generator_datasets_warns_for_enabled_null_adjustments(
                 "capacity": [100.0, 300.0],
             }
         ),
-        "fom_switches": pl.LazyFrame({"switch": ["gsw_upgradechar_year"], "value": ["2030"]}),
+        "fom_upgrade_links": pl.LazyFrame(
+            schema={
+                "technology": pl.String,
+                "source_technology": pl.String,
+                "target_technology": pl.String,
+            }
+        ),
+        "fom_switches": pl.LazyFrame(
+            {"switch": ["gsw_upgradechar_year", "gsw_watermain"], "value": ["2030", "0"]}
+        ),
         "fuel_tech_map": pl.LazyFrame({"technology": [technology], "fuel_type": ["renewable"]}),
         "biofuel_price": pl.LazyFrame(
             schema={"technology": pl.String, "region": pl.String, "year": pl.Int64, "fuel_price": pl.Float64}

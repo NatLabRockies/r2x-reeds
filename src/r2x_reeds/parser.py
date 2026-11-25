@@ -75,6 +75,8 @@ from .parser_utils import (
     get_rules_by_target,
     merge_lazy_frames,
     prepare_generator_inputs,
+    resolve_generator_ramp_rates,
+    resolve_psh_storage_durations,
     tech_matches_category,
 )
 from .plugin_config import ReEDSConfig
@@ -83,6 +85,8 @@ from .upgrader.data_upgrader import run_reeds_upgrades
 
 OUTPUTS_H5_DATASET_KEYS: dict[str, str] = {
     "online_capacity": "cap_ivrt",
+    "psh_energy_capacity": "cap_energy_ivrt",
+    "psh_reference_capacity": "cap_ivrt",
     "hydrogen_production_capacity": "cap",
     "hydrogen_production_annual_load": "prod_load_ann",
     "hydrogen_production_load": "prod_load",
@@ -2369,18 +2373,57 @@ class ReEDSParser(Plugin[ReEDSConfig]):
         self._resource_supply_curve_datasets = tuple(self._defaults.get("resource_supply_curve_datasets", []))
         return Ok(None)
 
+    def _prepare_psh_storage_durations(self, capacity_data: pl.LazyFrame) -> Result[pl.LazyFrame | None, str]:
+        """Resolve included positive-capacity PSH before optional duration joins."""
+        if not self.config.use_psh_energy_capacity_duration:
+            return Ok(None)
+        psh = capacity_data.filter(
+            pl.col("technology").map_elements(
+                lambda tech: tech_matches_category(tech, "pumped_storage", self._tech_categories),
+                return_dtype=pl.Boolean,
+            )
+            & ~pl.col("technology").is_in(self._excluded_techs)
+            & (pl.col("capacity") > 0)
+            & (pl.col("capacity") >= self.config.drop_gen_capacity_threshold)
+        ).collect()
+        if psh.is_empty():
+            return Ok(None)
+        result = resolve_psh_storage_durations(
+            psh,
+            self.read_data_file("psh_energy_capacity"),
+            self.read_data_file("psh_reference_capacity"),
+        )
+        if result.is_err():
+            return Err(str(result.unwrap_err()))
+        return Ok(result.unwrap())
+
     def _prepare_generator_datasets(self) -> Result[None, str]:
         """Load and preprocess generator-related datasets."""
         logger.trace("Preparing generator datasets with excluded techs: {}", self._excluded_techs)
         capacity_data = self.read_data_file("online_capacity")
+        if capacity_data is None:
+            return Err("No capacity data found")
+        psh_duration_result = self._prepare_psh_storage_durations(capacity_data)
+        if psh_duration_result.is_err():
+            return Err(psh_duration_result.unwrap_err())
         upgrade_links = self.read_data_file("fom_upgrade_links")
         switches = self.read_data_file("fom_switches").collect()
         switch_values = dict(switches.iter_rows())
+        cooling_links: pl.LazyFrame | None = None
         if switch_values.get("gsw_watermain") == "1":
             water_links = self.read_data_file("fom_water_upgrade_links")
             if water_links is None:
                 return Err("Required FOM dataset 'fom_water_upgrade_links' is unavailable")
             upgrade_links = pl.concat([upgrade_links, water_links])
+            cooling_frames: list[pl.LazyFrame] = []
+            for dataset_name in ("cooling_technology_links", "cooling_upgrade_technology_links"):
+                links = self.read_data_file(dataset_name)
+                if links is None:
+                    return Err(
+                        f"Required cooling dataset '{dataset_name}' is unavailable with GSw_WaterMain=1"
+                    )
+                cooling_frames.append(links)
+            cooling_links = pl.concat(cooling_frames)
         fuel_price = self.read_data_file("fuel_price")
         biofuel = self.read_data_file("biofuel_price")
         fuel_map = self.read_data_file("fuel_tech_map")
@@ -2421,6 +2464,7 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                 "maxage": self.read_data_file("maxage"),
                 "storage_duration": self.read_data_file("storage_duration"),
                 "storage_efficiency": self.read_data_file("storage_efficiency"),
+                "psh_storage_duration": psh_duration_result.unwrap(),
                 "storage_duration_out": self.read_data_file("storage_duration_out"),
                 "consume_characteristics": self.read_data_file("consume_characteristics"),
                 "capacity_factor_adjustment": self.read_data_file("renewable_cf_adjustment"),
@@ -2461,20 +2505,21 @@ class ReEDSParser(Plugin[ReEDSConfig]):
                     )
 
         ramprate_data = self.read_data_file("ramprate")
-        if ramprate_data is not None:
-            ramprate_df = ramprate_data.collect()
-            if not ramprate_df.is_empty():
-                ramprate_df = ramprate_df.filter(pl.col("ramp_rate").is_not_null())
-                logger.trace(
-                    "Joining ramp rate data ({} techs) into generator datasets",
-                    ramprate_df.height,
-                )
-                variable_df = variable_df.join(ramprate_df, on="technology", how="left")
-                non_variable_df = non_variable_df.join(ramprate_df, on="technology", how="left")
-            else:
-                logger.debug("Ramp rate data is empty, skipping join")
-        else:
-            logger.debug("No ramp rate data found, skipping join")
+        technologies = sorted(
+            set(variable_df["technology"].to_list()) | set(non_variable_df["technology"].to_list())
+        )
+        ramp_result = resolve_generator_ramp_rates(
+            technologies,
+            ramprate_data.collect() if ramprate_data is not None else None,
+            upgrade_links.collect(),
+            self._tech_categories,
+            cooling_links=cooling_links.collect() if cooling_links is not None else None,
+        )
+        if ramp_result.is_err():
+            return Err(ramp_result.unwrap_err())
+        ramp_rates = ramp_result.unwrap()
+        variable_df = variable_df.join(ramp_rates, on="technology", how="left")
+        non_variable_df = non_variable_df.join(ramp_rates, on="technology", how="left")
 
         # Fill missing thermal heat rates with the technology-vintage mean or global default.
         default_heat_rate = self._defaults.get("default_values", {}).get("default_heat_rate")

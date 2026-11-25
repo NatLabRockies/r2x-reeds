@@ -1,5 +1,7 @@
 """Tests for ReEDS-specific reader registration."""
 
+import json
+from importlib.resources import files
 from pathlib import Path
 
 import polars as pl
@@ -7,6 +9,44 @@ import pytest
 
 from r2x_core import DataFile, DataStore, ReaderConfig
 from r2x_reeds.data_readers import register_gams_header_readers
+
+
+@pytest.mark.parametrize(
+    "name,filename,technology,base_technology",
+    [
+        (
+            "cooling_technology_links",
+            "i_coolingtech_watersource_link.csv",
+            "Gas-CC_r_fsa",
+            "Gas-CC",
+        ),
+        (
+            "cooling_upgrade_technology_links",
+            "i_coolingtech_watersource_upgrades_link.csv",
+            "CoalOldUns_r_fsa_coal-CCS_mod_r_fsa",
+            "CoalOldUns_coal-CCS_mod",
+        ),
+    ],
+)
+def test_cooling_relationship_inputs(tmp_path, name, filename, technology, base_technology):
+    inputs = tmp_path / "inputs_case"
+    inputs.mkdir()
+    (inputs / filename).write_text(f"*i,ii,ctt,wst\n{technology},{base_technology},r,fsa\n")
+    mappings = json.loads(files("r2x_reeds.config").joinpath("file_mapping.json").read_text())
+    record = next(mapping for mapping in mappings if mapping["name"] == name)
+    store = DataStore(tmp_path)
+    store.add_data([DataFile.from_record(record, folder_path=tmp_path)])
+
+    result = store.read_data(name).collect()
+
+    assert result.to_dicts() == [
+        {
+            "technology": technology.lower(),
+            "base_technology": base_technology.lower(),
+            "cooling_type": "r",
+            "water_source": "fsa",
+        }
+    ]
 
 
 @pytest.mark.parametrize(

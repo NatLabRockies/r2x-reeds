@@ -806,6 +806,74 @@
     }
   },
   {
+    "name": "cooling_technology_links",
+    "fpath": "inputs_case/i_coolingtech_watersource_link.csv",
+    "info": {
+      "description": "Cooling-specific technologies and their base technologies",
+      "is_input": true,
+      "is_optional": true
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "base_technology",
+          "cooling_type",
+          "water_source"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "base_technology": "string",
+        "cooling_type": "string",
+        "water_source": "string"
+      },
+      "select_columns": [
+        "technology",
+        "base_technology",
+        "cooling_type",
+        "water_source"
+      ]
+    }
+  },
+  {
+    "name": "cooling_upgrade_technology_links",
+    "fpath": "inputs_case/i_coolingtech_watersource_upgrades_link.csv",
+    "info": {
+      "description": "Cooling-specific upgrade technologies and their base technologies",
+      "is_input": true,
+      "is_optional": true
+    },
+    "reader": {
+      "kwargs": {
+        "new_columns": [
+          "technology",
+          "base_technology",
+          "cooling_type",
+          "water_source"
+        ]
+      }
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_schema": {
+        "technology": "string",
+        "base_technology": "string",
+        "cooling_type": "string",
+        "water_source": "string"
+      },
+      "select_columns": [
+        "technology",
+        "base_technology",
+        "cooling_type",
+        "water_source"
+      ]
+    }
+  },
+  {
     "name": "fom_unitspec_upgrades",
     "fpath": "inputs_case/inputs.h5",
     "info": {
@@ -1347,10 +1415,10 @@
     "name": "ramprate",
     "fpath": "inputs_case/ramprate.csv",
     "info": {
-      "description": "Ramp rate by technology",
+      "description": "Ramp rate by technology as a fraction of installed generator capacity per minute",
       "is_input": true,
       "is_optional": true,
-      "units": "fraction/hour"
+      "units": "fraction/min"
     },
     "reader": {
       "kwargs": {
@@ -1434,6 +1502,52 @@
         "i": "technology",
         "t": "year",
         "value": "round_trip_efficiency"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "psh_energy_capacity",
+    "fpath": "outputs/outputs.h5",
+    "info": {
+      "description": "Reported storage energy capacity; required for included positive-capacity PSH",
+      "is_input": false,
+      "is_optional": true,
+      "units": "MWh"
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_mapping": {
+        "i": "technology",
+        "v": "vintage",
+        "r": "region",
+        "t": "year",
+        "value": "psh_energy_capacity"
+      },
+      "filter_by": {
+        "year": "{solve_year}"
+      }
+    }
+  },
+  {
+    "name": "psh_reference_capacity",
+    "fpath": "outputs/outputs.h5",
+    "info": {
+      "description": "Reference cap_ivrt power basis for PSH duration, independent of use_degraded_capacity",
+      "is_input": false,
+      "is_optional": true,
+      "units": "MW"
+    },
+    "proc_spec": {
+      "lowercase": true,
+      "column_mapping": {
+        "i": "technology",
+        "v": "vintage",
+        "r": "region",
+        "t": "year",
+        "value": "reference_capacity"
       },
       "filter_by": {
         "year": "{solve_year}"

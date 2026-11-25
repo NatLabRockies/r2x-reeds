@@ -55,6 +55,11 @@ def test_reeds_config_defaults_to_non_degraded_capacity():
     assert config.use_degraded_capacity is False
 
 
+def test_reeds_config_psh_energy_capacity_duration_defaults_to_false():
+    config = ReEDSConfig(solve_year=2030, weather_year=2012)
+    assert config.use_psh_energy_capacity_duration is False
+
+
 def test_reeds_config_can_use_degraded_capacity():
     """The parser can opt into degradation-adjusted generator capacity."""
     config = ReEDSConfig(
