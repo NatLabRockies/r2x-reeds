@@ -11,7 +11,7 @@ from r2x_reeds.models.components import ReEDSEmission, ReEDSGenerator, ReEDSRegi
 from r2x_reeds.models.enums import EmissionType
 from r2x_reeds.sysmod import emission_cap
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def _build_system() -> tuple[System, ReEDSRegion]:
@@ -28,6 +28,7 @@ def _add_generator(
     technology: str = "coal",
     category: str = "coal",
     vintage: str | None = "2010",
+    solve_year: int | None = None,
 ) -> ReEDSGenerator:
     generator = ReEDSGenerator(
         name=name,
@@ -36,6 +37,7 @@ def _add_generator(
         capacity=150.0,
         category=category,
         vintage=vintage,
+        solve_year=solve_year,
     )
     system.add_component(generator)
     return generator
@@ -117,6 +119,23 @@ def test_emission_cap_scope_missing_emissions(caplog) -> None:
     assert not hasattr(system, "_emission_constraints")
 
 
+def test_emission_cap_missing_configured_file_preserves_error(tmp_path: Path) -> None:
+    system, region = _build_system()
+    generator = _add_generator(system, region, "coal_2010_west")
+    _attach_emission(system, generator)
+
+    result = emission_cap.add_emission_cap(
+        system,
+        emission_cap.EmissionCapConfig(co2_cap_fpath=tmp_path / "missing-cap.csv"),
+    )
+
+    assert result.is_err()
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
+
+
 @pytest.mark.parametrize(
     "switch_input",
     [
@@ -128,7 +147,7 @@ def test_emission_cap_scope_missing_emissions(caplog) -> None:
 def test_precombustion_scope(switch_input) -> None:
     """Switch-controlled precombustion addition updates generator emission rates."""
     system, region = _build_system()
-    generator = _add_generator(system, region, "tech_2020_west", technology="tech")
+    generator = _add_generator(system, region, "tech_2020_west", technology="tech", vintage="2020")
     _attach_emission(system, generator)
 
     emit_rates = pl.DataFrame(
@@ -146,6 +165,72 @@ def test_precombustion_scope(switch_input) -> None:
 
     emission_attr = system.get_supplemental_attributes_with_component(generator, ReEDSEmission)[0]
     assert emission_attr.rate == pytest.approx(1.5)
+
+
+def test_precombustion_rate_targets_parser_year_qualified_owner() -> None:
+    system, region = _build_system()
+    generators = {
+        year: _add_generator(
+            system,
+            region,
+            f"coal_2010_west_{year}",
+            solve_year=year,
+        )
+        for year in (2030, 2032)
+    }
+    for generator in generators.values():
+        _attach_emission(system, generator)
+
+    switches = pl.DataFrame({"switch_name": ["gsw_precombustion"], "value": ["True"]})
+    emit_rates = pl.DataFrame(
+        {
+            "tech": ["coal"],
+            "tech_vintage": ["2010"],
+            "region": ["west"],
+            "t": [2032],
+            "emission_source": ["precombustion"],
+            "emission_type": ["CO2"],
+            "rate": [0.3],
+        }
+    )
+
+    emission_cap._add_precombustion_if_enabled(system, switches, emit_rates)
+
+    rates_by_year = {
+        year: system.get_supplemental_attributes_with_component(generator, ReEDSEmission)[0].rate
+        for year, generator in generators.items()
+    }
+    assert rates_by_year[2030] == pytest.approx(1.0)
+    assert rates_by_year[2032] == pytest.approx(1.3)
+
+
+def test_precombustion_yearless_rate_is_shared_across_generator_states() -> None:
+    system, region = _build_system()
+    generators = [
+        _add_generator(system, region, f"coal_2010_west_{year}", solve_year=year) for year in (2030, 2032)
+    ]
+    for generator in generators:
+        _attach_emission(system, generator)
+
+    switches = pl.DataFrame({"switch_name": ["gsw_precombustion"], "value": ["True"]})
+    emit_rates = pl.DataFrame(
+        {
+            "tech": ["coal"],
+            "tech_vintage": ["2010"],
+            "region": ["west"],
+            "emission_source": ["precombustion"],
+            "emission_type": ["CO2"],
+            "rate": [0.3],
+        }
+    )
+
+    emission_cap._add_precombustion_if_enabled(system, switches, emit_rates)
+
+    rates = [
+        system.get_supplemental_attributes_with_component(generator, ReEDSEmission)[0].rate
+        for generator in generators
+    ]
+    assert rates == pytest.approx([1.3, 1.3])
 
 
 def test_precombustion_rates_scope() -> None:

@@ -11,7 +11,7 @@ Missing `meta.csv` fails version reading.
 
 `ReEDSUpgrader(path).upgrade(*, current_version=None, target_version=None,
 strategy=None, upgrader_context=None, upgrade_type=UpgradeType.FILE)` returns
-`Result[Path, str]`. It sorts registered steps by priority and name, filters by
+`Result[Path, Exception]`. It sorts registered steps by priority and name, filters by
 upgrade type and version eligibility, and stops on failure. Check the result
 before parsing or reusing the directory.
 

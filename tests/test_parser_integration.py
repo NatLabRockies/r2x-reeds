@@ -9,15 +9,14 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import polars as pl
 import pytest
 from infrasys import Component
 
-from r2x_core import DataStore
-from r2x_reeds import ReEDSConfig
 from r2x_reeds.models.components import ReEDSDemand, ReEDSGenerator
-from r2x_reeds.parser_utils import get_technology_category
+from tests.fixtures.data_fixtures import current_data_store, read_source_frame
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
 def test_system_has_buses(example_system) -> None:
@@ -48,13 +47,11 @@ def test_load_count_for_test_data(example_system) -> None:
     assert len(loads) == 11, "11 Load expected for test case."
 
 
-def test_renewable_generator_count(example_system, example_reeds_config) -> None:
+def test_renewable_generator_count(example_system) -> None:
     """Test expected renewable generator count for test_Pacific data."""
-    # Use classmethod API per migration guide
-    defaults = example_reeds_config.load_config()["defaults"]
     ren_gens = example_system.get_components(
         ReEDSGenerator,
-        filter_func=lambda comp: get_technology_category(comp.technology, defaults["tech_categories"]),
+        filter_func=lambda comp: comp.category in {"solar", "wind"},
     )
     assert len(list(ren_gens)) != 0.0
 
@@ -72,7 +69,7 @@ def test_renewable_generator_count(example_system, example_reeds_config) -> None
     ],
     ids=["load-profiles", "renewable-profiles", "hydro-profiles"],
 )
-def test_system_has_time_series(component_type, component_filter, example_system, example_data_store):
+def test_system_has_time_series(component_type, component_filter, example_system, data_store):
     for component in example_system.get_components(component_type, filter_func=component_filter):
         assert example_system.has_time_series(component), f"Time series not found for {component.label}"
 
@@ -86,21 +83,19 @@ def test_load_time_series_length(example_system) -> None:
 
 
 @pytest.mark.parametrize("region_name", ["p1", "p2", "p3"])
-def test_load_time_series_values(
-    region_name, example_data_store, example_system, example_reeds_config
-) -> None:
-    """Test that time series values match DataStore data for each region."""
-
-    load_profiles = example_data_store.read_data(
+def test_load_time_series_values(region_name, data_store, example_system, reeds_config) -> None:
+    """Test that time series values match DataReader data for each region."""
+    load_profiles = read_source_frame(
+        data_store,
         "load_profiles",
-        placeholders={
-            "solve_year": example_reeds_config.primary_solve_year,
-            "weather_year": example_reeds_config.primary_weather_year,
-        },
-    ).collect()
+        placeholders={"solve_year": 2032, "weather_year": reeds_config.primary_weather_year},
+    )
 
-    load_component = example_system.get_component(ReEDSDemand, region_name + "_load")
-    actual_profile = load_profiles[region_name].to_numpy()
+    selected_profiles = load_profiles.filter(
+        (pl.col("solve_year") == 2032) & (pl.col("datetime").dt.year() == reeds_config.primary_weather_year)
+    )
+    load_component = example_system.get_component(ReEDSDemand, f"{region_name}_load_2032")
+    actual_profile = selected_profiles[region_name].to_numpy()
     expected_profile = example_system.get_time_series(load_component).data
 
     np.testing.assert_allclose(
@@ -110,17 +105,42 @@ def test_load_time_series_values(
     )
 
 
-def test_load_profiles_exposes_one_solve_year_column(example_data_store, example_reeds_config) -> None:
+def test_load_profiles_exposes_one_solve_year_column(data_store, reeds_config) -> None:
     """Load profiles should expose the solve year without duplicate columns."""
-    load_profiles = example_data_store.read_data(
+    load_profiles = read_source_frame(
+        data_store,
         "load_profiles",
-        placeholders={
-            "solve_year": example_reeds_config.primary_solve_year,
-            "weather_year": example_reeds_config.primary_weather_year,
-        },
-    ).collect()
+        placeholders={"solve_year": 2032, "weather_year": reeds_config.primary_weather_year},
+    )
 
     assert load_profiles.columns.count("solve_year") == 1
+
+
+def test_load_profiles_reads_named_hdf5_year_index(tmp_path) -> None:
+    """Read ReEDS HDF5 files whose solve-year index is stored as index_year."""
+    inputs = tmp_path / "inputs_case"
+    inputs.mkdir()
+    with h5py.File(inputs / "load.h5", "w") as handle:
+        handle.create_dataset("columns", data=np.asarray(["p1"], dtype="S8"))
+        handle.create_dataset("data", data=np.asarray([[10.0], [20.0]], dtype=np.float32))
+        handle.create_dataset("index_year", data=np.asarray([2032, 2032], dtype=np.int64))
+        handle.create_dataset(
+            "index_datetime",
+            data=np.asarray(
+                ["2012-01-01T00:00:00", "2012-01-01T01:00:00"],
+                dtype="S19",
+            ),
+        )
+        handle.create_dataset("index_names", data=np.asarray(["year", "datetime"], dtype="S10"))
+
+    store = current_data_store(tmp_path)
+    load_profiles = read_source_frame(
+        store,
+        "load_profiles",
+        placeholders={"solve_year": 2032, "weather_year": 2012},
+    )
+
+    assert load_profiles.select("solve_year", "weather_year").unique().rows() == [(2032, 2012)]
 
 
 def test_load_profiles_reads_named_year_index(reeds_run_path: Path, tmp_path: Path) -> None:
@@ -139,12 +159,12 @@ def test_load_profiles_reads_named_year_index(reeds_run_path: Path, tmp_path: Pa
             data=np.asarray(["2012-01-01T00:00:00", "2012-01-01T01:00:00"], dtype=string_dtype),
         )
 
-    config = ReEDSConfig(solve_year=2035, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=run_path)
-    load_profiles = store.read_data(
+    store = current_data_store(run_path)
+    load_profiles = read_source_frame(
+        store,
         "load_profiles",
         placeholders={"solve_year": 2035, "weather_year": 2012},
-    ).collect()
+    )
 
     assert load_profiles["p1"].to_list() == [10.0, 20.0]
     assert load_profiles.columns.count("solve_year") == 1
@@ -164,11 +184,10 @@ def test_offshore_resource_output_accepts_missing_optional_columns(
         "50,7422,46.01,-124.05,p5,2,1,45.65,0,0,0,3303878.99\n"
     )
 
-    config = ReEDSConfig(solve_year=2035, weather_year=2012)
-    store = DataStore.from_plugin_config(config, path=run_path)
-    offshore_sites = store.read_data("df_sc_in_wind-ofs").collect()
+    store = current_data_store(run_path)
+    offshore_sites = read_source_frame(store, "df_sc_in_wind-ofs")
 
-    assert offshore_sites["resource_class"].to_list() == [2]
+    assert offshore_sites["resource_class"].to_list() == ["2"]
     assert offshore_sites["available_capacity"].to_list() == [45.65]
     assert offshore_sites["supply_curve_cost"].to_list() == [3303878.99]
 
@@ -226,7 +245,7 @@ def loadsite_run_path(tmp_path_factory, reeds_run_path):
 def loadsite_system(loadsite_run_path):
     """Build a system with loadsite_op + hmap_myr data included."""
 
-    from r2x_core import DataStore, PluginContext
+    from r2x_core import PluginContext
     from r2x_reeds import ReEDSConfig, ReEDSParser
 
     config = ReEDSConfig(
@@ -235,7 +254,7 @@ def loadsite_system(loadsite_run_path):
         case_name="test",
         scenario="base",
     )
-    store = DataStore.from_plugin_config(config, path=loadsite_run_path)
+    store = current_data_store(loadsite_run_path)
     ctx = PluginContext(config=config, store=store)
     parser = ReEDSParser.from_context(ctx)
     ctx = parser.run(ctx=ctx)
@@ -247,25 +266,18 @@ def loadsite_system(loadsite_run_path):
 @pytest.fixture(scope="session")
 def loadsite_base_profiles(loadsite_run_path):
     """Raw load_profiles DataFrame from the loadsite run (before increment)."""
-    from r2x_core import DataStore
-    from r2x_reeds import ReEDSConfig
-
-    config = ReEDSConfig(
-        solve_year=2032,
-        weather_year=2012,
-        case_name="test",
-        scenario="base",
-    )
-    store = DataStore.from_plugin_config(config, path=loadsite_run_path)
-    return store.read_data(
+    store = current_data_store(loadsite_run_path)
+    profiles = read_source_frame(
+        store,
         "load_profiles",
         placeholders={"solve_year": 2032, "weather_year": 2012},
-    ).collect()
+    )
+    return profiles.filter((pl.col("solve_year") == 2032) & (pl.col("datetime").dt.year() == 2012))
 
 
 def test_loadsite_not_applied_during_parse_p4(loadsite_system, loadsite_base_profiles) -> None:
     """p4 load remains equal to the base profile until optimal siting sysmod is applied."""
-    p4 = loadsite_system.get_component(ReEDSDemand, "p4_load")
+    p4 = loadsite_system.get_component(ReEDSDemand, "p4_load_2032")
     actual = loadsite_system.get_time_series(p4).data
     base = loadsite_base_profiles["p4"].to_numpy()[:8760]
     np.testing.assert_allclose(actual, base, rtol=1e-5)
@@ -273,7 +285,7 @@ def test_loadsite_not_applied_during_parse_p4(loadsite_system, loadsite_base_pro
 
 def test_loadsite_not_applied_during_parse_p5(loadsite_system, loadsite_base_profiles) -> None:
     """p5 load remains equal to the base profile until optimal siting sysmod is applied."""
-    p5 = loadsite_system.get_component(ReEDSDemand, "p5_load")
+    p5 = loadsite_system.get_component(ReEDSDemand, "p5_load_2032")
     actual = loadsite_system.get_time_series(p5).data
     base = loadsite_base_profiles["p5"].to_numpy()[:8760]
     np.testing.assert_allclose(actual, base, rtol=1e-5)
@@ -281,7 +293,7 @@ def test_loadsite_not_applied_during_parse_p5(loadsite_system, loadsite_base_pro
 
 def test_loadsite_not_applied_to_p1(loadsite_system, loadsite_base_profiles) -> None:
     """p1 has no loadsite entry — its time series must equal the base profile exactly."""
-    p1 = loadsite_system.get_component(ReEDSDemand, "p1_load")
+    p1 = loadsite_system.get_component(ReEDSDemand, "p1_load_2032")
     actual = loadsite_system.get_time_series(p1).data
     base = loadsite_base_profiles["p1"].to_numpy()[:8760]
     np.testing.assert_allclose(actual, base, rtol=1e-5)
@@ -289,7 +301,7 @@ def test_loadsite_not_applied_to_p1(loadsite_system, loadsite_base_profiles) -> 
 
 def test_loadsite_data_does_not_change_parser_output(loadsite_system, loadsite_base_profiles) -> None:
     """Presence of loadsite rows does not affect parser-only load profiles."""
-    p4 = loadsite_system.get_component(ReEDSDemand, "p4_load")
+    p4 = loadsite_system.get_component(ReEDSDemand, "p4_load_2032")
     actual = loadsite_system.get_time_series(p4).data
     base = loadsite_base_profiles["p4"].to_numpy()[:8760]
     np.testing.assert_allclose(actual, base, rtol=1e-5)

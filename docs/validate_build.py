@@ -57,7 +57,7 @@ def validate() -> None:
         checked += 1
     api = pages[BUILD / "reference/api/reedsconfig/index.html"]
     assert api.sidebar_button and "starlight__sidebar" in api.ids
-    assert "primary_solve_year" in api.ids
+    assert "solve_year" in api.ids
     edit_prefix = "https://github.com/NatLabRockies/r2x-reeds/edit/"
     generated_pages = {
         path: page

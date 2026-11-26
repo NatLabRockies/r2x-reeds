@@ -13,7 +13,7 @@ from loguru import logger
 from pydantic import Field
 from rust_ok import Err, Ok, Result
 
-from r2x_core import DataStore, PluginConfig, expose_plugin
+from r2x_core import PluginConfig, expose_plugin
 from r2x_reeds.models import ReEDSGenerator
 
 from .utils import _coerce_path, _deduplicate_records
@@ -58,13 +58,15 @@ class BreakGensConfig(PluginConfig):
 def break_generators(
     system: System,
     config: BreakGensConfig,
-) -> Result[System, str]:
+) -> Result[System, Exception]:
     """Split oversized generators into multiple reference-sized units."""
     reference_result = _load_reference_units(config.reference_units)
     if reference_result.is_err():
         error = reference_result.unwrap_err()
+        if error is None:
+            return Err(RuntimeError("Failed to load reference units"))
         logger.error("Failed to load reference units: {}", error)
-        return Err(str(error) if error else "Failed to load reference units")
+        return Err(error)
 
     system = _break_system_generators(
         system=system,
@@ -259,9 +261,9 @@ def _load_reference_units(
         case Ok(path_value_result):
             path_value = path_value_result
             try:
-                reference_data = DataStore.load_file(path_value)
-            except Exception as exc:  # pragma: no cover - propagate load failures
-                return Err(exc)
+                reference_data = json.loads(path_value.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as error:
+                return Err(error)
         case Err(error):
             if error is None:
                 return Err(RuntimeError("Failed to load reference units"))

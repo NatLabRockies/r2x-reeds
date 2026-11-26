@@ -44,5 +44,5 @@ Build the Astro site with `npm ci` and `npm run build` from `docs/`.
 API pages and member navigation are generated from source during prebuild. Preview the
 production output to check links and Pagefind search. See
 [docs/README.md](https://github.com/NatLabRockies/r2x-reeds/blob/main/docs/README.md).
-Keep changelogs canonical, link to actual source revisions and avoid manufacturing
-versioned site archives. Update examples when public contracts change.
+Keep release notes in `CHANGELOG.md`, link to actual source revisions and avoid
+manufacturing versioned site archives. Update examples when public contracts change.

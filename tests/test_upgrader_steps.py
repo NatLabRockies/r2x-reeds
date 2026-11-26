@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from typing import Any
 
 import h5py
 import pytest
 
+from r2x_reeds.upgrader import upgrade_steps
 from r2x_reeds.upgrader.data_upgrader import ReEDSUpgrader, ReEDSVersionDetector
 from r2x_reeds.upgrader.helpers import LEGACY_VERSION
 from r2x_reeds.upgrader.upgrade_steps import (
@@ -269,6 +271,93 @@ def test_upgrade_transmission_cost_preserves_current_fields_with_starred_region(
                 "binwidth_USD2004": "50",
             }
         ]
+
+
+@pytest.mark.parametrize(
+    ("contents", "message"),
+    [
+        ("", "CSV header is missing"),
+        ("r,rr\np1,p2\n", "missing legacy column"),
+    ],
+    ids=["empty-header", "missing-legacy-column"],
+)
+def test_upgrade_transmission_cost_rejects_invalid_legacy_csv(
+    tmp_path: Path,
+    contents: str,
+    message: str,
+) -> None:
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    (inputs_case / "transmission_cost_ac.csv").write_text(contents)
+
+    with pytest.raises(ValueError, match=message):
+        upgrade_transmission_cost_format(tmp_path)
+
+
+def test_upgrade_transmission_cost_cleans_temporary_file_on_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "transmission.csv"
+    original_contents = "legacy\nvalue\n"
+    path.write_text(original_contents)
+
+    def fail_chmod(*_args: object, **_kwargs: object) -> None:
+        raise OSError("test chmod failure")
+
+    monkeypatch.setattr(upgrade_steps.os, "chmod", fail_chmod)
+
+    with pytest.raises(OSError, match="test chmod failure"):
+        upgrade_steps._rewrite_transmission_csv(path, {"current": "legacy"})
+
+    assert path.read_text() == original_contents
+    assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.parametrize("invalid_row", [False, True], ids=["invalid-header", "invalid-row"])
+def test_upgrade_unitspec_upgrades_rejects_malformed_csv(tmp_path: Path, invalid_row: bool) -> None:
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    csv_path = inputs_case / "unitspec_upgrades.csv"
+    csv_path.write_text("*i\ntechnology,extra\n" if invalid_row else "technology,extra\n")
+    expected_message = "expected one value per row" if invalid_row else "expected a single"
+
+    with pytest.raises(ValueError, match=expected_message):
+        upgrade_unitspec_upgrades_hdf5(tmp_path)
+
+
+@pytest.mark.parametrize("complete_group", [False, True], ids=["incomplete-group", "complete-group"])
+def test_upgrade_unitspec_upgrades_handles_group_created_during_conversion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    complete_group: bool,
+) -> None:
+    inputs_case = tmp_path / "inputs_case"
+    inputs_case.mkdir()
+    (inputs_case / "unitspec_upgrades.csv").write_text("*i\ntechnology\n")
+    h5_path = inputs_case / "inputs.h5"
+    original_h5_file = h5py.File
+
+    def create_group_before_append(
+        filename: str | Path,
+        mode: str = "r",
+        **kwargs: Any,
+    ) -> Any:
+        if Path(filename) == h5_path and mode == "a":
+            with original_h5_file(filename, mode="w") as bundle:
+                group = bundle.create_group("unitspec_upgrades")
+                if complete_group:
+                    group.create_dataset("columns", data=["i"])
+                    group.create_dataset("i", data=["technology"])
+        return original_h5_file(filename, mode=mode, **kwargs)
+
+    monkeypatch.setattr(upgrade_steps.h5py, "File", create_group_before_append)
+
+    if complete_group:
+        assert upgrade_unitspec_upgrades_hdf5(tmp_path) == tmp_path
+    else:
+        with pytest.raises(ValueError, match="missing required datasets"):
+            upgrade_unitspec_upgrades_hdf5(tmp_path)
 
 
 def test_upgrade_unitspec_upgrades_csv_preserves_existing_hdf5_groups(tmp_path: Path) -> None:

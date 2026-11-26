@@ -4,197 +4,268 @@ title: Configuration Reference
 
 ## ReEDSConfig
 
-| Package field                  | Type                  | Default  | Interpretation                                                 |
-| ------------------------------ | --------------------- | -------- | -------------------------------------------------------------- |
-| `solve_year`                   | `int` or `list[int]`  | required | Capacity/investment selection                                  |
-| `weather_year`                  | `int` or `list[int]`  | required | Profile input selection                                        |
-| `case_name`                    | `str` or `None`       | `None`   | Optional case label                                            |
-| `scenario`                     | `str`                 | `"base"` | Scenario label                                                 |
-| `excluded_techs`               | `list[str]` or `None` | `None`   | `None` uses package exclusions; an explicit list replaces them |
-| `use_degraded_capacity`        | `bool`                | `False`  | Select degradation-adjusted online capacity                    |
-| `use_psh_energy_capacity_duration` | `bool`             | `False`  | Derive PSH hours from reported energy and power capacity        |
-| `drop_gen_capacity_threshold`  | `float`               | `0.0`    | Drop generators below this installed capacity in MW            |
-| `apply_cf_adjustment`          | `bool`                | `False`  | Apply renewable capacity-factor adjustment to hourly profiles  |
-| `apply_ilr_adjustment`         | `bool`                | `False`  | Scale PV hourly profiles by their inverter loading ratio       |
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `solve_year` | `int \| list[int]` | required | Capacity and investment years to parse |
+| `weather_year` | `int \| list[int]` | required | Weather years used for profiles |
+| `case_name` | `str \| None` | `None` | Optional case label |
+| `scenario` | `str` | `"base"` | Scenario label |
+| `generator_capacity_source` | `Literal["standard", "degraded"]` | `"standard"` | Selects `online_capacity` or `online_capacity_degraded`; the chosen source does not fall back if missing |
+| `generator_classification_overrides` | `list[GeneratorClassificationOverride]` | `[]` | Optional exact technology-specific classification exceptions |
+| `excluded_techs` | `list[str] \| None` | `None` | `None` uses package exclusions; an explicit list, including `[]`, replaces them |
+| `use_psh_energy_capacity_duration` | `bool` | `False` | Derive PSH hours from reported energy and reference power capacity |
+| `drop_gen_capacity_threshold` | `float` | `0.0` | Drop generators below this installed-capacity threshold in MW |
+| `apply_cf_adjustment` | `bool` | `False` | Apply capacity-factor adjustments to renewable profiles |
+| `apply_ilr_adjustment` | `bool` | `False` | Scale PV capacity-factor profiles by inverter loading ratio |
+| `config_path_override` | `Path \| None` | `None` | Complete configuration directory override |
 
-`primary_solve_year` and `primary_weather_year` return the first value when a list
-is supplied. The CLI tutorial uses scalar years so downstream plugins receive one
-selection. Config validation is not proof that the input run contains that year;
-the parser validates mapped data during its lifecycle.
+A parsed `System` retains each configured solve year as a separate state.
+Year-qualified component identities and `solve_year` fields let consumers select
+one state with `System.get_components(..., filter_func=...)`. The parser
+validates requested years against mapped data. Load profiles must cover every
+requested solve/weather-year pair. The weather calendar uses the first
+configured weather year and its first 8,760 hourly timestamps.
 
-The CLI's `path` locates the data store. It is **not** a `ReEDSConfig` field in
-Python: pass it to `DataStore.from_plugin_config(config, path=run_path)` instead.
-See the [tested parsing tutorial](/r2x-reeds/tutorials/parse-run/) for the complete
-context construction and [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/86db7099fd409cff64f96e51b09a32a010b13cf5/src/r2x_reeds/plugin_config.py).
+The CLI's `path` locates the data store. It is not a `ReEDSConfig` field in
+Python. Pass it to `DataStore(path=run_path)`. The directory must contain the
+ReEDS run inputs, such as `meta.csv`, `inputs_case/` and `outputs/`. The parser
+loads its file mapping during preparation. See the
+[parsing tutorial](/r2x-reeds/tutorials/parse-run/) for context construction and
+the [public config source](https://github.com/NatLabRockies/r2x-reeds/blob/main/src/r2x_reeds/plugin_config.py).
+For direct parser setup, configure the store's upgrades from the plugin config:
+`store.configure_upgrades(plugin_config=reeds_config)`.
+The parser loads its configured readers itself. The removed
+`register_modeled_years_reader` function is no longer needed.
 
-`ReEDSConfig` is the parser configuration model.
+## Configuration assets
 
-Key fields:
+The package configuration is in `src/r2x_reeds/config/`. `defaults.json` holds
+policy data, `file_mapping.json` declares native inputs and source availability,
+`table_mapping.json` assembles named tables, and `parser_rules.json` declares
+component and time-series construction. Translation, export and modifier assets
+are separate concerns.
 
-- `solve_year`: int or list of int
-- `weather_year`: int or list of int
-- `case_name`: optional string
-- `scenario`: optional string, default `base`
-- `use_degraded_capacity`: bool, default `False`; choose degradation-adjusted `cap_deg_ivrt` instead of `cap_ivrt` for online capacity.
-- `use_psh_energy_capacity_duration`: bool, default `False`; opt into reported-energy-based PSH duration with strict source validation.
-- `drop_gen_capacity_threshold`: float, default `0.0`; omit generators with installed capacity strictly below this value in MW.
-- `apply_cf_adjustment`: bool, default `False`; multiply renewable profiles by generators' `capacity_factor_adjustment` values.
-- `apply_ilr_adjustment`: bool, default `False`; multiply PV profiles by generators' `inverter_loading_ratio` values to account for DC-based capacity factors.
-- `excluded_techs`: optional list of technologies to exclude. When omitted, the list from `defaults.json` is used.
+### `defaults.json`
 
-Convenience properties:
+This file provides typed domain values consumed by configuration placeholders,
+including default thermal values, resource source names, reserve products and
+reserve-provider exclusions. Generator classifications derive from the ReEDS
+technology-subset input. `ReEDSConfig.generator_classification_overrides`
+provides optional exact exceptions. An explicit `excluded_techs` list in
+`ReEDSConfig` overrides the package list, even when it is empty.
 
-- `primary_solve_year`
-- `primary_weather_year`
+### `file_mapping.json`
 
-### Renewable profile adjustments
+This asset declares physical ReEDS inputs, inline tables, and validation sources.
+Physical declarations own native paths, column types, and input-boundary
+renaming or filtering. Prepared-source declarations validate assembled tables.
+`table_mapping.json` handles transformations and ordered source precedence.
 
-With both flags disabled, the parser constructs hourly `max_active_power` in MW
-as the source capacity-factor profile multiplied by generator capacity.
-`apply_cf_adjustment=True` additionally multiplies renewable profiles by the generator's
-`capacity_factor_adjustment`, read through the `renewable_cf_adjustment` mapping
-from the ReEDS `cf_adj_t` dataset for the selected solve year.
-`apply_ilr_adjustment=True` additionally multiplies PV profiles by `inverter_loading_ratio`,
-read through the `ilr` mapping from the ReEDS `ilr` dataset. The current PV
-selection includes technology names containing `pv`, including `distpv`.
-These datasets are read from `outputs/outputs.h5`, with the CSV fallback described below.
+#### Renewable profile adjustments
 
-Since renewable generators are aggregated into a single, representative generator by
-region, renewable profile adjustments use capacity-weighted average values of
-`capacity_factor_adjustment` and `inverter_loading_ratio` for each region.
+With both flags disabled, hourly `max_active_power` is the capacity-factor
+profile multiplied by generator capacity. `apply_cf_adjustment=True` also
+multiplies renewable profiles by `capacity_factor_adjustment`, and
+`apply_ilr_adjustment=True` multiplies PV profiles by `inverter_loading_ratio`.
+The adjustments use the capacity-weighted values attached to each aggregated
+renewable generator. The flags are independent; when both are enabled, both
+factors apply to PV profiles. Missing required adjustment values are reported
+as input errors. Neither flag changes installed capacity, and ILR-adjusted
+profiles are not clipped to generator capacity.
 
-The flags are independent; when both are enabled, both multipliers apply to PV
-profiles. Enabling an adjustment requires its corresponding generator values to
-be present. Neither flag changes installed generator capacity. Capacity selection
-remains controlled separately by `use_degraded_capacity`. The parser warns if an
-ILR-adjusted PV profile exceeds generator capacity; it does not clip the profile.
-Leave an adjustment disabled if the source profile already includes that factor
-to avoid applying it twice.
+#### Pumped-storage hydro duration
 
-### Pumped-storage hydro duration
+Set `use_psh_energy_capacity_duration: true` to derive pumped-storage duration
+from reported `cap_energy_ivrt` (MWh) divided by matching `cap_ivrt` (MW). Matching
+uses technology, vintage, region, and solve year. The derived duration overrides
+the technology-level duration; battery and other storage duration handling is
+unchanged. With the option disabled (the default), these reports are not required.
 
-Set `use_psh_energy_capacity_duration: true` in the parser configuration to enable
-reported-energy-based PSH duration:
+When enabled, both reports are required for included, positive-capacity PSH after
+technology exclusions and the configured capacity threshold. Missing reports or
+matching rows, duplicate keys, and null, nonpositive, or nonfinite values fail
+explicitly. There is no technology-duration fallback. The reference denominator
+is `cap_ivrt`, even when `generator_capacity_source="degraded"`; selected power
+must match that reference within `rtol=1e-6` and `atol=1e-6 MW`.
+The table mapping selects the HDF5 or CSV report, and the parser resolves
+duration before generator splitting while leaving `energy_capacity` unset.
 
-```yaml
-use_psh_energy_capacity_duration: true
+Physical inputs retain their availability semantics. A missing optional file is
+absent; a present empty file is still present; malformed present data is an
+error. Ordered source precedence uses table operations such as `first_present`
+and `first_nonempty`; these differ intentionally for defaults and market data.
+A conditional `required_when` rule makes selected optional inputs required when
+a previously declared policy table matches. See the core guides for [DataFile
+and reader configuration](https://natlabrockies.github.io/r2x-core/how-tos/configure-data-files/)
+and [ordered table processing](https://natlabrockies.github.io/r2x-core/references/processors/).
+
+The load table mapping uses the same physical source for peak components and
+profile rows. It selects requested solve/weather pairs before unpivoting the
+runtime region headers. Peaks include all selected weather years, while profile
+rows retain their solve-year and weather-year partitions. The input mapping
+derives the weather-year label from native timestamps, and the table mapping
+constructs solve-year-qualified load owner names. The parser validates coverage
+for every requested pair and rejects all-null region/solve-year peaks.
+
+`generator_capacity_source` selects `online_capacity` (`"standard"`) or
+`online_capacity_degraded` (`"degraded"`). Replace the removed
+`use_degraded_capacity=True` setting with `generator_capacity_source="degraded"`.
+Use `"standard"` for the former `False` setting. The `primary_solve_year` property
+was also removed. Use `solve_year` directly and select an element explicitly
+when it is a list. The chosen capacity source never silently falls back when
+missing. The resource supply-curve declarations select a source
+per technology before joining candidate enrichments, so candidate-only sites do
+not become new resource sites when a primary source is populated.
+
+To customize a mapping, copy the complete package configuration directory and
+set `config_path_override`. The override is a directory, not a partial JSON
+fragment:
+
+```python doctest
+>>> from pathlib import Path
+>>> from shutil import copytree
+>>> from tempfile import TemporaryDirectory
+>>> from r2x_reeds import ReEDSConfig
+>>> with TemporaryDirectory() as folder:
+...     config_path = Path(folder) / "reeds-config"
+...     _ = copytree(ReEDSConfig.package_config_path(), config_path)
+...     config = ReEDSConfig(solve_year=2032, weather_year=2012, config_path_override=config_path)
+...     assert config.fmap_path.is_file()
+...
 ```
 
-The default is `False`: the parser preserves the original duration workflow,
-does not read or require the PSH energy/reference reports for this feature,
-and does not perform its power-basis validation or duration override. This
-allows runs without `cap_energy_ivrt` to retain their existing duration sources
-(which can include a generic 12-hour PSH duration). Existing parser requirements
-still apply; disabling the feature does not guarantee compatibility with all
-older runs.
+For a persistent override, use a directory you control instead of the temporary
+one. Pass the configured `ReEDSConfig` to the parser as shown in the
+[parsing tutorial](/r2x-reeds/tutorials/parse-run/).
+The package excludes `can-imports`, `can-exports`, `electrolyzer`, `smr`, and
+`smr_ccs` from general generator parsing by default. An explicit
+`excluded_techs` list replaces that package list, so `excluded_techs: []` keeps
+all user-configurable exclusions empty. Technologies marked `consume` in the
+ReEDS technology subset table are still omitted from general generator
+classification because they are not generation components. Excluding
+`can-exports` does not affect `add-exports`, which adds export energy to
+existing regional demand profiles.
 
-When enabled, for included, positive-capacity technologies in the `pumped_storage` category,
-the parser derives `storage_duration` in hours from reported
-`cap_energy_ivrt` (MWh) divided by matching `cap_ivrt` (MW). Matching requires
-technology, vintage, region, and selected solve year; no weather-year alignment
-or hourly expansion is involved. The derived duration replaces the
-technology-level duration, including a generic 12-hour value. Battery and other
-non-PSH storage duration handling is unchanged.
+Set `generator_capacity_source` on `ReEDSConfig` to choose standard or degraded
+capacity. The `generator_rows` table is explicitly materialized after projection
+for reuse by its consumers. This retains the table in memory and can surface data
+errors during assembly. Edit the copied `file_mapping.json` only when changing
+input layouts or source recipes, and edit `defaults.json` for packaged policy
+values. Keep all required assets in the directory. Core's
+[parser construction guide](https://natlabrockies.github.io/r2x-core/how-tos/build-parsers/)
+describes the shared typed output instructions.
 
-The parser preserves the existing baseline-first, detailed-duration-second
-logic, then applies the PSH override after the optional joins using the
-configured `pumped_storage` technology category. Moving the PSH dataset within
-the optional-data dictionary does not change this precedence. The temporary
-`psh_storage_duration` column is removed after resolution. Existing missing-duration
-filtering runs afterward so it cannot discard PSH before the override.
+### Update a copied configuration
 
-The `psh_energy_capacity` and `psh_reference_capacity` mappings read the
-`cap_energy_ivrt` and `cap_ivrt` groups in `outputs/outputs.h5`, respectively,
-with fallback to `outputs/cap_energy_ivrt.csv` and `outputs/cap_ivrt.csv`.
-With the feature enabled, these reports are required when PSH survives technology exclusions and the
-configured capacity threshold. Missing reports or matching rows, duplicate
-matching keys, and null, nonpositive, or nonfinite values fail explicitly.
-There is no automatic technology-duration fallback or reconstruction for older
-ReEDS runs when the feature is enabled.
-The upgrader does not generate a missing energy-capacity report.
+> Warning: A configuration directory copied from an earlier ReEDS version is
+> not complete for the current parser. Adding `table_mapping.json` alone is not
+> enough. Keep the required validation records in `file_mapping.json`.
 
-`use_degraded_capacity=True` still selects `cap_deg_ivrt` for generator power.
-With the feature enabled, PSH duration uses `cap_ivrt` as its reference denominator. Selected PSH
-power must match that reference with `rtol=1e-6` and `atol=1e-6 MW`; otherwise
-parsing fails instead of silently mixing power bases. In the inspected ReEDS
-report equations, PSH `cap_ivrt` equals `cap_deg_ivrt`. The energy report reflects
-the assumptions used by the source run, not necessarily newer detailed PSH data.
+1. Keep the existing override unchanged. Copy the current package configuration
+   to a new directory as shown above.
+2. Reapply input paths and native column declarations in `file_mapping.json`.
+   Reapply policy values in `defaults.json`, table transformations in
+   `table_mapping.json`, and output mappings in `parser_rules.json`.
+3. Replace ReEDS-specific processing handlers with table operations. There is no
+   automatic conversion of custom mappings.
+4. Run the parser with the new override on a representative case. Compare the
+   component counts and time-series values before switching to the new directory.
 
-The parser leaves optional `energy_capacity` unset and resolves duration before
-`break-gens`. Splitting copies duration and changes power, so each child's
-implied energy is its own MW times hours. Total implied energy is conserved when
-all power is retained; any deliberately discarded remainder also discards its
-corresponding energy. Explicit energy capacities supplied by other workflows
-are outside this change and are not proportionally allocated by the splitter.
+Physical source names changed for these inputs. Some prior names still identify
+assembled tables, so update physical-input references rather than replacing
+names indiscriminately:
 
-## Parser Configuration Assets
+| Previous physical source | Current physical source |
+| --- | --- |
+| `hydro_cf` | `hydro_cf_input` |
+| `hydro_capacity_adjustment` | `hydro_capacity_adjustment_input` |
+| `hydrogen_production_capacity` | `hydrogen_production_capacity_input` |
+| `hydrogen_production_annual_load` | `hydrogen_production_annual_load_input` |
+| `hydrogen_production_load` | `hydrogen_production_load_input` |
 
-The parser loads and applies these JSON assets from `src/r2x_reeds/config/`.
+Code that reads prepared rows directly must use
+`DataReader.read_and_assemble_sources` with the current file mapping, table
+mapping, backend, and required placeholders. `read_data_files` alone does not
+produce assembled outputs such as `generator_rows` or `load_peaks`.
 
-## defaults.json
+### `table_mapping.json`
 
-Defines package-level parser defaults including:
+This JSON list declares ordered, named table operations after input decoding.
+Joins, reshaping, grouping, and sorting stay in the mapping; `parser_rules.json`
+only maps resulting columns to model fields.
+For the dynamic load headers, omitting `unpivot.columns` selects each source
+column outside `index` and uses its exact native header as the region label:
 
-- `excluded_techs`
-- `tech_categories`
-- `category_class_mapping`
-- reserve defaults (`default_reserve_types`, `reserve_duration`, `reserve_time_frame`, etc.)
-- unit conversion constants
+```json
+{
+  "name": "load_profile_values",
+  "source": "load_profiles",
+  "operations": [
+    {
+      "operation": "join",
+      "source": "requested_solve_weather_year_rows",
+      "how": "inner",
+      "on": ["solve_year", "weather_year"],
+      "columns": []
+    },
+    {
+      "operation": "unpivot",
+      "index": ["datetime", "solve_year", "weather_year"],
+      "variable_name": "region",
+      "value_name": "value"
+    },
+    {
+      "operation": "join",
+      "source": "load_owner_names",
+      "how": "left",
+      "on": ["region", "solve_year"],
+      "columns": ["owner_name"]
+    }
+  ]
+}
+```
 
-Notable default behavior:
+The load mapping derives `load_peaks` with a max over each region and solve
+year, and retains one sorted `load_profile_rows` table for time-series
+construction. The `load_owner_names` table constructs `owner_name` from the
+region and solve year. Copy the complete package configuration
+before changing mappings so every referenced source and output instruction is
+present.
 
-- `electrolyzer` is excluded from general generator parsing (`excluded_techs`) to keep purchaser-load modeling explicit.
-- `can-imports` is excluded by default. To include it for a run, provide an `excluded_techs` list that omits `can-imports`.
-- `can-exports` is excluded by default from generator parsing. This does not affect `add-exports`, which adds export energy to existing regional demand profiles.
+### `parser_rules.json`
 
-## file_mapping.json
+This asset is a JSON list of typed core instructions. Each instruction names a
+prepared source and declares one output kind:
 
-Defines named datasets and how each is read and normalized.
+- `component` maps source columns to model fields and can resolve references to
+  previously constructed components.
+- `supplemental_attribute` maps source columns to an attribute model and its
+  owner components.
+- `time_series` selects values, a regular or column-based time axis, owners,
+  and optional literal or row-derived metadata.
 
-Each entry includes:
+For example, the hierarchy instruction maps `region_id` to the component's
+`name` field:
 
-- `name`: logical dataset name
-- `fpath`: relative file path in the ReEDS run
-- `info`: metadata (`is_input`, `is_optional`, `units`, etc.)
-- optional `reader` settings
-- `proc_spec`: column mapping, filtering, schema, and pivot rules
+```json
+{
+  "kind": "component",
+  "source": "hierarchy",
+  "component_type": "ReEDSRegion",
+  "fields": {"name": "region_id"}
+}
+```
 
-Output bundle behavior:
+An instruction's `fields` map target field names to source column names.
+Configuration validation checks instruction kinds and field/reference shapes;
+the core builder validates model values, resolves references, and attaches
+series. See the core [parser construction guide](https://natlabrockies.github.io/r2x-core/how-tos/build-parsers/)
+for the complete instruction contract.
 
-- Output datasets that previously pointed to `outputs/*.csv` now point to `outputs/outputs.h5`
-- The parser reads `outputs.h5` once per run and caches dataset groups for reuse
-- For backward compatibility, if `outputs.h5` (or a requested group) is missing, parser read paths fall back to legacy `outputs/<dataset>.csv` when available
+## Placeholder values
 
-Examples of purchaser-load related datasets:
-
-- `hydrogen_production_capacity`
-- `hydrogen_production_load`
-- `hydrogen_production_annual_load`
-- `loadsite_op`
-- `hour_map_myr`
-
-## parser_rules.json
-
-Maps normalized rows to component constructor fields.
-
-Important sections:
-
-- Generator families (`ReEDSThermalGenerator`, `ReEDSVariableGenerator`, `ReEDSStorage`, `ReEDSHydroGenerator`)
-- Load and transmission components
-- Reserve and emissions components
-- Consuming technology rules (`ReEDSConsumingTechnology`, `ReEDSElectrolyzerDemand`)
-
-Rule fields include:
-
-- `field_map`
-- `getters`
-- `defaults`
-
-## Runtime Placeholder Substitution
-
-When reading mapped data, parser placeholders are commonly resolved from `ReEDSConfig`:
-
-- `{solve_year}`
-- `{weather_year}`
-
-This allows one mapping specification to work across multiple scenarios and years.
+The parser substitutes configuration values such as `{solve_year}` and
+`{weather_year}` into the declared inputs, inline tables and processing
+expressions. Package defaults and domain rows are validated before those values
+are used. Keep policy values in the configuration assets rather than adding
+ReEDS-specific processing code.

@@ -212,3 +212,23 @@ def test_coerce_path_pathlike_object_returns_ok(tmp_path: Path) -> None:
 
     assert result.is_ok()
     assert result.unwrap() == test_file
+
+
+@pytest.mark.unit
+def test_read_tabular_frame_rejects_non_tabular_source(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Report a decoding failure instead of returning a success-shaped fallback."""
+    import r2x_reeds.sysmod.utils as utils
+
+    class Reader:
+        def read_data_files(self, *_args: object, **_kwargs: object) -> dict[str, object]:
+            return {}
+
+    input_path = tmp_path / "input.csv"
+    input_path.touch()
+    monkeypatch.setattr(utils, "DataReader", Reader)
+
+    with pytest.raises(TypeError, match="did not decode as a tabular source"):
+        utils.read_tabular_frame(input_path, name="input")

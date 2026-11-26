@@ -12,18 +12,23 @@ separate packages makes it possible to inspect where a value changed.
 ```mermaid
 flowchart TD
   A["ReEDS inputs and outputs"] --> P["r2x-reeds<br/>parse source semantics"]
-  C["defaults.json<br/>file_mapping.json<br/>parser_rules.json"] --> P
+  C["defaults.json<br/>file_mapping.json<br/>table_mapping.json<br/>parser_rules.json"] --> P
   P --> S["ReEDS component graph<br/>and attached time series"]
   S --> M["Optional sysmod functions<br/>scenario and unit choices"]
   M --> T["R2X translation plugin<br/>target component mappings"]
   T --> X["Target exporter<br/>native target files"]
 ```
 
-The parser's dataset mappings define names, source paths and preprocessing;
-its rules map normalized rows into ReEDS component fields. The defaults file
-supplies exclusions, categories and model constants. Read [configuration](/r2x-reeds/reference/configuration/)
-before overriding one of these assets: a filename change and a modeling change
-belong to different boundaries.
+The parser's `file_mapping.json` declares physical sources, input availability,
+and validation of prepared tables. `table_mapping.json` assembles named tables
+with ordered generic operations and ReEDS policy data. Typed instructions in
+`parser_rules.json` map prepared rows to components, references, supplemental
+attributes and time series. `defaults.json` supplies
+domain policy such as exclusions and category patterns. Core executes generic
+table and output instructions; ReEDS keeps its domain choices in the app and
+configuration. Read [configuration](/r2x-reeds/reference/configuration/)
+before overriding an asset: a path change and a modeling change belong to
+different boundaries.
 
 [ReEDS-to-PLEXOS](https://github.com/NatLabRockies/R2X/tree/main/packages/r2x-reeds-to-plexos)
 and [ReEDS-to-Sienna](https://github.com/NatLabRockies/R2X/tree/main/packages/r2x-reeds-to-sienna)
@@ -54,12 +59,14 @@ series on the same component answer different questions; inspect both.
 
 ## Solve year versus weather year
 
-`solve_year` selects an investment/capacity snapshot. `weather_year` selects the
-weather-driven profile inputs. The Pacific fixture uses a 2032 fleet with 2012
-profiles; its demand series therefore starts in 2012. Do not infer a solve year
-from the series timestamp alone. The config accepts lists, but downstream
-transforms/exporters may accept only scalar selections; start with one of each
-as in the [tutorial](/r2x-reeds/tutorials/parse-run/).
+`solve_year` identifies an investment/capacity state. `weather_year` selects the
+weather-driven profile inputs. A `System` built with several solve years keeps
+separate year-qualified component states and profile associations. Consumers
+select a state with `System.get_components(..., filter_func=...)` or pass the
+solve-year feature when reading its time series. The Pacific fixture uses a
+2032 fleet with 2012 profiles; its demand series therefore starts in 2012. Do
+not infer a solve year from the series timestamp alone. Modifier contracts
+specify whether their input selects one solve year or carries year keys.
 
 ## Why modifiers are explicit
 
@@ -69,8 +76,8 @@ remainders according to the selected threshold. Purchaser load, Canadian imports
 CCS credits and emission caps make other scenario-specific choices. Applying
 all transforms indiscriminately can duplicate or alter assumptions.
 
-Modifier functions mutate the system and return `Result[System, str]`. Check
-errors and save a baseline before a transformation when you need comparison.
+Modifier functions mutate the system and return `Result[System, Exception]`.
+Check errors and save a baseline before a transformation when you need comparison.
 There is no universal modifier order: optimal siting needs existing demand
 profiles, while an emissions calculation must see the fleet you intend to constrain.
 See [transform reference](/r2x-reeds/reference/transforms/) for each contract.

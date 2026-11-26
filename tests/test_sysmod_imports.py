@@ -8,20 +8,23 @@ from infrasys import System
 
 from r2x_reeds.models.components import ReEDSGenerator, ReEDSRegion
 from r2x_reeds.sysmod import imports
+from tests.type_helpers import get_time_series
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.polars]
 
 
-def _build_generator() -> tuple[System, ReEDSGenerator]:
+def _build_generator(solve_year: int | None = None) -> tuple[System, ReEDSGenerator]:
     system = System(name="test_imports")
     region = ReEDSRegion(name="west")
     system.add_component(region)
+    suffix = f"_{solve_year}" if solve_year is not None else ""
     generator = ReEDSGenerator(
-        name="can-imports_west",
+        name=f"can-imports_west{suffix}",
         region=region,
         capacity=50.0,
         technology="canada_import",
         category="imports",
+        solve_year=solve_year,
     )
     system.add_component(generator)
     return system, generator
@@ -77,7 +80,7 @@ def test_imports_scope_full_flow(tmp_path: Path) -> None:
 
 def test_imports_scope_reeds_input_shapes(tmp_path: Path) -> None:
     """Canadian imports plugin accepts the native ReEDS input shapes."""
-    system, generator = _build_generator()
+    system, generator = _build_generator(solve_year=2035)
 
     hour_map_path = _write_csv(
         tmp_path / "hmap_myr.csv",
@@ -125,8 +128,53 @@ def test_imports_scope_reeds_input_shapes(tmp_path: Path) -> None:
     assert time_series.data.tolist() == pytest.approx([0.6, 0.6, 0.8])
 
 
+def test_imports_scope_selected_year_only_attaches_to_matching_generators(tmp_path: Path) -> None:
+    system = System(name="two_year_imports")
+    region = ReEDSRegion(name="west")
+    system.add_component(region)
+    generators = {
+        year: ReEDSGenerator(
+            name=f"can-imports_west_{year}",
+            region=region,
+            capacity=50.0,
+            technology="canada_import",
+            category="imports",
+            solve_year=year,
+        )
+        for year in (2032, 2035)
+    }
+    for generator in generators.values():
+        system.add_component(generator)
+
+    hour_map_path = _write_csv(
+        tmp_path / "hour_map.csv",
+        {
+            "time_index": ["2024-01-01T00:00:00", "2024-01-02T00:00:00"],
+            "season": ["winter", "winter"],
+        },
+    )
+    szn_frac_path = _write_csv(tmp_path / "szn_frac.csv", {"season": ["winter"], "value": [1.0]})
+    imports_path = _write_csv(tmp_path / "imports.csv", {"r": ["west"], "2032": [1000.0], "2035": [2000.0]})
+
+    _run_imports(
+        system,
+        weather_year=2024,
+        solve_year=2035,
+        canada_imports_fpath=imports_path,
+        canada_szn_frac_fpath=szn_frac_path,
+        hour_map_fpath=hour_map_path,
+    )
+
+    assert not system.has_time_series(generators[2032])
+    assert get_time_series(system, generators[2035], name="hydro_budget", solve_year=2035).data.tolist() == [
+        1.0,
+        1.0,
+    ]
+    assert system.list_time_series_keys(generators[2035])[0].features == {"solve_year": 2035}
+
+
 def test_imports_scope_long_form_data_selects_solve_year(tmp_path: Path) -> None:
-    system, generator = _build_generator()
+    system, generator = _build_generator(2035)
     hour_map_path = _write_csv(
         tmp_path / "hour_map.csv",
         {
@@ -154,13 +202,14 @@ def test_imports_scope_long_form_data_selects_solve_year(tmp_path: Path) -> None
 
 
 def test_imports_do_not_attach_budgets_to_canadian_export_generators(tmp_path: Path) -> None:
-    system, import_generator = _build_generator()
+    system, import_generator = _build_generator(2035)
     export_generator = ReEDSGenerator(
-        name="can-exports_west",
+        name="can-exports_west_2035",
         region=import_generator.region,
         capacity=50.0,
         technology="canada_export",
         category="exports",
+        solve_year=2035,
     )
     system.add_component(export_generator)
     hour_map_path = _write_csv(
@@ -176,6 +225,7 @@ def test_imports_do_not_attach_budgets_to_canadian_export_generators(tmp_path: P
     _run_imports(
         system,
         weather_year=2024,
+        solve_year=2035,
         canada_imports_fpath=imports_path,
         canada_szn_frac_fpath=szn_frac_path,
         hour_map_fpath=hour_map_path,
@@ -212,7 +262,7 @@ def test_imports_scope_wide_data_requires_solve_year(tmp_path: Path) -> None:
     )
 
     assert result.is_err()
-    assert "Solve year is required" in result.unwrap_err()
+    assert "Solve year is required" in str(result.unwrap_err())
 
 
 def test_imports_scope_missing_weather_year(caplog) -> None:
@@ -231,6 +281,27 @@ def test_imports_scope_missing_files(caplog) -> None:
     _run_imports(system, weather_year=2024, canada_imports_fpath=None)
 
     assert "Missing required file paths for imports plugin" in caplog.text
+
+
+def test_imports_scope_missing_configured_file_preserves_cause(tmp_path: Path) -> None:
+    system, _ = _build_generator()
+    missing = str(tmp_path / "missing.csv")
+
+    result = imports.add_imports(
+        system,
+        imports.ImportsConfig(
+            weather_year=2024,
+            canada_imports_fpath=missing,
+            canada_szn_frac_fpath=missing,
+            hour_map_fpath=missing,
+        ),
+    )
+
+    assert result.is_err()
+    error = result.unwrap_err()
+    while error.__cause__ is not None:
+        error = error.__cause__
+    assert isinstance(error, FileNotFoundError)
 
 
 def test_imports_scope_missing_region(tmp_path: Path, caplog) -> None:
@@ -278,7 +349,7 @@ def test_imports_scope_empty_join(tmp_path: Path) -> None:
     )
 
     assert result.is_err()
-    assert "hour map does not contain seasons" in result.unwrap_err().lower()
+    assert "hour map does not contain seasons" in str(result.unwrap_err()).lower()
     assert system.has_time_series(generator) is False
 
 
@@ -325,7 +396,7 @@ def test_imports_scope_invalid_daily_season_mapping(
     )
 
     assert result.is_err()
-    assert error_message in result.unwrap_err().lower()
+    assert error_message in str(result.unwrap_err()).lower()
     assert system.has_time_series(generator) is False
 
 

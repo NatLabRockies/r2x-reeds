@@ -22,7 +22,7 @@ test('legacy API bookmarks reach public objects and exact members', async () => 
     assert.equal(await redirected('/r2x-reeds/references/api.html', `#${fragment}`, '/r2x-reeds/reference/python-api/'), destination);
   }
   assert.equal(members['r2x_reeds.parser.ReEDSParser'], '/r2x-reeds/reference/api/reedsparser/');
-  assert.equal(members['r2x_reeds.plugin_config.ReEDSConfig.primary_solve_year'], '/r2x-reeds/reference/api/reedsconfig/#primary_solve_year');
+  assert.equal(members['r2x_reeds.plugin_config.ReEDSConfig.solve_year'], '/r2x-reeds/reference/api/reedsconfig/#solve_year');
 });
 
 test('other old guide URLs retain their section bookmark', async () => {
