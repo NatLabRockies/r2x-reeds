@@ -16,7 +16,8 @@ maintainers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "r2x-core @ git+https://github.com/NatLabRockies/r2x-core.git@main",
+    "polars>=1.44.1,<2.0.0",
+    "r2x-core>=1.0.0,<2.0.0",
 ]
 keywords=["ReEDS"]
 classifiers = [

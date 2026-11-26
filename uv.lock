@@ -799,8 +799,8 @@ wheels = [
 
 [[package]]
 name = "r2x-core"
-version = "0.9.0"
-source = { git = "https://github.com/NatLabRockies/r2x-core.git?rev=main#d090584fb69d642a0f745bef3491a70c3780d261" }
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
     { name = "infrasys" },
@@ -810,12 +810,17 @@ dependencies = [
     { name = "pydantic" },
     { name = "rust-ok" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/99/4b/d4742e2d01d7a05b312c4c8547dbc40b07c96ff5573f9a20f629357fbc39/r2x_core-1.0.0.tar.gz", hash = "sha256:7fc70128889f6ba6491a0e35db7e00de992e7d1ab4d08a8c9a775f60b7f218f9", size = 130408, upload-time = "2026-11-26T00:43:08.898Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/18/1665bb1a0d0712d93bd30380b22cced7728eea792964f79e944e9c043e35/r2x_core-1.0.0-py3-none-any.whl", hash = "sha256:04ad6ae6bc9c398648027c98ac0f3cdaf97333b2813b6d7fa3db2f77097419c6", size = 150508, upload-time = "2026-11-26T00:43:07.702Z" },
+]
 
 [[package]]
 name = "r2x-reeds"
 version = "0.9.3"
 source = { editable = "." }
 dependencies = [
+    { name = "polars" },
     { name = "r2x-core" },
 ]
 
@@ -831,7 +836,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "r2x-core", git = "https://github.com/NatLabRockies/r2x-core.git?rev=main" }]
+requires-dist = [
+    { name = "polars", specifier = ">=1.44.1,<2.0.0" },
+    { name = "r2x-core", specifier = ">=1.0.0,<2.0.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [
